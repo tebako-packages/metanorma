@@ -34,7 +34,8 @@ SKIP_DEFAULTS = {
     "readline",      # sparql ~> 0.0 → 0.0.4 (runtime default)
     "net-protocol",  # net-ftp unconstrained → 0.2.2
     "matrix",        # sxp ~> 0.4 → 0.4.2 (runtime-bundled)
-    "net-ftp",       # relaton-3gpp ~> 0.1.0 → 0.3.4 (runtime-bundled)
+    # NOT net-ftp: relaton-3gpp pins `~> 0.1.0` (three segments — < 0.2.0),
+    # which the runtime-bundled 0.3.4 does NOT satisfy; net-ftp ships.
 }
 PRECOMPILED_NATIVES = {"nokogiri", "ffi", "libpng", "parsanol", "sqlite3"}
 # Resolution overrides, each justified in docs/build-notes.md (recipe.yml pins):

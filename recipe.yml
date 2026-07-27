@@ -38,7 +38,7 @@ build:
                   securerandom, benchmark, ostruct, rexml, date, time,
                   nkf, reline, io-console, prism,
                   stringio, timeout, yaml, singleton, ruby2_keywords,
-                  readline, net-protocol, matrix, net-ftp]
+                  readline, net-protocol, matrix]
 
 # Feedstock deps consumed at exec time (spec 03 DEPENDS; the dispatcher
 # mounts the toolkit payload at the consumer-declared point).
