@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# tools/boot_smoke <image.tfs> — the release gate (conventions.md):
+# assert the entrypoint exists in the image and runs under a published
+# tebako runtime.
+#
+# Env: TFS (tfs CLI binary), DWARFSEXTRACT, RUNTIME (tebako runtime exe),
+#      SHIM (deploy-driver ruby shim produced by tools/build's stub press).
+set -euo pipefail
+
+IMG="${1:?usage: tools/boot_smoke <image.tfs>}"
+TFS="${TFS:-tfs}"
+DWARFSEXTRACT="${DWARFSEXTRACT:-dwarfsextract}"
+RUNTIME="${RUNTIME:-$HOME/.tebako/runtimes/ruby-3.3.7-0.15.9-macos-arm64/tebako-runtime-0.15.9-3.3.7-macos-arm64}"
+SHIM="${SHIM:-}"
+
+extract() { # <image> <dest> — tfs extract preferred; dwarfsextract fallback
+  if command -v "$TFS" >/dev/null 2>&1; then
+    "$TFS" extract -d "$2" "$1"
+  else
+    "$DWARFSEXTRACT" -i "$1" -o "$2" --log-level warn
+  fi
+}
+
+echo "== entrypoint assertions (in-process mount via libtfs)"
+"$TFS" stat "$IMG" /bin/metanorma | grep -q File
+"$TFS" stat "$IMG" /local/stub.rb | grep -q File
+"$TFS" ls "$IMG" /lib/ruby/gems/3.3.0/gems | grep -q "metanorma-cli-1.16.9"
+echo "   /bin/metanorma, /local/stub.rb, gem tree: present"
+
+echo "== extract round-trip"
+X="$(mktemp -d)"
+extract "$IMG" "$X"
+[ -f "$X/bin/metanorma" ] || { echo "extracted entrypoint missing"; exit 1; }
+
+echo "== exec metanorma --version with a published tebako runtime"
+if [ -n "$SHIM" ]; then
+  cat > "$X/run.rb" <<RB
+ARGV.replace(["--version"])
+load "$X/bin/metanorma"
+RB
+  TEBAKO_PASS_THROUGH=1 "$SHIM" "$X/run.rb" | grep -E "Metanorma::Cli 1.16.9"
+else
+  echo "   SHIM unset — skipping exec leg (run tools/build first, then"
+  echo "   SHIM=out/work-aarch64-macos/prefix/o/p/ruby tools/boot_smoke ...)"
+fi
+echo "BOOT-SMOKE-OK"

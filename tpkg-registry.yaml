@@ -1,0 +1,25 @@
+schema_version: 1
+# tebako-packages/metanorma — this feedstock's payload registry.
+# Consumed as tfs:github:tebako-packages/metanorma (spec 04); the dispatcher's
+# resolution surface is payloads[].default (spec 07 §2.1).
+payloads:
+  - name: metanorma
+    kind: app
+    summary: Metanorma — the standards-document authoring CLI (ruby app; runtime-required payload)
+    default: "1.16.9"
+    versions:
+      - version: "1.16.9"
+        runtime_requirement: {engine: ruby, constraint: "~> 3.3.0"}
+        requires:
+          - kind: toolkit
+            name: inkscape
+            constraint: ">= 1.3"
+            mount: /opt/inkscape
+        platforms:
+          - triplet: aarch64-macos
+            image:
+              url: "https://github.com/tebako-packages/metanorma/releases/download/1.16.9/metanorma-1.16.9-aarch64-macos.tfs"
+              sha256: "IMAGE_SHA256"   # pinned by tools/publish
+            manifest:
+              url: "https://github.com/tebako-packages/metanorma/releases/download/1.16.9/metanorma-1.16.9.manifest.yaml"
+              sha256: "MANIFEST_SHA256"   # pinned by tools/publish

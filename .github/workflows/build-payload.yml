@@ -1,0 +1,116 @@
+name: build-payload
+# Feedstock build: recipe → matrix build → boot-smoke → release.
+# Conventions: docs/conventions.md in tebako-packages/index.
+# STATUS: deferred — the payload leg ran locally (docs/build-notes.md);
+# this workflow encodes the same steps but has not run green yet (same
+# situation as tebako-packages/fontist: the cold tebako-cli build via
+# vcpkg is ~45 min).
+on:
+  push:
+    branches: [main]
+    tags: ["*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: aarch64-macos
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build tebako-cli (tamatebako/tebako-rs, pinned)
+        # Mirrors tebako-rs's own ci.yml: the dwarfs backend needs the
+        # dwarfs-t C++ tree (submodule) and a vcpkg run (~45 min cold).
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: tamatebako/tebako-rs
+          path: tebako-rs
+          submodules: recursive
+
+      - name: Checkout dwarfs-rs (sibling path dep)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: tamatebako/dwarfs-rs
+          path: dwarfs-rs
+          submodules: recursive
+
+      - name: Native build tools + crypto deps (macOS)
+        run: brew install ninja autoconf automake autoconf-archive libtool botan json-c
+
+      - name: Set up vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          # Must match tebako-rs ci.yml (dwarfs-t/vcpkg.json baseline).
+          vcpkgGitCommitId: f14401ca0f2754347c3864da7488a9b955b4e47a
+          vcpkgDirectory: ${{ github.workspace }}/.vcpkg-root
+
+      - name: Pre-install squashfs-tools-ng (serialized)
+        working-directory: tebako-rs
+        run: |
+          ../.vcpkg-root/vcpkg install \
+            --vcpkg-root "${{ github.workspace }}/.vcpkg-root" \
+            --x-wait-for-lock \
+            --x-manifest-root crates/sqfs-sys \
+            --x-install-root "${{ github.workspace }}/.sqfs-installed" \
+            --triplet arm64-osx-static \
+            --overlay-triplets crates/sqfs-sys/vcpkg_triplets \
+            --overlay-ports crates/sqfs-sys/vcpkg_ports
+          echo "SQFS_SYS_VCPKG_INSTALLED_DIR=${{ github.workspace }}/.sqfs-installed/arm64-osx-static" >> "$GITHUB_ENV"
+
+      - name: cargo build tebako-cli + tfs-cli
+        run: |
+          cargo build --release --manifest-path tebako-rs/Cargo.toml -p tebako-cli -p tfs-cli
+          echo "$GITHUB_WORKSPACE/tebako-rs/target/release" >> "$GITHUB_PATH"
+
+      - name: Fetch factory tools (tamatebako/libtfs v0.13.0, SHA256SUMS-verified)
+        run: |
+          mkdir -p "$RUNNER_TEMP/factory-tools" && cd "$RUNNER_TEMP/factory-tools"
+          base="https://github.com/tamatebako/libtfs/releases/download/v0.13.0"
+          curl -sLO "$base/SHA256SUMS"
+          curl -sLO "$base/mkdwarfs-macos-arm64"
+          curl -sLO "$base/tebakofs-macos-arm64"
+          grep -E "mkdwarfs-macos-arm64|tebakofs-macos-arm64" SHA256SUMS | shasum -a 256 -c -
+          chmod 755 mkdwarfs-macos-arm64 tebakofs-macos-arm64
+          echo "$RUNNER_TEMP/factory-tools" >> "$GITHUB_PATH"
+
+      - name: Build the payload
+        env:
+          TEBAKO_CLI: tebako
+          MKDWARFS: mkdwarfs-macos-arm64
+        run: tools/build
+
+      - name: Boot-smoke
+        # Hard rule (docs/conventions.md): the packaged tool's --version
+        # runs from the image before any release publishes.
+        env:
+          TFS: tfs
+          SHIM: out/work-aarch64-macos/prefix/o/p/ruby
+        run: tools/boot_smoke out/aarch64-macos/metanorma-1.16.9-aarch64-macos.tfs
+
+      - name: Stage artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist-aarch64-macos
+          path: out/aarch64-macos/
+
+  release:
+    name: publish
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: dist-*
+          path: out
+          merge-multiple: true
+      - name: Publish payloads + registry
+        # artifacts per triplet + SHA256SUMS + the resolved tpkg-registry.yaml
+        run: tools/publish 1.16.9
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

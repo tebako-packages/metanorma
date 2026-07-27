@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+# tools/build — stage the metanorma closure with a tebako runtime's own ruby
+# and image it (aarch64-macos leg; one mechanical leg per triplet).
+#
+# Inputs (env, all with sane defaults):
+#   TEBAKO_CLI      tebako-cli binary (default: tebako on PATH)
+#   MKDWARFS        mkdwarfs-t binary (default: mkdwarfs on PATH)
+#   WORK            build workspace (default: out/work-aarch64-macos)
+#   OUT             artifact dir   (default: out/aarch64-macos)
+#
+# Produces: $OUT/metanorma-<version>-aarch64-macos.tfs (+ manifest yaml).
+#
+# Rules honored: no host ruby anywhere (the runtime IS the ruby — every
+# ruby process runs through the deploy-driver shim the CLI's own press
+# produces); every download sha256-verified (.gem files against the
+# compact index /info checksums, the ruby + libyaml tarballs against the
+# recipe pins, the runtime against the tebako-runtime-ruby release
+# manifest, verified by tebako-cli's resolver).
+set -euo pipefail
+
+FEEDSTOCK="$(cd "$(dirname "$0")/.." && pwd)"
+VERSION="1.16.9"
+TRIPLET="aarch64-macos"
+RUBY_V="3.3.7"
+API_V="3.3.0"
+
+TEBAKO_CLI="${TEBAKO_CLI:-tebako}"
+MKDWARFS="${MKDWARFS:-mkdwarfs}"
+WORK="${WORK:-$FEEDSTOCK/out/work-$TRIPLET}"
+OUT="${OUT:-$FEEDSTOCK/out/$TRIPLET}"
+CLOSURE="$FEEDSTOCK/closure/$VERSION-$TRIPLET.txt"
+
+SDK_URL="https://cache.ruby-lang.org/pub/ruby/3.3/ruby-3.3.7.tar.gz"
+SDK_SHA256="9c37c3b12288c7aec20ca121ce76845be5bb5d77662a24919651aaf1d12c8628"
+LIBYAML_URL="https://pyyaml.org/download/libyaml/yaml-0.2.5.tar.gz"
+LIBYAML_SHA256="c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4"
+
+step() { printf '\n== %s\n' "$*"; }
+
+mkdir -p "$WORK" "$OUT" "$WORK/gempkgs"
+
+# ---------------------------------------------------------------- runtime
+step "resolve the tebako runtime (tebako-cli cache, manifest-verified)"
+# A stub press makes the CLI resolve the runtime AND yields the
+# deploy-driver shim (o/p/ruby) used for every ruby invocation below.
+# The Gemfile forces the bundler deploy ops (a SimpleScript stub produces
+# no driver); base64 is dep-free and installs in seconds.
+mkdir -p "$WORK/stubapp"
+printf 'puts "stub"\n' > "$WORK/stubapp/stub.rb"
+printf 'source "https://rubygems.org"\ngem "base64"\n' > "$WORK/stubapp/Gemfile"
+"$TEBAKO_CLI" press -r "$WORK/stubapp" -e stub.rb -o "$WORK/stub-pkg" \
+  -p "$WORK/prefix" -l warn
+SHIM="$WORK/prefix/o/p/ruby"
+[ -x "$SHIM" ] || { echo "no deploy shim at $SHIM"; exit 1; }
+
+# ------------------------------------------------------------- SDK headers
+step "mkmf SDK header dir (ruby $RUBY_V, pinned + sha256-verified)"
+SDK="$WORK/sdk"
+if [ ! -f "$SDK/include/ruby-$API_V/ruby.h" ]; then
+  mkdir -p "$SDK"
+  curl -sL -o "$WORK/ruby.tar.gz" "$SDK_URL"
+  echo "$SDK_SHA256  $WORK/ruby.tar.gz" | shasum -a 256 -c -
+  mkdir -p "$WORK/ruby-src" "$WORK/ruby-build"
+  tar xzf "$WORK/ruby.tar.gz" -C "$WORK/ruby-src" --strip-components=1
+  (cd "$WORK/ruby-build" && "$WORK/ruby-src/configure" \
+      --disable-shared --disable-install-doc > configure.log 2>&1)
+  mkdir -p "$SDK/include/ruby-$API_V/arm64-darwin24/ruby"
+  cp -R "$WORK/ruby-src/include/." "$SDK/include/ruby-$API_V/"
+  cp "$WORK/ruby-build"/.ext/include/*/ruby/config.h \
+     "$SDK/include/ruby-$API_V/arm64-darwin24/ruby/config.h"
+fi
+sed "s|@@SDK_INCLUDE@@|$SDK/include/ruby-$API_V|" \
+  "$FEEDSTOCK/tools/sdk_patch.rb.in" > "$WORK/sdk_patch.rb"
+
+# -------------------------------------------------------- libyaml (psych)
+step "libyaml source (pinned + sha256-verified; psych --with-libyaml-source-dir)"
+LIBYAML_SRC="$WORK/libyaml-src"
+if [ ! -f "$LIBYAML_SRC/configure" ]; then
+  curl -sL -o "$WORK/libyaml.tar.gz" "$LIBYAML_URL"
+  echo "$LIBYAML_SHA256  $WORK/libyaml.tar.gz" | shasum -a 256 -c -
+  mkdir -p "$LIBYAML_SRC"
+  tar xzf "$WORK/libyaml.tar.gz" -C "$LIBYAML_SRC" --strip-components=1
+fi
+
+# ---------------------------------------------------------- fetch the gems
+step "fetch + sha256-verify the closure ($CLOSURE)"
+grep -v '^#' "$CLOSURE" | grep -v '^\s*$' | while read -r full sha; do
+  f="$WORK/gempkgs/$full.gem"
+  if [ -f "$f" ]; then
+    actual=$(shasum -a 256 "$f" | cut -d' ' -f1)
+    [ "$actual" = "$sha" ] && continue
+    echo "re-fetching $full (cached sha256 mismatch)"
+  fi
+  curl -sL -o "$f" "https://rubygems.org/downloads/$full.gem"
+  actual=$(shasum -a 256 "$f" | cut -d' ' -f1)
+  [ "$actual" = "$sha" ] || { echo "SHA256 MISMATCH $full: $actual != $sha"; exit 1; }
+done
+echo "all gems verified"
+
+# ------------------------------------------------------------------ stage
+step "stage the closure with the runtime ruby (no host ruby)"
+export TEBAKO_PASS_THROUGH=1 SSL_CERT_FILE="${SSL_CERT_FILE:-/etc/ssl/cert.pem}"
+export GEM_HOME="$WORK/stage" GEM_PATH="$WORK/stage"
+export GEM_SPEC_CACHE="$WORK/stage/spec_cache"
+export CERT_DIR="$WORK/ssl_certs"
+export STAGE_DIR="$WORK/stage" GEMPKGS_DIR="$WORK/gempkgs"
+export LIBYAML_SRC
+# The source-only natives (brotli, ox, psych, websocket-driver) build here,
+# with the SDK header preload active (mkmf re-enters the runtime via the
+# shim). PKG_CONFIG_LIBDIR masks system libs (libbrotli, libyaml) so the
+# gems build their vendored/pinned sources (self-contained payload; see
+# tools/stage_app.rb).
+export RUBYOPT="-r$WORK/sdk_patch.rb" PKG_CONFIG_LIBDIR=/nonexistent
+"$SHIM" "$FEEDSTOCK/tools/stage_app.rb" > "$WORK/stage.log" 2>&1 || {
+  tail -30 "$WORK/stage.log"; echo "staging FAILED (full log: $WORK/stage.log)"; exit 1; }
+grep -c "^   ... @ gem" "$WORK/stage.log" | xargs echo "gems installed:"
+grep "STAGE-OK" "$WORK/stage.log" > /dev/null
+unset RUBYOPT PKG_CONFIG_LIBDIR
+
+EXTDIR="$WORK/stage/extensions/arm64-darwin-24/$API_V-static"
+for ext in brotli ox psych websocket_mask; do
+  found=$(find "$EXTDIR" -name "$ext.bundle" 2>/dev/null | head -1 || true)
+  [ -n "$found" ] || { echo "native build missing: $ext.bundle"; exit 1; }
+  echo "native ext OK: $found"
+done
+
+# ----------------------------------------------------------- payload tree
+step "assemble the payload tree"
+PAYLOAD="$WORK/payload"
+rm -rf "$PAYLOAD"
+mkdir -p "$PAYLOAD/bin" "$PAYLOAD/lib/ruby/gems/$API_V" "$PAYLOAD/local"
+G="$PAYLOAD/lib/ruby/gems/$API_V"
+cp -R "$WORK/stage/gems" "$G/gems"
+cp -R "$WORK/stage/specifications" "$G/specifications"
+cp -R "$WORK/stage/extensions" "$G/extensions"
+[ -d "$WORK/stage/build_info" ] && cp -R "$WORK/stage/build_info" "$G/build_info"
+cp "$FEEDSTOCK/templates/bin/metanorma" "$PAYLOAD/bin/metanorma"
+chmod 755 "$PAYLOAD/bin/metanorma"
+cp "$FEEDSTOCK/templates/local/stub.rb" "$PAYLOAD/local/stub.rb"
+
+# ------------------------------------------------------------------ image
+step "mkdwarfs-t image"
+IMG="$OUT/metanorma-$VERSION-$TRIPLET.tfs"
+rm -f "$IMG"
+"$MKDWARFS" -i "$PAYLOAD" -o "$IMG" --no-progress
+sha=$(shasum -a 256 "$IMG" | cut -d' ' -f1)
+echo "image: $IMG"
+echo "sha256: $sha"
+
+# --------------------------------------------------------------- manifest
+step "fill the manifest"
+MAN="$OUT/metanorma-$VERSION.manifest.yaml"
+sed -e "s|blob_sha256: \"0*\"|blob_sha256: \"$sha\"|" \
+    -e "s|created: \"[^\"]*\"|created: \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"|" \
+    -e "s|commit: \"0*\"|commit: \"$(git -C "$FEEDSTOCK" rev-parse HEAD)\"|" \
+    "$FEEDSTOCK/manifests/payload.yaml" > "$MAN"
+echo "manifest: $MAN"

@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# tools/resolve_closure <version> — regenerate the bundler lock for a NEW
+# upstream metanorma-cli version: resolve the Gemfile with the runtime
+# ruby's bundler (NO --prefer-local — see fontist's docs/build-notes.md §
+# Press), print the lock, then feed it to tools/gen_closure to emit
+# closure/<version>-<triplet>.txt.
+#
+# Manual maintainer step; the committed closure file is the build input.
+# Requires: SHIM (deploy-driver ruby shim, from a stub press — tools/build
+# creates one) and python3 (HTTP only, no ruby).
+set -euo pipefail
+
+VERSION="${1:?usage: tools/resolve_closure <metanorma-cli-version>}"
+TRIPLET_PLATFORM="${TRIPLET_PLATFORM:-arm64-darwin}"   # rubygems platform key
+SHIM="${SHIM:?set SHIM to a deploy-driver ruby shim}"
+FEEDSTOCK="$(cd "$(dirname "$0")/.." && pwd)"
+WORK="$(mktemp -d)"
+
+mkdir -p "$WORK/app" "$WORK/gemhome"
+cat > "$WORK/app/Gemfile" <<GEM
+source "https://rubygems.org"
+gem "metanorma-cli", "$VERSION"
+GEM
+
+cat > "$WORK/lock.rb" <<'RB'
+require "fileutils"
+CERT_DIR = ENV.fetch("CERT_DIR")
+FileUtils.mkdir_p(CERT_DIR)
+require "rubygems/request"
+module TebakoDeployCerts
+  def get_cert_files
+    super.map do |src|
+      dst = File.join(CERT_DIR, File.basename(src))
+      FileUtils.cp(src, dst) unless File.exist?(dst)
+      dst
+    end
+  end
+end
+Gem::Request.singleton_class.prepend(TebakoDeployCerts)
+Dir.chdir(ENV.fetch("APP_DIR"))
+ARGV.replace(["lock", "--print"])
+load Gem.bin_path("bundler", "bundle")
+RB
+
+TEBAKO_PASS_THROUGH=1 \
+GEM_HOME="$WORK/gemhome" GEM_PATH="$WORK/gemhome" \
+GEM_SPEC_CACHE="$WORK/gemhome/spec_cache" \
+SSL_CERT_FILE="${SSL_CERT_FILE:-/etc/ssl/cert.pem}" \
+CERT_DIR="$WORK/ssl_certs" APP_DIR="$WORK/app" \
+  "$SHIM" "$WORK/lock.rb" > "$WORK/lock.txt"
+
+echo "# lock written to $WORK/lock.txt — review it (platform variants of"
+echo "# native gems, source-only natives, default-gem constraints), then:"
+echo "#   python3 tools/gen_closure $WORK/lock.txt $TRIPLET_PLATFORM > closure/$VERSION-<triplet>.txt"

@@ -1,0 +1,45 @@
+schema_version: 1
+# Payload manifest for metanorma (spec 03 §2.2; filled by tools/build).
+identity:
+  schema_version: 1
+  kind: app
+  name: "metanorma"
+  version: "1.16.9"
+  producer: {tool: feedstock-build, tool_version: "1"}
+  created: "2026-07-27T00:00:00Z"          # pinned at release time
+  source:
+    src_sha256: ""                          # n/a: rubygems closure (per-gem checksums, see recipe)
+    commit: "0000000000000000000000000000000000000000"  # feedstock commit, pinned at release
+    builder: "local"                        # "gha:run:<id>" on CI builds
+  digest:
+    tree_hash: ""                           # merkle root when the CAS lands (spec 03)
+    blob_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+  signing: {state: unsigned}
+  encryption: {state: none}
+  annotations:
+    gem: metanorma-cli
+    gem_version: "1.16.9"
+provides:
+  entrypoints:
+    - name: metanorma
+      path: /bin/metanorma
+      args_default: []
+      runtime_requirement:
+        engine: ruby
+        # native-extension payload (nokogiri/ffi/libpng/parsanol/sqlite3
+        # precompiled; brotli/ox/psych/websocket-driver compiled per triplet):
+        # the abi line of the staging runtime, per spec 05 §5.
+        constraint: "~> 3.3.0"
+  platforms: [aarch64-macos]
+  capabilities: {exec: true, read: true}
+requires:
+  - kind: language
+    engine: ruby
+    constraint: "~> 3.3.0"
+  # metanorma's graphics chain (spec 03 §2.3 DEPENDS): isodoc rasterizes SVG
+  # figures through vectory -> inkscape for doc/html output. The dispatcher
+  # mounts the inkscape toolkit payload at the consumer-declared point.
+  - kind: toolkit
+    name: inkscape
+    constraint: ">= 1.3"
+    mount: /opt/inkscape
