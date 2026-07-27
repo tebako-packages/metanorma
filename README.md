@@ -23,8 +23,8 @@ mount `/opt/inkscape`), so installing it exercises the full dispatch chain.
 
 ## Why triplet-bound
 
-metanorma's closure (259 gems) contains native extensions: nokogiri, ffi,
-libpng, parsanol, sqlite3 (precompiled per platform) and brotli, ox, oga,
+metanorma's closure (260 gems) contains native extensions: nokogiri, ffi,
+libpng, parsanol, sqlite3 (precompiled per platform) and brotli, ox, oga (+ ruby-ll),
 psych, websocket-driver (compiled per triplet during the build). The payload ships
 per-triplet and its runtime requirement is the ABI line `~> 3.3.0`, not a
 pure-ruby range. Details: `docs/build-notes.md`.

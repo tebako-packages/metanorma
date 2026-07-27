@@ -13,7 +13,7 @@ flavor gems (`metanorma-iso ~> 3.4.2`, `-iec`, `-ietf`, `-itu`, `-ogc`,
 
 The transitive closure — resolved by the runtime ruby's bundler
 (`tools/resolve_closure`, multi-platform lock of 310 specs) and pinned in
-`closure/1.16.9-aarch64-macos.txt` — carries **259 gems** after the
+`closure/1.16.9-aarch64-macos.txt` — carries **260 gems** after the
 skip-defaults policy, with these **native extensions**:
 
 | gem | native? | how the payload gets it |
@@ -25,7 +25,7 @@ skip-defaults policy, with these **native extensions**:
 | sqlite3 2.9.5 | C (vendored sqlite) | **precompiled** `arm64-darwin` gem (via ea — EXPRESS archive) |
 | brotli 0.8.0 | C (vendored brotli) | no precompiled gem → **built per triplet** (fontist pattern, `--enable-vendor`) |
 | ox 2.14.28 | C | no precompiled gem → **built per triplet** (via omml/plurimath/unitsml — the math chain, unavoidable) |
-| oga 3.5 | C (liboga + libll) | no precompiled gem → **built per triplet** (via omml 0.2.5, `~> 3.4`) |
+| oga 3.5 + ruby-ll 2.2.0 | C (liboga, libll) | no precompiled gems → **built per triplet** (oga via omml 0.2.5 `~> 3.4`; ruby-ll is oga's parser dep) |
 | psych 5.2.6 | C + libyaml | no precompiled gem, no vendored libyaml → **built per triplet** against the pinned libyaml 0.2.5 tarball (`--with-libyaml-source-dir`; needed because relaton-bib/-core demand `psych ~> 5.2.0` and the runtime default is 5.1.2) |
 | websocket-driver 0.8.2 | C (optional) | **built per triplet** (has a LoadError fallback to pure ruby; built anyway — the ext is trivial against the SDK headers) |
 | json 2.7.2, bigdecimal 3.1.5, strscan 3.0.9, racc 1.7.3, date 3.3.4 | C | **runtime-provided** (default/bundled gems of the ruby 3.3.7 runtime) |
@@ -83,7 +83,7 @@ compact index `/info/<gem>` checksum before staging.
 3. Pinned `yaml-0.2.5.tar.gz` (libyaml) extracted for psych's
    `--with-libyaml-source-dir` build — psych's extconf configures and
    statically links it into `psych.bundle`.
-4. `gem install --local --ignore-dependencies` of the 259 pinned gems
+4. `gem install --local --ignore-dependencies` of the 260 pinned gems
    into the staging `GEM_HOME`. brotli (`--enable-vendor`), ox, psych,
    websocket-driver compile here (host clang, runtime ruby driving mkmf).
    `PKG_CONFIG_LIBDIR=/nonexistent` keeps Homebrew's libbrotli/libyaml out
@@ -119,12 +119,15 @@ compact index `/info/<gem>` checksum before staging.
     (oscal: unconstrained → 0.3.0), `singleton` (versionian: ~> 0.2
     → 0.2.0), `ruby2_keywords` (faraday: >= 0.0.4 → 0.0.5), `readline`
     (sparql: ~> 0.0 → 0.0.4), `net-protocol` (net-ftp: unconstrained
-    → 0.2.2), `matrix` (sxp: ~> 0.4 → 0.4.2, runtime-bundled like racc),
-    `net-ftp` (relaton-3gpp: ~> 0.1.0 → 0.3.4, runtime-bundled).
+    → 0.2.2), `matrix` (sxp: ~> 0.4 → 0.4.2, runtime-bundled like racc).
   - **checked and NOT skipped** (constraint exceeds the default):
     `base64 0.3.0` (down: ~> 0.3 vs 0.2.0), `csv 3.3.5` (relaton-ccsds /
     table_tennis: ~> 3.3 vs 3.2.8), `logger 1.7.0` (bibtex-ruby: ~> 1.7
-    vs 1.6.0), `psych 5.2.6` (relaton: ~> 5.2.0 vs 5.1.2).
+    vs 1.6.0), `psych 5.2.6` (relaton: ~> 5.2.0 vs 5.1.2),
+    `net-ftp 0.1.4` (relaton-3gpp: **~> 0.1.0** — three segments, i.e.
+    < 0.2.0 — vs runtime-bundled 0.3.4; this one was mis-skipped on the
+    first pass and caught by the activation check in §4: `gem "net-ftp",
+    "~> 0.1.0"` answered `did find: [net-ftp-0.3.4]` → restored).
   - **absent from the runtime entirely** (must ship): `scanf 1.0.0`,
     `webrick 1.9.2`.
 
@@ -145,7 +148,7 @@ Filled in by the local build run — see the release and §5.
 ## 6. What ran vs what is deferred
 
 - Ran locally: closure resolution (runtime bundler), sha256-verified
-  fetch of all 259 gems, the five per-triplet native builds (pre-flown
+  fetch of all 260 gems, the six per-triplet native builds (pre-flown
   into a scratch GEM_HOME first), staging, image, boot-smoke —
   transcripts in §4.
 - Deferred to CI (`.github/workflows/build-payload.yml`): the same build
