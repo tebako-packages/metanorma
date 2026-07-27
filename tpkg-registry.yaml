@@ -19,7 +19,7 @@ payloads:
           - triplet: aarch64-macos
             image:
               url: "https://github.com/tebako-packages/metanorma/releases/download/1.16.9/metanorma-1.16.9-aarch64-macos.tfs"
-              sha256: "IMAGE_SHA256"   # pinned by tools/publish
+              sha256: "9f66b31d9e633b07e50d9851fd2a54e7318d7e121fbe35224cd47d7da78cf0e0"   # pinned by tools/publish
             manifest:
               url: "https://github.com/tebako-packages/metanorma/releases/download/1.16.9/metanorma-1.16.9.manifest.yaml"
-              sha256: "MANIFEST_SHA256"   # pinned by tools/publish
+              sha256: "884bfd90e5b441c113255e6edbbceab6e2f716c1d5532e1169479b89c40b0eb0"   # pinned by tools/publish

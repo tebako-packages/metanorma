@@ -133,7 +133,64 @@ compact index `/info/<gem>` checksum before staging.
 
 ## 4. Verification (2026-07-27, macOS arm64)
 
-Filled in by the local build run — see the release and §5.
+- **Staging + native builds** — 260 gems installed by the runtime ruby
+  (no host ruby anywhere); all six per-triplet extensions present and
+  linked only against libSystem (`otool -L`):
+  `brotli-0.8.0/brotli/brotli.bundle`, `ox-2.14.28/ox/ox.bundle`,
+  `oga-3.5/liboga.bundle`, `ruby-ll-2.2.0/libll.bundle`,
+  `psych-5.2.6/psych.bundle` (pinned libyaml 0.2.5 static),
+  `websocket-driver-0.8.2/websocket_mask.bundle`.
+- **Image integrity** — `tfs stat/ls` (in-process libtfs mount):
+  `/bin/metanorma`, `/local/stub.rb`, and the gem tree
+  (`metanorma-cli-1.16.9` under `/lib/ruby/gems/3.3.0/gems`) present;
+  `tfs extract` round-trip clean (`tools/boot_smoke`).
+- **Registry payload exec (dispatcher-equivalent)** — the published
+  tebako runtime + the extracted payload tree + the manifest entrypoint,
+  network-free:
+
+  ```
+  $ <runtime-ruby shim> run.rb        # ARGV=["--version"]; load bin/metanorma
+  Metanorma 2.5.2
+  Metanorma::Cli 1.16.9
+  Metanorma::Standoc 3.4.9/IsoDoc 3.7.0
+  Metanorma::Iso 3.4.9
+  Metanorma::Iec 2.8.11
+  ... (all 14 flavors print)
+  ```
+
+  Every native in the load path (nokogiri, ffi, ox, oga, psych, ...) is
+  exercised by this boot — the flavor requires chain loads them.
+  (`undefined method 'version' for nil` printed after the flavor list is
+  upstream metanorma-cli noise from its registry walk, also seen with
+  conventional gem installs.)
+- **Activation check** — during closure work, `gem "net-ftp", "~> 0.1.0"`
+  against the runtime answered `did find: [net-ftp-0.3.4]`
+  (Gem::MissingSpecVersionError), catching the one mis-skipped gem before
+  release; all other skips activate cleanly under the payload GEM_PATH.
+- **Dispatcher resolution** — an installed payload record
+  (`~/.tebako/payloads/metanorma/1.16.9.tfs` + `.sha256` + manifest
+  mirror) is picked up by tebako-shim (`list` shows metanorma 1.16.9
+  resolved from the user default; `doctor` reports no record problems).
+  `tebako-shim which metanorma` reads the DEPENDS edge and **fails
+  closed**: `"metanorma" requires toolkit inkscape but no satisfying
+  version is installed (installed: none)` — the inkscape chain is
+  enforced, and cannot resolve green on this machine because the inkscape
+  feedstock currently ships `x86_64-linux-gnu` only (phase A). The full
+  green chain is exactly what the dogfood CI proves on linux.
+- **Known boundary (honest, same as fontist)**: the published v0.15.9
+  runtime requires a tpkg trailer on `--tebako-image` and mounts a single
+  memfs, so the exec proof above is the dispatcher-equivalent form
+  (runtime + extracted tree), not the spec-07 bare-image multi-mount
+  dispatch — that is the v0.1.0-era runtime ABI. Until then the payload
+  carries `/local/stub.rb` (v0.15.x compat). The shim's manifest mirror
+  format is the flat `{name, version, entrypoints, requires}` surface —
+  the release carries the full spec-03 manifest; the mirror extraction is
+  the v0.1.0 installer's job (done by hand for the local record).
+- **Release integrity** —
+  `metanorma-1.16.9-aarch64-macos.tfs` 158 774 837 bytes,
+  sha256 `9f66b31d9e633b07e50d9851fd2a54e7318d7e121fbe35224cd47d7da78cf0e0`;
+  re-downloaded from the release and re-hashed (match);
+  `tpkg-registry.yaml` pinned to the same digests.
 
 ## 5. Tool provenance
 
@@ -149,8 +206,12 @@ Filled in by the local build run — see the release and §5.
 
 - Ran locally: closure resolution (runtime bundler), sha256-verified
   fetch of all 260 gems, the six per-triplet native builds (pre-flown
-  into a scratch GEM_HOME first), staging, image, boot-smoke —
-  transcripts in §4.
+  into a scratch GEM_HOME first), staging, image, boot-smoke, dispatcher
+  record resolution, and the publish itself — transcripts in §4.
+  Release: https://github.com/tebako-packages/metanorma/releases/tag/1.16.9
+- The committed `tools/build` reproduces the payload end-to-end (stub
+  press → SDK → libyaml → verified gems → stage → tree → image →
+  manifest); the release image was built by it.
 - Deferred to CI (`.github/workflows/build-payload.yml`): the same build
   on `macos-14`, boot-smoke gate, tag-triggered publish; additional
   triplets need the closure re-resolved per triplet (same lock —
@@ -159,4 +220,14 @@ Filled in by the local build run — see the release and §5.
   arch, a tools/build follow-up).
 - The dogfood (`.github/workflows/dogfood.yml`) is **gated** until
   tebako-rs v0.1.0 ships release binaries incl. tebako-shim — see the
-  workflow header.
+  workflow header. Also blocked on: an inkscape payload for the dogfood
+  triplet (today: `x86_64-linux-gnu` only, so the linux leg goes first)
+  and a Java runtime for the mn2pdf PDF leg (GitHub runners ship one).
+- Source-only natives for FUTURE triplets (per the task brief, "document
+  any source-only ones as triplet-specific follow-ups"): brotli, ox,
+  oga+ruby-ll, psych(+libyaml), websocket-driver all build from source
+  per triplet; the macOS leg proves the pattern (SDK header dir +
+  RUBYOPT preload). linux legs additionally need an `rbconfig`-matching
+  `config.h` (tools/build currently emits the darwin one) and psych's
+  libyaml configure will pick up the triplet's CC — same pattern, no new
+  machinery expected, but unproven until a linux leg runs.
