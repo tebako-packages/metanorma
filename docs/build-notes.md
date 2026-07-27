@@ -13,7 +13,7 @@ flavor gems (`metanorma-iso ~> 3.4.2`, `-iec`, `-ietf`, `-itu`, `-ogc`,
 
 The transitive closure — resolved by the runtime ruby's bundler
 (`tools/resolve_closure`, multi-platform lock of 310 specs) and pinned in
-`closure/1.16.9-aarch64-macos.txt` — carries **272 gems** after the
+`closure/1.16.9-aarch64-macos.txt` — carries **259 gems** after the
 skip-defaults policy, with these **native extensions**:
 
 | gem | native? | how the payload gets it |
@@ -25,6 +25,7 @@ skip-defaults policy, with these **native extensions**:
 | sqlite3 2.9.5 | C (vendored sqlite) | **precompiled** `arm64-darwin` gem (via ea — EXPRESS archive) |
 | brotli 0.8.0 | C (vendored brotli) | no precompiled gem → **built per triplet** (fontist pattern, `--enable-vendor`) |
 | ox 2.14.28 | C | no precompiled gem → **built per triplet** (via omml/plurimath/unitsml — the math chain, unavoidable) |
+| oga 3.5 | C (liboga + libll) | no precompiled gem → **built per triplet** (via omml 0.2.5, `~> 3.4`) |
 | psych 5.2.6 | C + libyaml | no precompiled gem, no vendored libyaml → **built per triplet** against the pinned libyaml 0.2.5 tarball (`--with-libyaml-source-dir`; needed because relaton-bib/-core demand `psych ~> 5.2.0` and the runtime default is 5.1.2) |
 | websocket-driver 0.8.2 | C (optional) | **built per triplet** (has a LoadError fallback to pure ruby; built anyway — the ext is trivial against the SDK headers) |
 | json 2.7.2, bigdecimal 3.1.5, strscan 3.0.9, racc 1.7.3, date 3.3.4 | C | **runtime-provided** (default/bundled gems of the ruby 3.3.7 runtime) |
@@ -82,7 +83,7 @@ compact index `/info/<gem>` checksum before staging.
 3. Pinned `yaml-0.2.5.tar.gz` (libyaml) extracted for psych's
    `--with-libyaml-source-dir` build — psych's extconf configures and
    statically links it into `psych.bundle`.
-4. `gem install --local --ignore-dependencies` of the 272 pinned gems
+4. `gem install --local --ignore-dependencies` of the 259 pinned gems
    into the staging `GEM_HOME`. brotli (`--enable-vendor`), ox, psych,
    websocket-driver compile here (host clang, runtime ruby driving mkmf).
    `PKG_CONFIG_LIBDIR=/nonexistent` keeps Homebrew's libbrotli/libyaml out
@@ -99,19 +100,33 @@ compact index `/info/<gem>` checksum before staging.
   `strscan >= 3.1.1`; strscan is source-only and the runtime's default is
   3.0.9. All liquid dependents accept 5.6.0 (`~> 5`, `>= 4.0, < 6.0`).
 - **Default-gem skips.** Constraints satisfied by the ruby 3.3.7 runtime's
-  own default/bundled gems are not duplicated into the payload:
-  `json` (fontist: ~> 2.0 → 2.7.2), `bigdecimal` (json-schema: >= 3.1, < 5
-  → 3.1.5; ox: >= 3.0), `strscan` (via the liquid pin), `racc`
-  (bibtex-ruby: ~> 1.7 → 1.7.3; nokogiri: ~> 1.4), `drb`, `uri`
-  (>= 0.13.1), `minitest` (>= 5.1), `securerandom` (>= 0.3), `benchmark`,
-  `ostruct`, `rexml` (json-ld/omnizip/rdf-xsd: ~> 3.2/~> 3.3 → 3.3.9),
-  `date` (psych/time: unconstrained → 3.3.4), `time` (net-ftp:
-  unconstrained → 0.3.0).
-- **NOT skipped** (constraints the defaults cannot satisfy):
-  `logger 1.7.0` (bibtex-ruby: ~> 1.7 vs runtime 1.6.0),
-  `psych 5.2.6` (relaton: ~> 5.2.0 vs runtime 5.1.2),
-  `base64 0.3.0` (down: ~> 0.3 vs runtime 0.2.0),
-  `csv 3.3.5` (relaton-ccsds/table_tennis: ~> 3.3 vs runtime 3.2.8).
+  own default/bundled gems are not duplicated into the payload. Validated
+  mechanically: the runtime's full default+bundled set was dumped through
+  the shim (72 gems) and every dependency edge onto each candidate was
+  checked against the shipped version.
+  - fontist-class: `json` (fontist: ~> 2.0 → 2.7.2), `bigdecimal`
+    (json-schema: >= 3.1, < 5 → 3.1.5; ox: >= 3.0), `strscan` (via the
+    liquid pin), `racc` (bibtex-ruby: ~> 1.7 → 1.7.3; nokogiri: ~> 1.4),
+    `drb`, `uri` (>= 0.13.1), `minitest` (>= 5.1), `securerandom` (>= 0.3),
+    `benchmark`, `ostruct`, `rexml` (json-ld/omnizip/rdf-xsd: ~> 3.2 /
+    ~> 3.3 → 3.3.9), `date` (psych/time: unconstrained → 3.3.4), `time`
+    (net-ftp: unconstrained → 0.3.0).
+  - metanorma-class: `nkf` (mechanize: unconstrained → 0.1.3), `reline`
+    (readline: unconstrained → 0.5.10), `io-console` (only reline 0.6.3's
+    `~> 0.5`, moot once reline is skipped → 0.7.1), `prism` (only the
+    skipped minitest 6.0.6's `~> 1.5`), `stringio` (psych: unconstrained
+    → 3.1.1), `timeout` (net-protocol: unconstrained → 0.4.1), `yaml`
+    (oscal: unconstrained → 0.3.0), `singleton` (versionian: ~> 0.2
+    → 0.2.0), `ruby2_keywords` (faraday: >= 0.0.4 → 0.0.5), `readline`
+    (sparql: ~> 0.0 → 0.0.4), `net-protocol` (net-ftp: unconstrained
+    → 0.2.2), `matrix` (sxp: ~> 0.4 → 0.4.2, runtime-bundled like racc),
+    `net-ftp` (relaton-3gpp: ~> 0.1.0 → 0.3.4, runtime-bundled).
+  - **checked and NOT skipped** (constraint exceeds the default):
+    `base64 0.3.0` (down: ~> 0.3 vs 0.2.0), `csv 3.3.5` (relaton-ccsds /
+    table_tennis: ~> 3.3 vs 3.2.8), `logger 1.7.0` (bibtex-ruby: ~> 1.7
+    vs 1.6.0), `psych 5.2.6` (relaton: ~> 5.2.0 vs 5.1.2).
+  - **absent from the runtime entirely** (must ship): `scanf 1.0.0`,
+    `webrick 1.9.2`.
 
 ## 4. Verification (2026-07-27, macOS arm64)
 
@@ -130,7 +145,7 @@ Filled in by the local build run — see the release and §5.
 ## 6. What ran vs what is deferred
 
 - Ran locally: closure resolution (runtime bundler), sha256-verified
-  fetch of all 272 gems, the four per-triplet native builds (pre-flown
+  fetch of all 259 gems, the five per-triplet native builds (pre-flown
   into a scratch GEM_HOME first), staging, image, boot-smoke —
   transcripts in §4.
 - Deferred to CI (`.github/workflows/build-payload.yml`): the same build

@@ -17,6 +17,24 @@ SKIP_DEFAULTS = {
     # constraint evidence in docs/build-notes.md § skip-defaults
     "json", "bigdecimal", "strscan", "racc", "drb", "uri", "minitest",
     "securerandom", "benchmark", "ostruct", "rexml", "date", "time",
+    # nkf: mechanize unconstrained → runtime default 0.1.3
+    "nkf",
+    # reline: readline (sparql) unconstrained → runtime default 0.5.10;
+    # io-console: constrained (~> 0.5) only by the skipped reline 0.6.3 →
+    # runtime default 0.7.1;
+    # prism: depended on only by the skipped minitest 6.0.6
+    "reline", "io-console", "prism",
+    # validated against the runtime's default/bundled set (tools/check_skips
+    # logic, evidence in build-notes):
+    "stringio",      # psych unconstrained → 3.1.1
+    "timeout",       # net-protocol unconstrained → 0.4.1
+    "yaml",          # oscal unconstrained → 0.3.0
+    "singleton",     # versionian ~> 0.2 → 0.2.0
+    "ruby2_keywords",# faraday >= 0.0.4 → 0.0.5
+    "readline",      # sparql ~> 0.0 → 0.0.4 (runtime default)
+    "net-protocol",  # net-ftp unconstrained → 0.2.2
+    "matrix",        # sxp ~> 0.4 → 0.4.2 (runtime-bundled)
+    "net-ftp",       # relaton-3gpp ~> 0.1.0 → 0.3.4 (runtime-bundled)
 }
 PRECOMPILED_NATIVES = {"nokogiri", "ffi", "libpng", "parsanol", "sqlite3"}
 # Resolution overrides, each justified in docs/build-notes.md (recipe.yml pins):

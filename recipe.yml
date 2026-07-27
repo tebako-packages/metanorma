@@ -32,10 +32,13 @@ build:
   # Resolution overrides, each justified in docs/build-notes.md:
   pins:
     liquid: "5.6.0"        # >= 5.6.1 demands strscan >= 3.1.1 (source-only native)
-  # Constraints the runtime's own default gems already satisfy — the payload
-  # relies on the runtime for these (runtime-required kind: app):
+  # Constraints the runtime's own default/bundled gems already satisfy — the
+  # payload relies on the runtime for these (runtime-required kind: app):
   skip_defaults: [json, bigdecimal, strscan, racc, drb, uri, minitest,
-                  securerandom, benchmark, ostruct, rexml, date, time]
+                  securerandom, benchmark, ostruct, rexml, date, time,
+                  nkf, reline, io-console, prism,
+                  stringio, timeout, yaml, singleton, ruby2_keywords,
+                  readline, net-protocol, matrix, net-ftp]
 
 # Feedstock deps consumed at exec time (spec 03 DEPENDS; the dispatcher
 # mounts the toolkit payload at the consumer-declared point).

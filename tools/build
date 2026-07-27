@@ -118,7 +118,7 @@ grep "STAGE-OK" "$WORK/stage.log" > /dev/null
 unset RUBYOPT PKG_CONFIG_LIBDIR
 
 EXTDIR="$WORK/stage/extensions/arm64-darwin-24/$API_V-static"
-for ext in brotli ox psych websocket_mask; do
+for ext in brotli ox liboga libll psych websocket_mask; do
   found=$(find "$EXTDIR" -name "$ext.bundle" 2>/dev/null | head -1 || true)
   [ -n "$found" ] || { echo "native build missing: $ext.bundle"; exit 1; }
   echo "native ext OK: $found"
