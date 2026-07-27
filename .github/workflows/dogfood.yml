@@ -85,9 +85,12 @@ jobs:
           echo "$HOME/.tebako/shims" >> "$GITHUB_PATH"
 
       - name: metanorma new site
+        # `new` requires -t (flavor) and -d (doctype); the default template
+        # skeleton is fetched from metanorma's git template registry (the
+        # runner has network; the payload itself is offline).
         run: |
           set -euo pipefail
-          metanorma new site -t iso
+          metanorma new site -t iso -d international-standard
           test -d site
 
       - name: Drop the fixture doc with the figure

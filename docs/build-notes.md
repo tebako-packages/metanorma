@@ -163,6 +163,19 @@ compact index `/info/<gem>` checksum before staging.
   (`undefined method 'version' for nil` printed after the flavor list is
   upstream metanorma-cli noise from its registry walk, also seen with
   conventional gem installs.)
+- **Full compile through the payload (bonus, beyond the brief)** —
+  `fixtures/site.adoc` compiled by the same dispatcher-equivalent exec
+  (`compile -x xml,html,pdf`; doc output omitted locally — that is the
+  leg that rasterizes the figure via inkscape, and no inkscape payload
+  exists for this triplet yet): exit 0, `site.xml` +
+  `site.presentation.xml` + `site.html` + `site.pdf` produced, PDF magic
+  bytes `%PDF-` verified. mn2pdf 2.62's jar ran as a java subprocess off
+  the extracted tree (the memfs-invisible-file trick does not apply to
+  extracted payloads); fontist provisioned fonts into
+  `~/.metanorma/fonts` (one non-fatal registration warning,
+  `NISC18030.ttf`). This also proves the fixture compiles clean — the CI
+  dogfood runs it with the default extension set (incl. doc → vectory →
+  the inkscape payload).
 - **Activation check** — during closure work, `gem "net-ftp", "~> 0.1.0"`
   against the runtime answered `did find: [net-ftp-0.3.4]`
   (Gem::MissingSpecVersionError), catching the one mis-skipped gem before
