@@ -8,11 +8,11 @@ identity:
   producer: {tool: feedstock-build, tool_version: "1"}
   created: "2026-07-27T00:00:00Z"          # pinned at release time
   source:
-    src_sha256: ""                          # n/a: rubygems closure (per-gem checksums, see recipe)
+    # src_sha256 omitted: rubygems closure (per-gem checksums, see recipe)
     commit: "0000000000000000000000000000000000000000"  # feedstock commit, pinned at release
     builder: "local"                        # "gha:run:<id>" on CI builds
   digest:
-    tree_hash: ""                           # merkle root when the CAS lands (spec 03)
+    tree_hash: "sha256:0000000000000000000000000000000000000000000000000000000000000000"  # placeholder until the CAS lands (spec 03)
     blob_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
   signing: {state: unsigned}
   encryption: {state: none}

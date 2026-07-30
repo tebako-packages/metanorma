@@ -26,6 +26,16 @@ API_V="3.3.0"
 
 TEBAKO_CLI="${TEBAKO_CLI:-tebako}"
 MKDWARFS="${MKDWARFS:-mkdwarfs}"
+# The mkmf arch dir must match the STAGING RUNTIME's platform string
+# (its RbConfig arch): the runtime's own darwin triplet, not the build
+# host's. Override when pressing against a runtime built elsewhere.
+SDK_ARCH="${SDK_ARCH:-arm64-darwin24}"
+# rubygems' extensions dir convention (Gem::Platform.to_s — hyphenated
+# darwin version): the arch dir mkmf drops built bundles into.
+EXT_PLATFORM="${EXT_PLATFORM:-arm64-darwin-24}"
+# The staging (and target) runtime's tebako version — the press resolves
+# exactly this (0.16.0 = the v2 contract-2 runtime).
+TEBAKO_VERSION="${TEBAKO_VERSION:-0.15.9}"
 WORK="${WORK:-$FEEDSTOCK/out/work-$TRIPLET}"
 OUT="${OUT:-$FEEDSTOCK/out/$TRIPLET}"
 CLOSURE="$FEEDSTOCK/closure/$VERSION-$TRIPLET.txt"
@@ -49,7 +59,7 @@ mkdir -p "$WORK/stubapp"
 printf 'puts "stub"\n' > "$WORK/stubapp/stub.rb"
 printf 'source "https://rubygems.org"\ngem "base64"\n' > "$WORK/stubapp/Gemfile"
 "$TEBAKO_CLI" press -r "$WORK/stubapp" -e stub.rb -o "$WORK/stub-pkg" \
-  -p "$WORK/prefix" -l warn
+  -p "$WORK/prefix" -l warn --tebako-version "$TEBAKO_VERSION"
 SHIM="$WORK/prefix/o/p/ruby"
 [ -x "$SHIM" ] || { echo "no deploy shim at $SHIM"; exit 1; }
 
@@ -64,12 +74,13 @@ if [ ! -f "$SDK/include/ruby-$API_V/ruby.h" ]; then
   tar xzf "$WORK/ruby.tar.gz" -C "$WORK/ruby-src" --strip-components=1
   (cd "$WORK/ruby-build" && "$WORK/ruby-src/configure" \
       --disable-shared --disable-install-doc > configure.log 2>&1)
-  mkdir -p "$SDK/include/ruby-$API_V/arm64-darwin24/ruby"
+  mkdir -p "$SDK/include/ruby-$API_V/$SDK_ARCH/ruby"
   cp -R "$WORK/ruby-src/include/." "$SDK/include/ruby-$API_V/"
   cp "$WORK/ruby-build"/.ext/include/*/ruby/config.h \
-     "$SDK/include/ruby-$API_V/arm64-darwin24/ruby/config.h"
+     "$SDK/include/ruby-$API_V/$SDK_ARCH/ruby/config.h"
 fi
-sed "s|@@SDK_INCLUDE@@|$SDK/include/ruby-$API_V|" \
+sed -e "s|@@SDK_INCLUDE@@|$SDK/include/ruby-$API_V|" \
+    -e "s|@@SDK_ARCH@@|$SDK_ARCH|" \
   "$FEEDSTOCK/tools/sdk_patch.rb.in" > "$WORK/sdk_patch.rb"
 
 # -------------------------------------------------------- libyaml (psych)
@@ -117,7 +128,7 @@ grep -c "^   ... @ gem" "$WORK/stage.log" | xargs echo "gems installed:"
 grep "STAGE-OK" "$WORK/stage.log" > /dev/null
 unset RUBYOPT PKG_CONFIG_LIBDIR
 
-EXTDIR="$WORK/stage/extensions/arm64-darwin-24/$API_V-static"
+EXTDIR="$WORK/stage/extensions/$EXT_PLATFORM/$API_V-static"
 for ext in brotli ox liboga libll psych websocket_mask; do
   found=$(find "$EXTDIR" -name "$ext.bundle" 2>/dev/null | head -1 || true)
   [ -n "$found" ] || { echo "native build missing: $ext.bundle"; exit 1; }

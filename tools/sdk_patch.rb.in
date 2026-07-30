@@ -9,7 +9,7 @@ unless defined?(TG_SDK_PATCHED)
   sdk = "@@SDK_INCLUDE@@"
   [RbConfig::CONFIG, RbConfig::MAKEFILE_CONFIG].each do |c|
     c["rubyhdrdir"] = sdk
-    c["rubyarchhdrdir"] = File.join(sdk, "arm64-darwin24")
+    c["rubyarchhdrdir"] = File.join(sdk, "@@SDK_ARCH@@")
     c["LIBRUBYARG"] = "-Wl,-undefined,dynamic_lookup"
     c["LIBRUBYARG_STATIC"] = "-Wl,-undefined,dynamic_lookup"
     c["LIBRUBYARG_SHARED"] = "-Wl,-undefined,dynamic_lookup"
