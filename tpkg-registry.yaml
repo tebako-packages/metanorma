@@ -7,12 +7,13 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: metanorma-1.16.9-macos-arm64.tfs
-        sha256: a9d352602606a752924bfe2eed5e7d635767c771d488ec93d5b866cb5cf6d06b
+        sha256: '72ea5097846435e9e43e475cfe784deb4d617fce98971521f735bb7d6b6f8988'
     release:
       ref: tfs:github:tebako-packages/metanorma:1.16.9
     runtime_requirement:
       engine: ruby
       constraint: ~> 3.3.0
+      abi: arm64-darwin-23
     entrypoints:
     - metanorma
   default: '1.16.9'
