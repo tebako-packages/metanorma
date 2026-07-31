@@ -1,17 +1,18 @@
 schema_version: 1
-# tebako-packages/metanorma — this feedstock's payload registry.
-# Consumed as tfs:github:tebako-packages/metanorma (default-branch form).
 payloads:
-  - name: metanorma
-    kind: app
-    summary: Metanorma — the standards-document authoring CLI (ruby app; runtime-required payload)
-    default: "1.16.9"
-    versions:
-      - version: "1.16.9"
-        platforms:
-          aarch64-macos:
-            artifact: metanorma-1.16.9-aarch64-macos.tfs
-            sha256: "9f66b31d9e633b07e50d9851fd2a54e7318d7e121fbe35224cd47d7da78cf0e0"
-        release: {ref: tfs:github:tebako-packages/metanorma:1.16.9}
-        runtime_requirement: {engine: ruby, constraint: "~> 3.3.0"}
-        entrypoints: [metanorma]
+- name: metanorma
+  kind: app
+  versions:
+  - version: '1.16.9'
+    platforms:
+      aarch64-macos:
+        artifact: metanorma-1.16.9-macos-arm64.tfs
+        sha256: '3b6cf46f5cdbc53cb69a8c3bbf29a79872ab88e71fe9f46e9f0722408813f7d2'
+    release:
+      ref: tfs:github:tebako-packages/metanorma:1.16.9
+    runtime_requirement:
+      engine: ruby
+      constraint: ~> 3.3.0
+    entrypoints:
+    - metanorma
+  default: '1.16.9'
