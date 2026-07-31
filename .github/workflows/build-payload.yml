@@ -97,27 +97,47 @@ jobs:
     name: publish
     if: startsWith(github.ref, 'refs/tags/')
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: macos-14
+    env:
+      TEBAKO_CLI: ${{ github.workspace }}/tebako-rs/target/release/tebako
+      TEBAKO_HOME: ${{ github.workspace }}/.tebako
+      TEBAKO_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: tamatebako/tebako
+          path: tebako-rs
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: dist-*
           path: out
           merge-multiple: true
+      - uses: dtolnay/rust-toolchain@1.94.1
+      - uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: f14401ca0f2754347c3864da7488a9b955b4e47a
+          vcpkgDirectory: ${{ github.workspace }}/.vcpkg-root
+      - name: Build the tebako CLI
+        env:
+          DWARFS_RS_VCPKG_ROOT: ${{ github.workspace }}/.vcpkg-root
+          VCPKG_ROOT: ${{ github.workspace }}/.vcpkg-root
+          SQFS_SYS_VCPKG_ROOT: ${{ github.workspace }}/.vcpkg-root
+          CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+        run: cargo build --release --manifest-path tebako-rs/Cargo.toml -p tebako-cli
       - name: Publish payloads + registry
         # tebako publish: artifacts + registry upsert + clean-cache verify
         # (the publisher home carries the dep registries for the closure proof)
         run: |
           set -euo pipefail
-          export TEBAKO_HOME="$RUNNER_TEMP/tebako-home" TEBAKO_GITHUB_TOKEN="$GH_TOKEN"
-          tebako add-registry tfs:github:tebako-packages/inkscape
-          tebako add-registry tfs:github:tebako-packages/openjdk
-          tebako publish --name metanorma             --release tfs:github:tebako-packages/metanorma             --payload aarch64-macos="out/aarch64-macos/metanorma-1.16.9-macos-arm64.tfs"             --registry-out tpkg-registry.yaml
+          "$TEBAKO_CLI" add-registry tfs:github:tebako-packages/inkscape
+          "$TEBAKO_CLI" add-registry tfs:github:tebako-packages/openjdk
+          "$TEBAKO_CLI" publish --name metanorma \
+            --release tfs:github:tebako-packages/metanorma \
+            --payload aarch64-macos="out/aarch64-macos/metanorma-1.16.9-macos-arm64.tfs" \
+            --registry-out tpkg-registry.yaml
           git config user.name "tebako-packages[bot]"
           git config user.email "bot@tebako.org"
           git add tpkg-registry.yaml
           git commit -m "publish ${{ github.ref_name }}: registry entry (macos-arm64)" || echo "registry unchanged"
           git push
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
