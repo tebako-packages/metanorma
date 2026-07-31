@@ -73,21 +73,10 @@ jobs:
           cargo build --release --manifest-path tebako-rs/Cargo.toml -p tebako-cli -p tfs-cli
           echo "$GITHUB_WORKSPACE/tebako-rs/target/release" >> "$GITHUB_PATH"
 
-      - name: Fetch factory tools (tamatebako/libtfs v0.13.0, SHA256SUMS-verified)
-        run: |
-          mkdir -p "$RUNNER_TEMP/factory-tools" && cd "$RUNNER_TEMP/factory-tools"
-          base="https://github.com/tamatebako/libtfs/releases/download/v0.13.0"
-          curl -sLO "$base/SHA256SUMS"
-          curl -sLO "$base/mkdwarfs-macos-arm64"
-          curl -sLO "$base/tebakofs-macos-arm64"
-          grep -E "mkdwarfs-macos-arm64|tebakofs-macos-arm64" SHA256SUMS | shasum -a 256 -c -
-          chmod 755 mkdwarfs-macos-arm64 tebakofs-macos-arm64
-          echo "$RUNNER_TEMP/factory-tools" >> "$GITHUB_PATH"
-
       - name: Build the payload
         env:
           TEBAKO_CLI: tebako
-          MKDWARFS: mkdwarfs-macos-arm64
+          TFS_CLI: tfs
         run: tools/build
 
       - name: Boot-smoke
@@ -96,7 +85,7 @@ jobs:
         env:
           TFS: tfs
           SHIM: out/work-aarch64-macos/prefix/o/p/ruby
-        run: tools/boot_smoke out/aarch64-macos/metanorma-1.16.9-aarch64-macos.tfs
+        run: tools/boot_smoke out/aarch64-macos/metanorma-1.16.9-macos-arm64.tfs
 
       - name: Stage artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -117,7 +106,18 @@ jobs:
           path: out
           merge-multiple: true
       - name: Publish payloads + registry
-        # artifacts per triplet + SHA256SUMS + the resolved tpkg-registry.yaml
-        run: tools/publish 1.16.9
+        # tebako publish: artifacts + registry upsert + clean-cache verify
+        # (the publisher home carries the dep registries for the closure proof)
+        run: |
+          set -euo pipefail
+          export TEBAKO_HOME="$RUNNER_TEMP/tebako-home" TEBAKO_GITHUB_TOKEN="$GH_TOKEN"
+          tebako add-registry tfs:github:tebako-packages/inkscape
+          tebako add-registry tfs:github:tebako-packages/openjdk
+          tebako publish --name metanorma             --release tfs:github:tebako-packages/metanorma             --payload aarch64-macos="out/aarch64-macos/metanorma-1.16.9-macos-arm64.tfs"             --registry-out tpkg-registry.yaml
+          git config user.name "tebako-packages[bot]"
+          git config user.email "bot@tebako.org"
+          git add tpkg-registry.yaml
+          git commit -m "publish ${{ github.ref_name }}: registry entry (macos-arm64)" || echo "registry unchanged"
+          git push
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

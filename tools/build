@@ -21,7 +21,8 @@ set -euo pipefail
 
 FEEDSTOCK="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="1.16.9"
-TRIPLET="aarch64-macos"
+TRIPLET="aarch64-macos"        # the manifest platforms form (vcpkg, spec 03)
+ASSET_PLATFORM="macos-arm64"    # the release-asset name form (spec 03 §3)
 RUBY_V="3.3.7"
 API_V="3.3.0"
 
@@ -176,7 +177,7 @@ echo "embedded manifest: $MAN_EMBED"
 
 # ------------------------------------------------------------------ image
 step "tfs mkimage (the in-process dwarfs-t writer — never the mkdwarfs CLI)"
-IMG="$OUT/metanorma-$VERSION-$TRIPLET.tfs"
+IMG="$OUT/metanorma-$VERSION-$ASSET_PLATFORM.tfs"
 rm -f "$IMG"
 "$TFS_CLI" mkimage --format dwarfs "$PAYLOAD" --output "$IMG"
 sha=$(shasum -a 256 "$IMG" | cut -d' ' -f1)
