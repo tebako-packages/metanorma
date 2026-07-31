@@ -4,11 +4,12 @@
 #
 # Inputs (env, all with sane defaults):
 #   TEBAKO_CLI      tebako-cli binary (default: tebako on PATH)
-#   MKDWARFS        mkdwarfs-t binary (default: mkdwarfs on PATH)
+#   TFS_CLI         tfs-cli binary, the in-process imager (default: tfs on PATH)
 #   WORK            build workspace (default: out/work-aarch64-macos)
 #   OUT             artifact dir   (default: out/aarch64-macos)
 #
-# Produces: $OUT/metanorma-<version>-aarch64-macos.tfs (+ manifest yaml).
+# Produces: $OUT/metanorma-<version>-aarch64-macos.tfs (+ manifest yaml),
+# the manifest EMBEDDED at /__tpkg__/manifest.yaml (tier 1, authoritative).
 #
 # Rules honored: no host ruby anywhere (the runtime IS the ruby — every
 # ruby process runs through the deploy-driver shim the CLI's own press
@@ -25,7 +26,7 @@ RUBY_V="3.3.7"
 API_V="3.3.0"
 
 TEBAKO_CLI="${TEBAKO_CLI:-tebako}"
-MKDWARFS="${MKDWARFS:-mkdwarfs}"
+TFS_CLI="${TFS_CLI:-tfs}"
 # The mkmf arch dir must match the STAGING RUNTIME's platform string
 # (its RbConfig arch): the runtime's own darwin triplet, not the build
 # host's. Override when pressing against a runtime built elsewhere.
@@ -149,20 +150,32 @@ cp "$FEEDSTOCK/templates/bin/metanorma" "$PAYLOAD/bin/metanorma"
 chmod 755 "$PAYLOAD/bin/metanorma"
 cp "$FEEDSTOCK/templates/local/stub.rb" "$PAYLOAD/local/stub.rb"
 
+# --------------------------------------------------------------- manifest
+step "fill the manifest (embedded at /__tpkg__/manifest.yaml — tier 1)"
+# The embedded manifest is the AUTHORITATIVE record the install mirrors
+# (spec 03 §4): identity + provides + requires travel INSIDE the image.
+# Its blob_sha256 is the fixed-point placeholder (spec 03 §7 — the image
+# cannot carry its own digest); the sibling manifest (below) carries the
+# real one for the release's SHA256SUMS/registry tier.
+MAN_EMBED="$PAYLOAD/__tpkg__/manifest.yaml"
+mkdir -p "$PAYLOAD/__tpkg__"
+sed -e "s|created: \"[^\"]*\"|created: \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"|" \
+    -e "s|commit: \"0*\"|commit: \"$(git -C "$FEEDSTOCK" rev-parse HEAD)\"|" \
+    "$FEEDSTOCK/manifests/payload.yaml" > "$MAN_EMBED"
+echo "embedded manifest: $MAN_EMBED"
+
 # ------------------------------------------------------------------ image
-step "mkdwarfs-t image"
+step "tfs mkimage (the in-process dwarfs-t writer — never the mkdwarfs CLI)"
 IMG="$OUT/metanorma-$VERSION-$TRIPLET.tfs"
 rm -f "$IMG"
-"$MKDWARFS" -i "$PAYLOAD" -o "$IMG" --no-progress
+"$TFS_CLI" mkimage --format dwarfs "$PAYLOAD" --output "$IMG"
 sha=$(shasum -a 256 "$IMG" | cut -d' ' -f1)
 echo "image: $IMG"
 echo "sha256: $sha"
 
-# --------------------------------------------------------------- manifest
-step "fill the manifest"
+# ------------------------------------------------------ sibling manifest
+step "fill the sibling manifest (release tier: real blob sha)"
 MAN="$OUT/metanorma-$VERSION.manifest.yaml"
 sed -e "s|blob_sha256: \"0*\"|blob_sha256: \"$sha\"|" \
-    -e "s|created: \"[^\"]*\"|created: \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"|" \
-    -e "s|commit: \"0*\"|commit: \"$(git -C "$FEEDSTOCK" rev-parse HEAD)\"|" \
-    "$FEEDSTOCK/manifests/payload.yaml" > "$MAN"
+    "$MAN_EMBED" > "$MAN"
 echo "manifest: $MAN"
