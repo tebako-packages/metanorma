@@ -28,8 +28,11 @@ provides:
         engine: ruby
         # native-extension payload (nokogiri/ffi/libpng/parsanol/sqlite3
         # precompiled; brotli/ox/psych/websocket-driver compiled per triplet):
-        # the abi line of the staging runtime, per spec 05 §5.
+        # the abi line of the staging runtime, per spec 05 §5 — BOTH the
+        # version line (constraint) and the platform line (abi, the staging
+        # runtime's Gem::Platform.local — filled by tools/build).
         constraint: "~> 3.3.0"
+        abi: "@@ABI@@"
   platforms: [aarch64-macos]
   capabilities: {exec: true, read: true}
 requires:

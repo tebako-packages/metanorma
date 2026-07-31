@@ -170,6 +170,7 @@ MAN_EMBED="$PAYLOAD/__tpkg__/manifest.yaml"
 mkdir -p "$PAYLOAD/__tpkg__"
 sed -e "s|created: \"[^\"]*\"|created: \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"|" \
     -e "s|commit: \"0*\"|commit: \"$(git -C "$FEEDSTOCK" rev-parse HEAD)\"|" \
+    -e "s|@@ABI@@|$EXT_PLATFORM|" \
     "$FEEDSTOCK/manifests/payload.yaml" > "$MAN_EMBED"
 echo "embedded manifest: $MAN_EMBED"
 
