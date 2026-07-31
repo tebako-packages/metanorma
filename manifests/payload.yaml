@@ -43,3 +43,10 @@ requires:
     name: inkscape
     constraint: ">= 1.3"
     mount: /opt/inkscape
+  # the hermetic java answer (jing + mn2pdf): the openjdk toolkit payload
+  # mounts at /opt/openjdk; the tebako-runtime adapters prefer its java
+  # over PATH (mounted_exe).
+  - kind: toolkit
+    name: openjdk
+    constraint: ">= 21"
+    mount: /opt/openjdk
