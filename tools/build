@@ -28,12 +28,14 @@ API_V="3.3.0"
 TEBAKO_CLI="${TEBAKO_CLI:-tebako}"
 TFS_CLI="${TFS_CLI:-tfs}"
 # The mkmf arch dir must match the STAGING RUNTIME's platform string
-# (its RbConfig arch): the runtime's own darwin triplet, not the build
-# host's. Override when pressing against a runtime built elsewhere.
-SDK_ARCH="${SDK_ARCH:-arm64-darwin24}"
-# rubygems' extensions dir convention (Gem::Platform.to_s — hyphenated
-# darwin version): the arch dir mkmf drops built bundles into.
-EXT_PLATFORM="${EXT_PLATFORM:-arm64-darwin-24}"
+# (its RbConfig arch) — and rubygems' extensions dir convention the
+# runtime's Gem::Platform.local. Both derive from the resolved runtime
+# itself below: a payload whose extension tree keys off a different SDK
+# line is invisible to the runtime's gem activation (a native-extension
+# payload's ABI line is (ruby API × ruby platform), never just the
+# triplet — spec 05 §5).
+SDK_ARCH="${SDK_ARCH:-}"
+EXT_PLATFORM="${EXT_PLATFORM:-}"
 # The staging (and target) runtime's tebako version — the press resolves
 # exactly this (0.16.0 = the v2 contract-2 runtime).
 TEBAKO_VERSION="${TEBAKO_VERSION:-0.15.9}"
@@ -63,6 +65,13 @@ printf 'source "https://rubygems.org"\ngem "base64"\n' > "$WORK/stubapp/Gemfile"
   -p "$WORK/prefix" -l warn --tebako-version "$TEBAKO_VERSION"
 SHIM="$WORK/prefix/o/p/ruby"
 [ -x "$SHIM" ] || { echo "no deploy shim at $SHIM"; exit 1; }
+
+# The staging runtime's own platform strings drive every arch-keyed path
+# below (mkmf's arch include dir, the extensions tree). Derived, never
+# pinned: the payload is FOR this runtime.
+SDK_ARCH="${SDK_ARCH:-$("$SHIM" -e 'print RbConfig::CONFIG["arch"]')}"
+EXT_PLATFORM="${EXT_PLATFORM:-$("$SHIM" -e 'print Gem::Platform.local.to_s')}"
+echo "staging runtime: arch=$SDK_ARCH platform=$EXT_PLATFORM"
 
 # ------------------------------------------------------------- SDK headers
 step "mkmf SDK header dir (ruby $RUBY_V, pinned + sha256-verified)"
