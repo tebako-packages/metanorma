@@ -48,8 +48,11 @@ requires:
     mount: /opt/inkscape
   # the hermetic java answer (jing + mn2pdf): the openjdk toolkit payload
   # mounts at /opt/openjdk; the tebako-runtime adapters prefer its java
-  # over PATH (mounted_exe).
+  # over PATH (mounted_exe). The constraint is a RANGE, not a pin: jing
+  # and FOP are Java-8+ consumers, so any current LTS satisfies; the
+  # upper bound is the honesty line — a future major we have not validated
+  # is a named resolution miss, never a silent pick.
   - kind: toolkit
     name: openjdk
-    constraint: ">= 21"
+    constraint: ">= 21, < 26"
     mount: /opt/openjdk
