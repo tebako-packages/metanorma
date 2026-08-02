@@ -21,6 +21,7 @@ concurrency:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   build:
@@ -136,8 +137,29 @@ jobs:
             --release tfs:github:tebako-packages/metanorma \
             --payload aarch64-macos="out/aarch64-macos/metanorma-1.16.9-macos-arm64.tfs" \
             --registry-out tpkg-registry.yaml
+      # main is branch-protected (and the GitHub-Actions bypass is not
+      # available on this plan): the registry lands by bot PR + auto-merge,
+      # never by direct push. Idempotent across re-runs of the same tag.
+      - name: Publish the registry entry via pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
           git config user.name "tebako-packages[bot]"
           git config user.email "bot@tebako.org"
+          git fetch origin main
+          if git diff --quiet origin/main -- tpkg-registry.yaml; then
+            echo "registry unchanged (or the entry already landed on main)"
+            exit 0
+          fi
+          branch="publish/${{ github.ref_name }}-registry"
+          git checkout -b "$branch"
           git add tpkg-registry.yaml
-          git commit -m "publish ${{ github.ref_name }}: registry entry (macos-arm64)" || echo "registry unchanged"
-          git push
+          git commit -m "publish ${{ github.ref_name }}: registry entry (macos-arm64)"
+          git push origin "$branch"
+          if ! gh pr view "$branch" >/dev/null 2>&1; then
+            gh pr create --base main --head "$branch" \
+              --title "publish ${{ github.ref_name }}: registry entry" \
+              --body "Automated registry entry for ${{ github.ref_name }} (the build-payload publish job; main is protected, so the registry lands by PR)."
+          fi
+          gh pr merge --auto --squash "$branch"
