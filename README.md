@@ -7,7 +7,9 @@ CI dogfood: its payload declares a toolkit dependency on
 mount `/opt/inkscape`), so installing it exercises the full dispatch chain.
 
 - Upstream: [metanorma-cli](https://github.com/metanorma/metanorma-cli) 1.16.9 (RubyGems)
-- Payload: `metanorma-1.16.9-aarch64-macos.tfs` (DwarFS image, per-triplet)
+- Payload: `metanorma-1.16.9-aarch64-macos.tfs` (DwarFS image, per-triplet);
+  the `x86_64-windows-ucrt` leg builds in CI but is not published yet
+  (windows runtimes cannot load dynamic native extensions — `docs/build-notes.md` §7)
 - Registry: `tfs:github:tebako-packages/metanorma` (see `tpkg-registry.yaml`)
 
 ## Layout
@@ -15,9 +17,12 @@ mount `/opt/inkscape`), so installing it exercises the full dispatch chain.
 - `recipe.yml` — upstream, runtime, resolution pins, feedstock deps, platforms
 - `manifests/payload.yaml` — the spec 03 payload manifest (filled at build)
 - `tpkg-registry.yaml` — this feedstock's registry (pinned at release)
-- `closure/1.16.9-aarch64-macos.txt` — the pinned, sha256-verified gem set
-- `tools/` — `build` (stage → image → manifest), `boot_smoke`, `publish`,
-  `resolve_closure` + `gen_closure` (re-resolve a new upstream version)
+- `closure/1.16.9-<triplet>.txt` — the pinned, sha256-verified gem set
+  (aarch64-macos + x86_64-windows-ucrt)
+- `tools/` — `build` (stage → image → manifest), `boot_smoke`,
+  `smoke_verdict` (the windows leg's pinned exec verdict),
+  `stage_native_manual.rb` (windows native builds), `resolve_closure` +
+  `gen_closure` (re-resolve a new upstream version)
 - `fixtures/` — the dogfood document (one figure through the inkscape path)
 - `docs/build-notes.md` — dep-tree findings, what ran, what's deferred
 

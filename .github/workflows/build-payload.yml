@@ -1,10 +1,19 @@
 name: build-payload
-# Feedstock build: recipe → matrix build → boot-smoke → release.
+# Feedstock build: recipe → per-triplet legs → boot-smoke → release.
 # Conventions: docs/conventions.md in tebako-packages/index.
-# STATUS: deferred — the payload leg ran locally (docs/build-notes.md);
-# this workflow encodes the same steps but has not run green yet (same
-# situation as tebako-packages/fontist: the cold tebako-cli build via
-# vcpkg is ~45 min).
+#
+# STATUS:
+#   aarch64-macos — green: build + boot smoke; tags publish.
+#   x86_64-windows-ucrt — the BUILD is green (staging incl. the six
+#   source-built natives, image, manifest). The boot smoke is pinned to a
+#   KNOWN runtime-layer blocker: current windows-ucrt64 runtimes cannot
+#   load dynamically linked native extensions at all — the interpreter is
+#   --disable-shared/--with-static-linked-ext, exports no symbols, and the
+#   release ships no ruby DLL, so nokogiri/ffi/ox/psych/... .so files have
+#   nothing to bind to (docs/build-notes.md § Windows). tools/smoke_verdict
+#   turns exactly that signature green and fails any other failure mode;
+#   NO windows artifact publishes until the runtime factory ships a
+#   symbol provider and the gate here is enforced.
 on:
   push:
     branches: [main]
@@ -30,49 +39,22 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Build tebako-cli (tamatebako/tebako-rs, pinned)
-        # Mirrors tebako-rs's own ci.yml: the dwarfs backend needs the
-        # dwarfs-t C++ tree (submodule) and a vcpkg run (~45 min cold).
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: tamatebako/tebako-rs
-          path: tebako-rs
-          submodules: recursive
-
-      - name: Checkout dwarfs-rs (sibling path dep)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: tamatebako/dwarfs-rs
-          path: dwarfs-rs
-          submodules: recursive
-
-      - name: Native build tools + crypto deps (macOS)
-        run: brew install ninja autoconf automake autoconf-archive libtool botan json-c
-
-      - name: Set up vcpkg
-        uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11.6
-        with:
-          # Must match tebako-rs ci.yml (dwarfs-t/vcpkg.json baseline).
-          vcpkgGitCommitId: f14401ca0f2754347c3864da7488a9b955b4e47a
-          vcpkgDirectory: ${{ github.workspace }}/.vcpkg-root
-
-      - name: Pre-install squashfs-tools-ng (serialized)
-        working-directory: tebako-rs
+      - name: Fetch tebako CLI tools (tamatebako/tebako v0.1.1, sha256-pinned)
+        # The packager is the RELEASE BINARY (releases are the
+        # interface); v0.1.1 predates the release's SHA256SUMS asset, so
+        # the digests are pinned here (provenance: docs/build-notes.md).
         run: |
-          ../.vcpkg-root/vcpkg install \
-            --vcpkg-root "${{ github.workspace }}/.vcpkg-root" \
-            --x-wait-for-lock \
-            --x-manifest-root crates/sqfs-sys \
-            --x-install-root "${{ github.workspace }}/.sqfs-installed" \
-            --triplet arm64-osx-static \
-            --overlay-triplets crates/sqfs-sys/vcpkg_triplets \
-            --overlay-ports crates/sqfs-sys/vcpkg_ports
-          echo "SQFS_SYS_VCPKG_INSTALLED_DIR=${{ github.workspace }}/.sqfs-installed/arm64-osx-static" >> "$GITHUB_ENV"
-
-      - name: cargo build tebako-cli + tfs-cli
-        run: |
-          cargo build --release --manifest-path tebako-rs/Cargo.toml -p tebako-cli -p tfs-cli
-          echo "$GITHUB_WORKSPACE/tebako-rs/target/release" >> "$GITHUB_PATH"
+          mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
+          base="https://github.com/tamatebako/tebako/releases/download/v0.1.1"
+          curl -sLO "$base/tebako-0.1.1-macos-arm64"
+          curl -sLO "$base/tfs-0.1.1-macos-arm64"
+          echo "025fdf6948ab678895004349c7ada9c4a13676de5d1eb71bdac40dedcae73d84  tebako-0.1.1-macos-arm64" > SHA256PINS
+          echo "b1848bda4d12ec520faa682adf293f58e07ba6fedc28e373911cff24e56fe412  tfs-0.1.1-macos-arm64" >> SHA256PINS
+          shasum -a 256 -c SHA256PINS
+          chmod 755 tebako-0.1.1-macos-arm64 tfs-0.1.1-macos-arm64
+          mv tebako-0.1.1-macos-arm64 tebako
+          mv tfs-0.1.1-macos-arm64 tfs
+          echo "$RUNNER_TEMP/tebako-tools" >> "$GITHUB_PATH"
 
       - name: Build the payload
         env:
@@ -81,12 +63,14 @@ jobs:
         run: tools/build
 
       - name: Boot-smoke
-        # Hard rule (docs/conventions.md): the packaged tool's --version
-        # runs from the image before any release publishes.
+        # Hard rule (docs/conventions.md): the packaged tool's version
+        # command runs from the image before any release publishes.
         env:
           TFS: tfs
-          SHIM: out/work-aarch64-macos/prefix/o/p/ruby
-        run: tools/boot_smoke out/aarch64-macos/metanorma-1.16.9-macos-arm64.tfs
+        run: |
+          . out/aarch64-macos/runtime.env
+          TFS="$TFS" RUNTIME="$RUNTIME" RUNTIME_IMAGE="$RUNTIME_IMAGE" \
+            tools/boot_smoke out/aarch64-macos/metanorma-1.16.9-macos-arm64.tfs
 
       - name: Stage artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -94,38 +78,118 @@ jobs:
           name: dist-aarch64-macos
           path: out/aarch64-macos/
 
+  build-windows:
+    name: x86_64-windows-ucrt
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up MSYS2 (ucrt64 toolchain for the ruby SDK + the six natives)
+        # gcc-libs is explicit: the v0.1.1 windows tfs/tebako binaries
+        # import the ucrt64 gcc-runtime DLLs (libstdc++-6, libwinpthread-1).
+        uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2.32.0
+        with:
+          msystem: ucrt64
+          path-type: minimal
+          install: >-
+            make
+            patch
+            tar
+            curl
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-gcc-libs
+
+      - name: Fetch tebako CLI tools (tamatebako/tebako v0.1.1, sha256-pinned)
+        # the matrix context is not available to step-level `shell`, so
+        # the windows leg gets its own steps with the literal msys2 keyword
+        shell: msys2 {0}
+        run: |
+          mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
+          base="https://github.com/tamatebako/tebako/releases/download/v0.1.1"
+          curl -sLO "$base/tebako-0.1.1-windows-ucrt64.exe"
+          curl -sLO "$base/tfs-0.1.1-windows-ucrt64.exe"
+          echo "9cd4f2e0922acb776797a284f2f3ea1448f93c228c92e84b0f1f7a322857c2b8  tebako-0.1.1-windows-ucrt64.exe" > SHA256PINS
+          echo "82ed22135321449c81530e1fabeba73555195ea411e0d9cca4458a23fe5ad01c  tfs-0.1.1-windows-ucrt64.exe" >> SHA256PINS
+          sha256sum -c SHA256PINS
+          cp tebako-0.1.1-windows-ucrt64.exe tebako.exe
+          cp tfs-0.1.1-windows-ucrt64.exe tfs.exe
+          echo "TEBAKO_TOOLS=$(cygpath -m "$RUNNER_TEMP/tebako-tools")" >> "$GITHUB_ENV"
+
+      - name: Build the payload
+        shell: msys2 {0}
+        env:
+          TRIPLET: x86_64-windows-ucrt
+        run: |
+          export TEBAKO_CLI="$TEBAKO_TOOLS/tebako.exe"
+          export TFS_CLI="$TEBAKO_TOOLS/tfs.exe"
+          tools/build
+
+      - name: Boot-smoke + verdict
+        # The in-image assertions and the extract round-trip are hard
+        # gates. The exec leg is pinned to the KNOWN windows runtime-
+        # layer blocker (header comment): only its exact LoadError
+        # signature is accepted as green; a PASS or any other failure
+        # mode is reported by tools/smoke_verdict (pass flips the gate,
+        # anything else fails the leg).
+        shell: msys2 {0}
+        run: |
+          . out/x86_64-windows-ucrt/runtime.env
+          set +e
+          TFS="$TEBAKO_TOOLS/tfs.exe" RUNTIME="$RUNTIME" RUNTIME_IMAGE="$RUNTIME_IMAGE" \
+            tools/boot_smoke out/x86_64-windows-ucrt/metanorma-1.16.9-windows-ucrt64.tfs \
+            2>&1 | tee "$RUNNER_TEMP/smoke.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          tools/smoke_verdict "$rc" "$RUNNER_TEMP/smoke.log"
+
+      - name: Stage artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist-x86_64-windows-ucrt
+          path: out/x86_64-windows-ucrt/
+
   release:
     name: publish
     if: startsWith(github.ref, 'refs/tags/')
+    # needs the mac leg only: the windows artifact does NOT publish while
+    # the runtime-layer native-extension gate stands (header comment); the
+    # registry gains the windows entry when the gate is enforced.
     needs: build
     runs-on: macos-14
     env:
-      TEBAKO_CLI: ${{ github.workspace }}/tebako-rs/target/release/tebako
+      TEBAKO_CLI: ${{ github.workspace }}/.packager/tebako
       TEBAKO_HOME: ${{ github.workspace }}/.tebako
       TEBAKO_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: tamatebako/tebako
-          path: tebako-rs
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: dist-*
           path: out
-          merge-multiple: true
-      - uses: dtolnay/rust-toolchain@e43eeffd51aefeea929f4ea14e09fd077153e788 # 1.94.1
-      - uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11.6
-        with:
-          vcpkgGitCommitId: f14401ca0f2754347c3864da7488a9b955b4e47a
-          vcpkgDirectory: ${{ github.workspace }}/.vcpkg-root
-      - name: Build the tebako CLI
-        env:
-          DWARFS_RS_VCPKG_ROOT: ${{ github.workspace }}/.vcpkg-root
-          VCPKG_ROOT: ${{ github.workspace }}/.vcpkg-root
-          SQFS_SYS_VCPKG_ROOT: ${{ github.workspace }}/.vcpkg-root
-          CARGO_NET_GIT_FETCH_WITH_CLI: "true"
-        run: cargo build --release --manifest-path tebako-rs/Cargo.toml -p tebako-cli
+          merge-multiple: false
+      - name: Restore layout
+        # each dist-<triplet> artifact carries the leg's out/<triplet>/
+        # contents; put them back at out/<triplet>/ for the publish below
+        run: |
+          set -e
+          for d in out/dist-*/; do
+            p="${d#out/dist-}"; p="${p%/}"
+            mkdir -p "out/$p"
+            mv "$d"* "out/$p/"
+            rmdir "$d"
+          done
+      # The publisher is the product repo's published CLI (releases are
+      # the interface), sha256-pinned — never a from-source build.
+      - name: Fetch the publisher (tebako release v0.1.1, sha256-pinned)
+        run: |
+          set -euo pipefail
+          mkdir -p .packager
+          curl -sL --fail -o .packager/tebako \
+            https://github.com/tamatebako/tebako/releases/download/v0.1.1/tebako-0.1.1-macos-arm64
+          echo "025fdf6948ab678895004349c7ada9c4a13676de5d1eb71bdac40dedcae73d84  .packager/tebako" \
+            | shasum -a 256 -c -
+          chmod +x .packager/tebako
+          .packager/tebako --help > /dev/null
       - name: Publish payloads + registry
         # tebako publish: artifacts + registry upsert + clean-cache verify
         # (the publisher home carries the dep registries for the closure proof)
@@ -134,7 +198,7 @@ jobs:
           "$TEBAKO_CLI" add-registry tfs:github:tebako-packages/inkscape
           "$TEBAKO_CLI" add-registry tfs:github:tebako-packages/openjdk
           "$TEBAKO_CLI" publish --name metanorma \
-            --release tfs:github:tebako-packages/metanorma \
+            --release "tfs:github:tebako-packages/metanorma:${{ github.ref_name }}" \
             --payload aarch64-macos="out/aarch64-macos/metanorma-1.16.9-macos-arm64.tfs" \
             --registry-out tpkg-registry.yaml
       # main is branch-protected (and the GitHub-Actions bypass is not
