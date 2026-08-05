@@ -209,8 +209,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          git config user.name "tebako-packages[bot]"
-          git config user.email "bot@tebako.org"
+          git config user.name "tebako-ci"
+          git config user.email "tebako@ribose.com"
           git fetch origin main
           if git diff --quiet origin/main -- tpkg-registry.yaml; then
             echo "registry unchanged (or the entry already landed on main)"
