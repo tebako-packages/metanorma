@@ -225,12 +225,12 @@ compact index `/info/<gem>` checksum before staging.
 - The committed `tools/build` reproduces the payload end-to-end (stub
   press → SDK → libyaml → verified gems → stage → tree → image →
   manifest); the release image was built by it.
-- Deferred to CI (`.github/workflows/build-payload.yml`): the same build
-  on `macos-14`, boot-smoke gate, tag-triggered publish; additional
-  triplets need the closure re-resolved per triplet (same lock —
-  `tools/gen_closure <lock> <platform>` — plus per-triplet native
-  rebuilds; linux triplets additionally need the SDK config.h for their
-  arch, a tools/build follow-up).
+- CI (`.github/workflows/build-payload.yml`): the mac leg runs the same
+  build on `macos-14` with the tebako/tfs **release binaries** (v0.1.1,
+  sha256-pinned — releases are the interface; the earlier from-source
+  CLI build via vcpkg is retired, same repair as tebako-packages/fontist),
+  runtime line 0.16.2, boot-smoke gate, tag-triggered publish. The
+  `x86_64-windows-ucrt` leg builds green but does not publish (§7).
 - The dogfood (`.github/workflows/dogfood.yml`) is **gated** until
   tebako-rs v0.1.0 ships release binaries incl. tebako-shim — see the
   workflow header. Also blocked on: an inkscape payload for the dogfood
@@ -239,8 +239,198 @@ compact index `/info/<gem>` checksum before staging.
 - Source-only natives for FUTURE triplets (per the task brief, "document
   any source-only ones as triplet-specific follow-ups"): brotli, ox,
   oga+ruby-ll, psych(+libyaml), websocket-driver all build from source
-  per triplet; the macOS leg proves the pattern (SDK header dir +
-  RUBYOPT preload). linux legs additionally need an `rbconfig`-matching
-  `config.h` (tools/build currently emits the darwin one) and psych's
+  per triplet; the macOS leg proves the shim pattern (SDK header dir +
+  RUBYOPT preload) and the windows leg proves the driver-image pattern
+  (§7). linux legs additionally need an `rbconfig`-matching `config.h`
+  for their arch (tools/build currently emits the darwin one) and psych's
   libyaml configure will pick up the triplet's CC — same pattern, no new
   machinery expected, but unproven until a linux leg runs.
+
+## 7. Windows leg (`x86_64-windows-ucrt`) — build green, publication gated at the runtime layer
+
+### 7.1 Platform key
+
+The payload platform axis is the spec 03 §3 vcpkg-triplet vocabulary
+(`tpkg::Platform` in tamatebako/tebako is the single owner): the windows
+leg is **`x86_64-windows-ucrt`** — the same GNU-style form as the existing
+`aarch64-macos`. `windows-ucrt64` is the *release-asset-name* form of the
+same platform and appears only in tool/runtime artifact names
+(`tfs-0.1.1-windows-ucrt64.exe`,
+`tebako-runtime-0.16.2-3.3.7-windows-ucrt64`). `universal` is NOT
+available: §1 — the closure carries native extensions (nokogiri, ffi,
+libpng, parsanol, sqlite3 precompiled per platform — swapped for their
+`x64-mingw-ucrt` variants in the windows closure; brotli, ox, oga,
+ruby-ll, psych, websocket-driver compiled per triplet), so the payload
+ships per-triplet with the ABI-line `runtime_requirement ~> 3.3.0`
+(`abi: x64-mingw-ucrt`, the staging runtime's `Gem::Platform.local`).
+
+### 7.2 The leg (mirrors the mac leg, one shell branch per divergence)
+
+- **Packager**: `tebako`/`tfs` windows binaries from tamatebako/tebako
+  **release v0.1.1**, sha256-pinned in the workflow (v0.1.1 predates the
+  release's SHA256SUMS asset; digests in §7.5 — identical values are
+  pinned in the fontist and openjdk feedstocks). The runtime
+  (`tebako-runtime-0.16.2-3.3.7-windows-ucrt64` + env `.tfs`) is fetched
+  directly and verified against the tebako-runtime-ruby release
+  SHA256SUMS.txt — the resolver's own fallback index — because
+  `tebako press` cannot run on windows today: its bootstrap resolution
+  asks the tebako-bootstrap index for `windows-ucrt64`, but that release
+  line still names its windows asset `windows-x86_64` (exit 131; the
+  same rename the runtime line already went through). No shim is needed
+  on this leg anyway (there is none on Windows).
+- **Staging without a shim**: the deploy-driver ruby shim the mac leg
+  stages through is **POSIX-only by construction** (tebako-cli
+  `deploy.rs`), and the memfs-exec spawn patch is POSIX-only too. The
+  windows leg runs its staging scripts as **entries of a purpose-built
+  driver image**: `tfs mkimage` a dir with `stage_app.rb` /
+  `stage_native_manual.rb`, then
+  `rt.exe --tebako-image driver.tfs:-:/drv --tebako-entry /stage_app.rb`
+  with `TEBAKO_RUNTIME_IMAGE=<env.tfs>` + `TEBAKO_PASS_THROUGH=1` (the
+  spec 17 bare-image grammar; no tpkg trailer needed). The abi line is
+  written out by `stage_app.rb` itself (`Gem::Platform.local` →
+  `abi.txt`) — derived, never pinned.
+- **The six source-only natives** (fontist had one; metanorma has six):
+  rubygems' ExtConfBuilder spawns `Gem.ruby` — impossible on Windows.
+  `tools/stage_native_manual.rb` instead runs each `extconf.rb`
+  **in-process** (`$0` pinned to `extconf.rb` — mkmf anchors srcdir/TARGET
+  on it), the host runs `make` (ucrt64 gcc), and the script installs the
+  `.so` the way rubygems would (gem tree at `lib/<target>.so`, extensions
+  bookkeeping with `Gem::Platform.local`, `gem.build_complete`,
+  `spec.to_ruby` stub). **psych builds LAST**: `Gem::Package#spec` loads
+  yaml, and once `psych.so` sits in the stage it shadows the runtime's
+  static default psych in every subsequent driver process — and no
+  dynamic `.so` loads on windows today (§7.3b), so any later driver call
+  that activates psych dies with error 126 (observed in CI: the
+  websocket-driver build after psych's place). With psych last no driver
+  process ever sees it. The per-gem ext dirs and create_makefile targets
+  (verified against the unpacked gems):
+
+  | gem | extconf dir | target | placed at | notes |
+  |-----|-------------|--------|-----------|-------|
+  | brotli 0.8.0 | `ext/brotli` | `brotli/brotli` | `lib/brotli/brotli.so` | `--enable-vendor` (vendored sources) |
+  | ox 2.14.28 | `ext/ox` | `ox/ox` | `lib/ox/ox.so` | — |
+  | oga 3.5 | `ext/c` | `liboga` | `lib/liboga.so` | — |
+  | ruby-ll 2.2.0 | `ext/c` | `libll` | `lib/libll.so` | — |
+  | psych 5.2.6 | `ext/psych` | `psych` | `lib/psych.so` | dir_config against the host-built static libyaml (below) |
+  | websocket-driver 0.8.2 | `ext/websocket-driver` | `websocket_mask` | `lib/websocket_mask.so` | — |
+- **psych's libyaml**: with `--with-libyaml-source-dir` psych's extconf
+  runs libyaml's `configure` via `system()` — a shell script a mingw ruby
+  cannot exec (no POSIX spawn). The leg therefore builds libyaml 0.2.5
+  **on the host** (msys2 `configure --disable-shared && make`, same pin
+  as the mac leg) and psych's extconf rides the plain dir_config path
+  (`--with-libyaml-include`/`--with-libyaml-lib`), statically folding
+  `libyaml.a` into `psych.so` — the same self-contained outcome as the
+  mac leg's `--with-libyaml-source-dir` build.
+- **mkmf inputs**: headers from the recipe-pinned ruby 3.3.7 tarball
+  (configure'd for x64-mingw-ucrt under MSYS2) and an **import library**
+  generated from the built static libruby via `dlltool --export-all` —
+  the runtime factory's own mechanism, so the extensions import
+  `ruby.exp.dll`, the same module name the runtime's own extensions use.
+  Two build-on-current-msys2 fixes ride along: `-Wno-incompatible-pointer-types`
+  (GCC ≥ 14 errors on ruby's ANYARGS idiom; the factory's configure
+  carries the same flag) and the factory's `win32_clock_rename_msys`
+  patch (ruby's clock fallbacks vs winpthreads headers), fetched pinned
+  from the tamatebako/ruby tag at build time.
+- **Closure**: `closure/1.16.9-x86_64-windows-ucrt.txt` — the mac
+  resolution with the five precompiled natives swapped for their
+  `x64-mingw-ucrt` variants (`/info` checksums; all five exist —
+  nokogiri, ffi, libpng, parsanol, sqlite3). Imaging: `tfs mkimage`
+  (the release CLI's in-process Writer, same as the mac leg).
+- **Entrypoint**: `templates/bin/metanorma` carries the windows
+  mount-addressing guard (VFS-rooted paths stay lexical in
+  `File.expand_path`/`File.realpath`; host paths keep real semantics) —
+  the fontist payload's provisional convention, plus one metanorma-driven
+  widening: `realpath` is variadic because `Pathname#realpath` passes a
+  base arg on ruby 3.3 and metanorma-cli's exe calls exactly that
+  (`Pathname.new(__FILE__).realpath` — fontist's exe never does, so its
+  1-arg guard never saw the call; same widening belongs upstream in
+  fontist's template as a follow-up).
+
+### 7.3 Runtime-layer gaps found by this leg (same two as fontist)
+
+### 7.3a Mount addressing on windows (G1 — only partly payload-guardable)
+
+- **Drive re-rooting.** ruby on windows re-roots drive-relative absolute
+  paths onto the cwd drive (`File.expand_path`) or the
+  `GetFullPathNameW` answer (`File.realpath` — rubygems' PathSupport
+  calls it on every gem path). A payload mounted at `/` escapes the VFS
+  the moment ruby computes on its paths (`/lib/...` → `D:/lib/...`, a
+  host path). The mount triple grammar cannot carry a drive-letter mount
+  (colons split file:slot:mount — `A:/p` parses as slot `A`), so the
+  entrypoint wrapper keeps VFS-rooted paths literal instead. That carries
+  boot through gem activation, bin resolution, and the exe load — all
+  served from the VFS.
+- **The C-level wall (not payload-fixable).** `require` expands each
+  load-path candidate with `rb_file_expand_path_internal` at the C
+  level, where no Ruby-level guard can intercept — drive-relative VFS
+  paths re-root to the cwd drive and the require dies (`cannot load such
+  file -- metanorma/cli`). Until the runtime/shim defines the windows
+  mount-addressing convention (tamatebako/tebako#365), payload exec on
+  windows stops here.
+- **`tebako press` bootstrap index.** The CLI's bootstrap resolution asks
+  the tebako-bootstrap index for `windows-ucrt64`; that release line
+  still names its windows asset `windows-x86_64` (exit 131). The leg
+  fetches the runtime directly (SHA256SUMS-verified).
+
+### 7.3b The publication blocker: windows runtimes load no dynamic native extensions
+
+The build above is green, but the boot smoke **cannot pass** against the
+published windows runtimes (the fontist feedstock's evidence, runtime
+0.16.2/3.3.7 — the same runtime this leg stages against):
+
+1. `tebako-runtime-0.16.2-3.3.7-windows-ucrt64` is a static ruby
+   (`--disable-shared --with-static-linked-ext`). Its PE has **no export
+   table** and imports only system DLLs — there is no symbol provider a
+   native extension could bind to.
+2. The release ships **no ruby DLL** — not as an asset, not inside the
+   env image. The image's own three dynamic extensions (`debug`,
+   `racc/cparse`, `rbs_extension`) import **`ruby.exp.dll`** — a module
+   that exists nowhere; they only fail silently because all three gems
+   have pure-ruby fallbacks.
+3. Precompiled windows gems are equally dead: `nokogiri-...-x64-mingw-ucrt`'s
+   `.so` imports `x64-msvcrt-ruby330.dll` (the RubyInstaller ABI name) —
+   also absent. metanorma's closure carries FIVE such precompiled natives
+   (nokogiri, ffi, libpng, parsanol, sqlite3) plus six per-triplet
+   builds importing `ruby.exp.dll` — every one of them is a hard
+   LoadError at boot (`metanorma version` loads the flavor requires
+   chain, which pulls nokogiri immediately).
+4. Fix shape (runtime factory, not this feedstock —
+   tamatebako/tebako-runtime-ruby#40): link the `ruby.exp` export object
+   into the interpreter exe and ship a `ruby.exp.dll`-named forwarding
+   alias + import library, plus an `x64-msvcrt-ruby330.dll` alias if
+   precompiled RubyInstaller gems should load.
+
+Until then the windows leg stays build-only: `tools/smoke_verdict` turns
+exactly the known LoadError signature green
+(`cannot load such file -- (metanorma|nokogiri|ffi|brotli|ox|liboga|libll|psych|sqlite3|libpng|parsanol|websocket)`),
+fails any other failure mode, and **no windows artifact is published**
+(the publish job needs only the mac leg; the registry gains the windows
+entry when the gate is enforced — the same gate as tebako-packages/fontist).
+
+### 7.4 The openjdk dependency on the windows leg
+
+The manifest's DEPENDS edges are platform-agnostic and unchanged
+(`{kind: toolkit, name: inkscape, constraint: ">= 1.3", mount: /opt/inkscape}`
+and `{kind: toolkit, name: openjdk, constraint: ">= 21, < 26", mount: /opt/openjdk}`).
+They stay coherent with what the toolkit feedstocks publish for windows:
+tebako-packages/openjdk's windows payload (PR #2) declares its executables
+windows-truthfully (`/bin/java.exe`, `/bin/keytool.exe`) and records
+`annotations.java_home: "/"` — mounted at metanorma's declared point
+`/opt/openjdk`, java is at `/opt/openjdk/bin/java.exe` and
+JAVA_HOME=`/opt/openjdk`, which is exactly the PROVIDES surface the
+jing/mn2pdf edge resolves against (`TebakoRuntime.mounted_exe`). The
+inkscape edge is unchanged as well (its windows payload is a separate
+follow-up — inkscape ships `x86_64-linux-gnu` only today).
+
+### 7.5 Tool provenance (this era)
+
+| tool | source | sha256 |
+|------|--------|--------|
+| `tebako-0.1.1-windows-ucrt64.exe` | tamatebako/tebako v0.1.1 | `9cd4f2e0922acb776797a284f2f3ea1448f93c228c92e84b0f1f7a322857c2b8` |
+| `tfs-0.1.1-windows-ucrt64.exe` | tamatebako/tebako v0.1.1 | `82ed22135321449c81530e1fabeba73555195ea411e0d9cca4458a23fe5ad01c` |
+| `tebako-0.1.1-macos-arm64` | tamatebako/tebako v0.1.1 | `025fdf6948ab678895004349c7ada9c4a13676de5d1eb71bdac40dedcae73d84` |
+| `tfs-0.1.1-macos-arm64` | tamatebako/tebako v0.1.1 | `b1848bda4d12ec520faa682adf293f58e07ba6fedc28e373911cff24e56fe412` |
+| runtime (both legs) | tebako-runtime-ruby v0.16.2, ruby 3.3.7 | release manifest / SHA256SUMS (verified) |
+| ruby SDK tarball (native builds) | cache.ruby-lang.org `ruby-3.3.7.tar.gz` | `9c37c3b1…8628` (recipe pin) |
+| `win32_clock_rename_msys.patch` (windows SDK) | tamatebako/ruby v0.2.14 | `6158e743…d875` |
+| libyaml | pyyaml.org `yaml-0.2.5.tar.gz` | `c642ae9b…8ef4` (recipe pin) |

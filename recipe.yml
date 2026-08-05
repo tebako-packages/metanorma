@@ -17,15 +17,20 @@ build:
   runtime:
     engine: ruby
     version: "3.3.7"       # the staging + exec runtime (tebako-runtime-ruby)
-    tebako: "0.15.9"       # runtime release line
-  # mkmf SDK for the source-built native deps (brotli, ox, psych,
-  # websocket-driver): headers of the exact ruby the runtime ships (the
-  # runtime image carries none).
+    tebako: "0.16.2"       # runtime release line (image-era; the v0.1.1 CLI
+                           # refuses pre-era releases by contract, exit 75)
+  # mkmf SDK for the source-built native deps (brotli, ox, oga, ruby-ll,
+  # psych, websocket-driver): headers of the exact ruby the runtime ships
+  # (the runtime image carries none). The windows leg additionally generates
+  # an import library from the built static libruby with dlltool (the
+  # runtime factory's own mechanism — docs/build-notes.md § Windows).
   sdk:
     url: "https://cache.ruby-lang.org/pub/ruby/3.3/ruby-3.3.7.tar.gz"
     sha256: "9c37c3b12288c7aec20ca121ce76845be5bb5d77662a24919651aaf1d12c8628"
-  # libyaml for psych 5.2.6's --with-libyaml-source-dir build (psych ships
-  # no precompiled gems and vendors no libyaml; see docs/build-notes.md §3).
+  # libyaml for psych 5.2.6 (psych ships no precompiled gems and vendors no
+  # libyaml; see docs/build-notes.md §3). mac leg: --with-libyaml-source-dir
+  # inside the gem build; windows leg: host-built static libyaml + dir_config
+  # (a mingw ruby cannot exec libyaml's configure in-process).
   libyaml:
     url: "https://pyyaml.org/download/libyaml/yaml-0.2.5.tar.gz"
     sha256: "c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4"
@@ -48,17 +53,25 @@ depends:
     constraint: ">= 1.3"
     mount: /opt/inkscape
 
-# Factory tools used by tools/build (image creation). The dwarfs-t
-# mkdwarfs/tebakofs binaries ship as per-platform assets of libtfs
-# releases; every download is verified against the release's SHA256SUMS.
+# Factory tools used by tools/build (image creation + the packager): the
+# tebako/tfs CLIs from the tamatebako/tebako release (the tfs CLI's
+# in-process dwarfs-t Writer images both legs). v0.1.1 predates that
+# release's SHA256SUMS asset, so the asset digests are pinned in
+# .github/workflows/build-payload.yml (the same trust-anchor role as
+# upstream.sha256; provenance in docs/build-notes.md).
 tools:
-  repo: "tamatebako/libtfs"
-  release: "v0.13.0"
+  repo: "tamatebako/tebako"
+  release: "v0.1.1"
 
 platforms:
   - aarch64-macos          # triplet-bound (nokogiri/ffi/libpng/parsanol/sqlite3
-                           # precompiled; brotli/ox/psych/websocket-driver
-                           # compiled per-triplet). More triplets: CI legs.
+                           # precompiled; brotli/ox/oga/ruby-ll/psych/
+                           # websocket-driver compiled per-triplet). More
+                           # triplets: CI legs.
+  - x86_64-windows-ucrt    # built by CI (green incl. the six source-built
+                           # natives); NOT published yet — the windows
+                           # runtimes cannot load dynamic native extensions
+                           # (docs/build-notes.md § Windows)
 
 provides:
   entrypoints:

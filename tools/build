@@ -1,47 +1,57 @@
 #!/usr/bin/env bash
 # tools/build — stage the metanorma closure with a tebako runtime's own ruby
-# and image it (aarch64-macos leg; one mechanical leg per triplet).
+# and image it (one mechanical leg per triplet).
+#
+# Legs:
+#   aarch64-macos (default) — shim staging: the stub press's deploy-driver
+#     shim (o/p/ruby) runs every ruby process; the six source-only natives
+#     (brotli, ox, oga, ruby-ll, psych, websocket-driver) build against the
+#     feedstock SDK header dir (RUBYOPT preload), psych against the pinned
+#     libyaml source (--with-libyaml-source-dir). Imaging: tfs mkimage.
+#   x86_64-windows-ucrt (TRIPLET=) — driver staging: no ruby shim exists on
+#     Windows (tebako-cli deploy.rs), so the staging scripts run as entries
+#     of a purpose-built driver image (tfs mkimage) with the env image
+#     handed over via TEBAKO_RUNTIME_IMAGE. The six source-only natives are
+#     built without rubygems' ExtConfBuilder (tools/stage_native_manual.rb)
+#     against an SDK + import library assembled from the pinned ruby
+#     tarball; psych links a host-built static libyaml via dir_config (its
+#     extconf cannot run libyaml's configure in-process — a mingw ruby
+#     cannot exec a shell script). Imaging: tfs mkimage.
 #
 # Inputs (env, all with sane defaults):
+#   TRIPLET         aarch64-macos | x86_64-windows-ucrt
 #   TEBAKO_CLI      tebako-cli binary (default: tebako on PATH)
-#   TFS_CLI         tfs-cli binary, the in-process imager (default: tfs on PATH)
-#   WORK            build workspace (default: out/work-aarch64-macos)
-#   OUT             artifact dir   (default: out/aarch64-macos)
+#   TEBAKO_VERSION  runtime release line (default 0.16.2 — the v0.1.1 CLI
+#                   pins 0.16.1, which was never released; always override)
+#   TFS_CLI         tfs CLI binary, the in-process imager (default: tfs on PATH)
+#   WORK            build workspace (default: out/work-$TRIPLET)
+#   OUT             artifact dir   (default: out/$TRIPLET)
 #
-# Produces: $OUT/metanorma-<version>-aarch64-macos.tfs (+ manifest yaml),
+# Produces: $OUT/metanorma-<version>-<asset-platform>.tfs (+ manifest yaml),
 # the manifest EMBEDDED at /__tpkg__/manifest.yaml (tier 1, authoritative).
 #
 # Rules honored: no host ruby anywhere (the runtime IS the ruby — every
 # ruby process runs through the deploy-driver shim the CLI's own press
-# produces); every download sha256-verified (.gem files against the
-# compact index /info checksums, the ruby + libyaml tarballs against the
-# recipe pins, the runtime against the tebako-runtime-ruby release
-# manifest, verified by tebako-cli's resolver).
+# produces, or as a driver-image entry on windows); every download
+# sha256-verified (.gem files against the compact index /info checksums,
+# the ruby + libyaml tarballs against the recipe pins, the runtime against
+# the tebako-runtime-ruby release manifest/SHA256SUMS).
 set -euo pipefail
 
 FEEDSTOCK="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="1.16.9"
-TRIPLET="aarch64-macos"        # the manifest platforms form (vcpkg, spec 03)
-ASSET_PLATFORM="macos-arm64"    # the release-asset name form (spec 03 §3)
+TRIPLET="${TRIPLET:-aarch64-macos}"   # the manifest platforms form (vcpkg, spec 03)
 RUBY_V="3.3.7"
 API_V="3.3.0"
 
 TEBAKO_CLI="${TEBAKO_CLI:-tebako}"
 TFS_CLI="${TFS_CLI:-tfs}"
-# The mkmf arch dir must match the STAGING RUNTIME's platform string
-# (its RbConfig arch) — and rubygems' extensions dir convention the
-# runtime's Gem::Platform.local. Both derive from the resolved runtime
-# itself below: a payload whose extension tree keys off a different SDK
-# line is invisible to the runtime's gem activation (a native-extension
-# payload's ABI line is (ruby API × ruby platform), never just the
-# triplet — spec 05 §5).
-SDK_ARCH="${SDK_ARCH:-}"
-EXT_PLATFORM="${EXT_PLATFORM:-}"
 # The staging (and target) runtime's tebako version — the press resolves
-# exactly this (0.16.0 = the v2 contract-2 runtime).
-TEBAKO_VERSION="${TEBAKO_VERSION:-0.15.9}"
+# exactly this (0.16.x = the v2 contract-2 runtime).
+TEBAKO_VERSION="${TEBAKO_VERSION:-0.16.2}"
 WORK="${WORK:-$FEEDSTOCK/out/work-$TRIPLET}"
 OUT="${OUT:-$FEEDSTOCK/out/$TRIPLET}"
+export TEBAKO_HOME="${TEBAKO_HOME:-$FEEDSTOCK/out/tebako-home}"
 CLOSURE="$FEEDSTOCK/closure/$VERSION-$TRIPLET.txt"
 
 SDK_URL="https://cache.ruby-lang.org/pub/ruby/3.3/ruby-3.3.7.tar.gz"
@@ -51,57 +61,201 @@ LIBYAML_SHA256="c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4
 
 step() { printf '\n== %s\n' "$*"; }
 
+sha256_file() { # portable sha256 (macOS: shasum; msys2/linux: sha256sum)
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | cut -d' ' -f1
+  else
+    shasum -a 256 "$1" | cut -d' ' -f1
+  fi
+}
+
+winpath() { # msys path → windows form for native exes / in-runtime ruby
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -m "$1"
+  else
+    echo "$1" | sed -E 's|^/([a-zA-Z])/|\U\1:/|'
+  fi
+}
+
+nproc_p() { nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4; }
+
+case "$TRIPLET" in
+  aarch64-macos)
+    ASSET_PLATFORM="macos-arm64"     # the release-asset name form (spec 03 §3)
+    RT_PLATFORM="macos-arm64"
+    SOEXT="bundle"
+    ;;
+  x86_64-windows-ucrt)
+    ASSET_PLATFORM="windows-ucrt64"
+    RT_PLATFORM="windows-ucrt64"
+    SOEXT="so"
+    ;;
+  *) echo "unknown TRIPLET: $TRIPLET"; exit 1 ;;
+esac
+
+[ -f "$CLOSURE" ] || { echo "no closure file for $TRIPLET: $CLOSURE"; exit 1; }
 mkdir -p "$WORK" "$OUT" "$WORK/gempkgs"
 
 # ---------------------------------------------------------------- runtime
-step "resolve the tebako runtime (tebako-cli cache, manifest-verified)"
-# A stub press makes the CLI resolve the runtime AND yields the
-# deploy-driver shim (o/p/ruby) used for every ruby invocation below.
-# The Gemfile forces the bundler deploy ops (a SimpleScript stub produces
-# no driver); base64 is dep-free and installs in seconds.
-mkdir -p "$WORK/stubapp"
-printf 'puts "stub"\n' > "$WORK/stubapp/stub.rb"
-printf 'source "https://rubygems.org"\ngem "base64"\n' > "$WORK/stubapp/Gemfile"
-"$TEBAKO_CLI" press -r "$WORK/stubapp" -e stub.rb -o "$WORK/stub-pkg" \
-  -p "$WORK/prefix" -l warn --tebako-version "$TEBAKO_VERSION"
-SHIM="$WORK/prefix/o/p/ruby"
-[ -x "$SHIM" ] || { echo "no deploy shim at $SHIM"; exit 1; }
+step "resolve the tebako runtime $TEBAKO_VERSION ($RT_PLATFORM)"
+RT_DIR="$TEBAKO_HOME/runtimes/ruby-$RUBY_V-$TEBAKO_VERSION-$RT_PLATFORM"
+RT_EXE="$RT_DIR/tebako-runtime-$TEBAKO_VERSION-$RUBY_V-$RT_PLATFORM"
+RT_IMAGE="$RT_DIR/tebako-runtime-$TEBAKO_VERSION-$RUBY_V-$RT_PLATFORM.tfs"
+
+case "$TRIPLET" in
+  aarch64-macos)
+    # A stub press makes the CLI resolve the runtime AND yields the
+    # deploy-driver shim (o/p/ruby) used for every ruby invocation below.
+    # The Gemfile forces the bundler deploy ops (a SimpleScript stub produces
+    # no driver); base64 is dep-free and installs in seconds.
+    mkdir -p "$WORK/stubapp"
+    printf 'puts "stub"\n' > "$WORK/stubapp/stub.rb"
+    printf 'source "https://rubygems.org"\ngem "base64"\n' > "$WORK/stubapp/Gemfile"
+    "$TEBAKO_CLI" press -r "$WORK/stubapp" -e stub.rb -o "$WORK/stub-pkg" \
+      -p "$WORK/prefix" -l warn --tebako-version "$TEBAKO_VERSION"
+    SHIM="$WORK/prefix/o/p/ruby"
+    [ -x "$SHIM" ] || { echo "no deploy shim at $SHIM"; exit 1; }
+    ;;
+  x86_64-windows-ucrt)
+    # Direct fetch, verified against the release's SHA256SUMS.txt (the
+    # resolver's own fallback index; tmp+rename, a partial download never
+    # poisons the cache). `tebako press` cannot run on windows today: its
+    # bootstrap resolution asks the tebako-bootstrap index for
+    # windows-ucrt64, but that release line still names its windows asset
+    # windows-x86_64 (exit 131) — and the windows leg needs no shim anyway
+    # (there is none on Windows).
+    RT_RELEASE_URL="https://github.com/tamatebako/tebako-runtime-ruby/releases/download/v$TEBAKO_VERSION"
+    RT_ASSET="tebako-runtime-$TEBAKO_VERSION-$RUBY_V-$RT_PLATFORM"
+    mkdir -p "$RT_DIR"
+    curl -sL -o "$WORK/SHA256SUMS.txt" "$RT_RELEASE_URL/SHA256SUMS.txt"
+    for f in "$RT_ASSET" "$RT_ASSET.tfs"; do
+      dst="$f"; [ "$f" = "$RT_ASSET" ] && dst="$f.exe"   # resolver cache naming
+      grep -E "  $(echo "$f" | sed 's/\./\\./g')\$" "$WORK/SHA256SUMS.txt" > "$WORK/expected.sha" \
+        || { echo "no SHA256SUMS entry for $f"; exit 1; }
+      if [ ! -f "$RT_DIR/$dst" ]; then
+        curl -sL -o "$RT_DIR/$dst.part" "$RT_RELEASE_URL/$f"
+        want="$(cut -d' ' -f1 < "$WORK/expected.sha")"
+        got="$(sha256_file "$RT_DIR/$dst.part")"
+        [ "$got" = "$want" ] || { rm -f "$RT_DIR/$dst.part"; echo "SHA256 MISMATCH $f"; exit 1; }
+        mv "$RT_DIR/$dst.part" "$RT_DIR/$dst"
+      fi
+    done
+    echo "runtime verified against tebako-runtime-ruby v$TEBAKO_VERSION SHA256SUMS"
+    RT_EXE="$RT_EXE.exe"
+    ;;
+esac
+[ -f "$RT_EXE" ] || { echo "no cached runtime at $RT_EXE"; exit 1; }
+[ -f "$RT_IMAGE" ] || { echo "no cached runtime image at $RT_IMAGE"; exit 1; }
+# the boot smoke reads these (tools/boot_smoke's exec leg)
+{ echo "RUNTIME=$(winpath "$RT_EXE")"
+  echo "RUNTIME_IMAGE=$(winpath "$RT_IMAGE")"; } > "$OUT/runtime.env"
 
 # The staging runtime's own platform strings drive every arch-keyed path
 # below (mkmf's arch include dir, the extensions tree). Derived, never
-# pinned: the payload is FOR this runtime.
-SDK_ARCH="${SDK_ARCH:-$("$SHIM" -e 'print RbConfig::CONFIG["arch"]')}"
-EXT_PLATFORM="${EXT_PLATFORM:-$("$SHIM" -e 'print Gem::Platform.local.to_s')}"
-echo "staging runtime: arch=$SDK_ARCH platform=$EXT_PLATFORM"
+# pinned: the payload is FOR this runtime. (mac: from the shim, up front;
+# windows: written by stage_app.rb during staging — there is no shim.)
+SDK_ARCH="${SDK_ARCH:-}"
+EXT_PLATFORM="${EXT_PLATFORM:-}"
+if [ "$TRIPLET" = "aarch64-macos" ]; then
+  SDK_ARCH="${SDK_ARCH:-$("$SHIM" -e 'print RbConfig::CONFIG["arch"]')}"
+  EXT_PLATFORM="${EXT_PLATFORM:-$("$SHIM" -e 'print Gem::Platform.local.to_s')}"
+  echo "staging runtime: arch=$SDK_ARCH platform=$EXT_PLATFORM"
+fi
 
 # ------------------------------------------------------------- SDK headers
 step "mkmf SDK header dir (ruby $RUBY_V, pinned + sha256-verified)"
 SDK="$WORK/sdk"
-if [ ! -f "$SDK/include/ruby-$API_V/ruby.h" ]; then
-  mkdir -p "$SDK"
-  curl -sL -o "$WORK/ruby.tar.gz" "$SDK_URL"
-  echo "$SDK_SHA256  $WORK/ruby.tar.gz" | shasum -a 256 -c -
-  mkdir -p "$WORK/ruby-src" "$WORK/ruby-build"
-  tar xzf "$WORK/ruby.tar.gz" -C "$WORK/ruby-src" --strip-components=1
-  (cd "$WORK/ruby-build" && "$WORK/ruby-src/configure" \
-      --disable-shared --disable-install-doc > configure.log 2>&1)
-  mkdir -p "$SDK/include/ruby-$API_V/$SDK_ARCH/ruby"
-  cp -R "$WORK/ruby-src/include/." "$SDK/include/ruby-$API_V/"
-  cp "$WORK/ruby-build"/.ext/include/*/ruby/config.h \
-     "$SDK/include/ruby-$API_V/$SDK_ARCH/ruby/config.h"
-fi
-sed -e "s|@@SDK_INCLUDE@@|$SDK/include/ruby-$API_V|" \
-    -e "s|@@SDK_ARCH@@|$SDK_ARCH|" \
-  "$FEEDSTOCK/tools/sdk_patch.rb.in" > "$WORK/sdk_patch.rb"
+case "$TRIPLET" in
+  aarch64-macos)
+    if [ ! -f "$SDK/include/ruby-$API_V/ruby.h" ]; then
+      mkdir -p "$SDK"
+      curl -sL -o "$WORK/ruby.tar.gz" "$SDK_URL"
+      echo "$SDK_SHA256  $WORK/ruby.tar.gz" | shasum -a 256 -c -
+      mkdir -p "$WORK/ruby-src" "$WORK/ruby-build"
+      tar xzf "$WORK/ruby.tar.gz" -C "$WORK/ruby-src" --strip-components=1
+      (cd "$WORK/ruby-build" && "$WORK/ruby-src/configure" \
+          --disable-shared --disable-install-doc > configure.log 2>&1)
+      mkdir -p "$SDK/include/ruby-$API_V/$SDK_ARCH/ruby"
+      cp -R "$WORK/ruby-src/include/." "$SDK/include/ruby-$API_V/"
+      cp "$WORK/ruby-build"/.ext/include/*/ruby/config.h \
+         "$SDK/include/ruby-$API_V/$SDK_ARCH/ruby/config.h"
+    fi
+    sed -e "s|@@SDK_INCLUDE@@|$SDK/include/ruby-$API_V|" \
+        -e "s|@@SDK_ARCH@@|$SDK_ARCH|" \
+      "$FEEDSTOCK/tools/sdk_patch.rb.in" > "$WORK/sdk_patch.rb"
+    ;;
+  x86_64-windows-ucrt)
+    # Headers AND an import library (mkmf links on mingw): the import lib
+    # is generated from the built static libruby with dlltool — the runtime
+    # factory's own mechanism, so the produced extensions import
+    # "ruby.exp.dll", the same module name the runtime's own extensions use.
+    IMPLIB="$SDK/lib/libruby-exp.a"
+    if [ ! -f "$IMPLIB" ]; then
+      mkdir -p "$SDK/include/ruby-$API_V" "$SDK/lib"
+      curl -sL -o "$WORK/ruby.tar.gz" "$SDK_URL"
+      actual="$(sha256_file "$WORK/ruby.tar.gz")"
+      [ "$actual" = "$SDK_SHA256" ] || { echo "SHA256 MISMATCH ruby tarball"; exit 1; }
+      rm -rf "$WORK/ruby-src" "$WORK/ruby-build"
+      mkdir -p "$WORK/ruby-src" "$WORK/ruby-build"
+      tar xzf "$WORK/ruby.tar.gz" -C "$WORK/ruby-src" --strip-components=1
+      # ruby 3.3.7 vs current mingw-w64 winpthreads headers: the clock
+      # fallback redefinition clash — the source factory's canonical fix,
+      # consumed pinned from the tamatebako/ruby tag (no vendored copy).
+      CLOCK_PATCH_URL="https://raw.githubusercontent.com/tamatebako/ruby/v0.2.14/patches/3.3/win32_clock_rename_msys.patch"
+      CLOCK_PATCH_SHA256="6158e7434eca15c6bcb1ee61855e83549baabac9a3c4fc5a488fe0600a26d875"
+      curl -sL -o "$WORK/win32_clock_rename_msys.patch" "$CLOCK_PATCH_URL"
+      actual="$(sha256_file "$WORK/win32_clock_rename_msys.patch")"
+      [ "$actual" = "$CLOCK_PATCH_SHA256" ] || { echo "SHA256 MISMATCH clock patch"; exit 1; }
+      (cd "$WORK/ruby-src" && patch -p1 < "$WORK/win32_clock_rename_msys.patch")
+      (cd "$WORK/ruby-build" && "$WORK/ruby-src/configure" \
+          --disable-shared --disable-install-doc \
+          cppflags="-Wno-incompatible-pointer-types" > configure.log 2>&1)
+      # The build only needs the static archive (the import lib's input);
+      # the full `make` then dies at upstream's ruby.exp rule (obsolete
+      # dllwrap -mno-cygwin — the very rule the factory's pass-2 patch
+      # replaces), which the SDK does not use. Tolerate the tail failure,
+      # but fail loudly if the archive itself did not link.
+      (cd "$WORK/ruby-build" && make -j"$(nproc_p)" > make.log 2>&1 || true)
+      cp -R "$WORK/ruby-src/include/." "$SDK/include/ruby-$API_V/"
+      mkdir -p "$SDK/include/ruby-$API_V/x64-mingw-ucrt/ruby"
+      cp "$WORK/ruby-build"/.ext/include/*/ruby/config.h \
+         "$SDK/include/ruby-$API_V/x64-mingw-ucrt/ruby/config.h"
+      # The archive name follows lib$(RUBY_SO_NAME)-static.a — on mingw
+      # that is libx64-ucrt-ruby330-static.a (no "libruby" prefix).
+      STATIC_LIB="$(find "$WORK/ruby-build" -name 'lib*-static.a' | head -1)"
+      if [ -z "$STATIC_LIB" ]; then
+        tail -30 "$WORK/ruby-build/make.log"
+        echo "no static libruby under $WORK/ruby-build — the build failed before the archive"
+        exit 1
+      fi
+      dlltool --output-lib="$IMPLIB" --dllname ruby.exp.dll \
+              --output-def="$SDK/lib/ruby.exp.def" --export-all "$STATIC_LIB"
+    fi
+    sed -e "s|@@SDK_INCLUDE@@|$(winpath "$SDK/include/ruby-$API_V")|" \
+        -e "s|@@IMPLIB@@|$(winpath "$IMPLIB")|" \
+      "$FEEDSTOCK/tools/sdk_patch_msys.rb.in" > "$WORK/sdk_patch.rb"
+    ;;
+esac
 
 # -------------------------------------------------------- libyaml (psych)
-step "libyaml source (pinned + sha256-verified; psych --with-libyaml-source-dir)"
+step "libyaml source (pinned + sha256-verified)"
 LIBYAML_SRC="$WORK/libyaml-src"
+LIBYAML_BUILD="$WORK/libyaml-build"
 if [ ! -f "$LIBYAML_SRC/configure" ]; then
   curl -sL -o "$WORK/libyaml.tar.gz" "$LIBYAML_URL"
-  echo "$LIBYAML_SHA256  $WORK/libyaml.tar.gz" | shasum -a 256 -c -
+  echo "$LIBYAML_SHA256  $WORK/libyaml.tar.gz" | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
   mkdir -p "$LIBYAML_SRC"
   tar xzf "$WORK/libyaml.tar.gz" -C "$LIBYAML_SRC" --strip-components=1
+fi
+if [ "$TRIPLET" = "x86_64-windows-ucrt" ] && [ ! -f "$LIBYAML_BUILD/src/.libs/libyaml.a" ]; then
+  # Windows leg: psych's extconf cannot exec libyaml's configure in-process
+  # (a mingw ruby cannot spawn a shell script), so the host builds the
+  # static libyaml here and psych's extconf rides dir_config instead.
+  mkdir -p "$LIBYAML_BUILD"
+  (cd "$LIBYAML_BUILD" && "$LIBYAML_SRC/configure" --disable-shared --enable-static \
+      > configure.log 2>&1 && make -j"$(nproc_p)" > make.log 2>&1) || {
+    tail -20 "$LIBYAML_BUILD"/configure.log "$LIBYAML_BUILD"/make.log 2>/dev/null
+    echo "host libyaml build FAILED"; exit 1; }
 fi
 
 # ---------------------------------------------------------- fetch the gems
@@ -109,40 +263,136 @@ step "fetch + sha256-verify the closure ($CLOSURE)"
 grep -v '^#' "$CLOSURE" | grep -v '^\s*$' | while read -r full sha; do
   f="$WORK/gempkgs/$full.gem"
   if [ -f "$f" ]; then
-    actual=$(shasum -a 256 "$f" | cut -d' ' -f1)
+    actual="$(sha256_file "$f")"
     [ "$actual" = "$sha" ] && continue
     echo "re-fetching $full (cached sha256 mismatch)"
   fi
-  curl -sL -o "$f" "https://rubygems.org/downloads/$full.gem"
-  actual=$(shasum -a 256 "$f" | cut -d' ' -f1)
+  curl -fSL --retry 5 --retry-all-errors --retry-delay 3 \
+    -o "$f" "https://rubygems.org/downloads/$full.gem" || {
+    echo "FETCH FAILED: $full"; exit 1; }
+  actual="$(sha256_file "$f")"
   [ "$actual" = "$sha" ] || { echo "SHA256 MISMATCH $full: $actual != $sha"; exit 1; }
 done
 echo "all gems verified"
 
 # ------------------------------------------------------------------ stage
-step "stage the closure with the runtime ruby (no host ruby)"
-export TEBAKO_PASS_THROUGH=1 SSL_CERT_FILE="${SSL_CERT_FILE:-/etc/ssl/cert.pem}"
-export GEM_HOME="$WORK/stage" GEM_PATH="$WORK/stage"
-export GEM_SPEC_CACHE="$WORK/stage/spec_cache"
-export CERT_DIR="$WORK/ssl_certs"
-export STAGE_DIR="$WORK/stage" GEMPKGS_DIR="$WORK/gempkgs"
-export LIBYAML_SRC
-# The source-only natives (brotli, ox, psych, websocket-driver) build here,
-# with the SDK header preload active (mkmf re-enters the runtime via the
-# shim). PKG_CONFIG_LIBDIR masks system libs (libbrotli, libyaml) so the
-# gems build their vendored/pinned sources (self-contained payload; see
-# tools/stage_app.rb).
-export RUBYOPT="-r$WORK/sdk_patch.rb" PKG_CONFIG_LIBDIR=/nonexistent
-"$SHIM" "$FEEDSTOCK/tools/stage_app.rb" > "$WORK/stage.log" 2>&1 || {
-  tail -30 "$WORK/stage.log"; echo "staging FAILED (full log: $WORK/stage.log)"; exit 1; }
-grep -c "^   ... @ gem" "$WORK/stage.log" | xargs echo "gems installed:"
-grep "STAGE-OK" "$WORK/stage.log" > /dev/null
-unset RUBYOPT PKG_CONFIG_LIBDIR
+case "$TRIPLET" in
+  aarch64-macos)
+    step "stage the closure with the runtime ruby via the deploy shim (no host ruby)"
+    export TEBAKO_PASS_THROUGH=1 SSL_CERT_FILE="${SSL_CERT_FILE:-/etc/ssl/cert.pem}"
+    export GEM_HOME="$WORK/stage" GEM_PATH="$WORK/stage"
+    export GEM_SPEC_CACHE="$WORK/stage/spec_cache"
+    export CERT_DIR="$WORK/ssl_certs"
+    export STAGE_DIR="$WORK/stage" GEMPKGS_DIR="$WORK/gempkgs"
+    export LIBYAML_SRC
+    # The source-only natives (brotli, ox, oga, ruby-ll, psych,
+    # websocket-driver) build here, with the SDK header preload active
+    # (mkmf re-enters the runtime via the shim). PKG_CONFIG_LIBDIR masks
+    # system libs (libbrotli, libyaml) so the gems build their
+    # vendored/pinned sources (self-contained payload; tools/stage_app.rb).
+    export RUBYOPT="-r$WORK/sdk_patch.rb" PKG_CONFIG_LIBDIR=/nonexistent
+    "$SHIM" "$FEEDSTOCK/tools/stage_app.rb" > "$WORK/stage.log" 2>&1 || {
+      tail -30 "$WORK/stage.log"; echo "staging FAILED (full log: $WORK/stage.log)"; exit 1; }
+    grep -c "^   ... @ gem" "$WORK/stage.log" | xargs echo "gems installed:"
+    grep "STAGE-OK" "$WORK/stage.log" > /dev/null
+    unset RUBYOPT PKG_CONFIG_LIBDIR
+    ;;
 
-EXTDIR="$WORK/stage/extensions/$EXT_PLATFORM/$API_V-static"
+  x86_64-windows-ucrt)
+    # ----------------------- staging driver image (the windows shim-less
+    # ruby entry): the scripts ride a bare driver image mounted at /drv;
+    # the env image comes in via TEBAKO_RUNTIME_IMAGE.
+    step "staging driver image"
+    DRIVER="$WORK/driver"
+    rm -rf "$DRIVER"
+    mkdir -p "$DRIVER"
+    cp "$FEEDSTOCK/tools/stage_app.rb" "$FEEDSTOCK/tools/stage_native_manual.rb" "$DRIVER/"
+    DRIVER_IMG="$WORK/stage-driver.tfs"
+    rm -f "$DRIVER_IMG"
+    "$TFS_CLI" mkimage --format dwarfs "$DRIVER" -o "$DRIVER_IMG"
+
+    run_driver() { # <entry> [args...]
+      # NB: MSYS2_ARG_CONV_EXCL='*' — MSYS2 path-converts POSIX-looking
+      # argv ("/stage_app.rb" → "D:/.../msys64/stage_app.rb", even in
+      # --flag=value form); the entry is a VFS path and must reach the
+      # driver verbatim.
+      local entry="$1"; shift
+      MSYS2_ARG_CONV_EXCL='*' \
+      TEBAKO_PASS_THROUGH=1 \
+      TEBAKO_RUNTIME_IMAGE="$(winpath "$RT_IMAGE")" \
+      GEM_HOME="$(winpath "$WORK/stage")" GEM_PATH="$(winpath "$WORK/stage")" \
+      GEM_SPEC_CACHE="$(winpath "$WORK/stage/spec_cache")" \
+      SSL_CERT_FILE="${SSL_CERT_FILE:-/etc/ssl/cert.pem}" \
+      CERT_DIR="$(winpath "$WORK/ssl_certs")" \
+      STAGE_DIR="$(winpath "$WORK/stage")" GEMPKGS_DIR="$(winpath "$WORK/gempkgs")" \
+      LIBYAML_SRC="$(winpath "$LIBYAML_SRC")" \
+      ABI_OUT="$(winpath "$WORK/abi.txt")" \
+      "$RT_EXE" "--tebako-image=$(winpath "$DRIVER_IMG"):-:/drv" \
+        "--tebako-entry=$entry" "$@"
+    }
+
+    step "stage the closure with the runtime ruby via the driver image"
+    # rubygems' ExtConfBuilder cannot run on Windows (no shim, no memfs
+    # spawn): precompiled + pure gems install fine, the six source-only
+    # natives are skipped here and built manually below.
+    MANUAL_NATIVES=1 run_driver /stage_app.rb > "$WORK/stage.log" 2>&1 || true
+    grep -q "STAGE-OK" "$WORK/stage.log" \
+      || { echo "staging failed:"; tail -30 "$WORK/stage.log"; exit 1; }
+    grep -c "^   ... @ gem" "$WORK/stage.log" | xargs echo "gems installed:"
+    EXT_PLATFORM="$(cat "$WORK/abi.txt")"
+    echo "staging runtime platform: $EXT_PLATFORM"
+
+    # ----------------------- the six source-only natives, one manual
+    # in-process extconf + host make + rubygems-shaped place per gem
+    # (tools/stage_native_manual.rb). The table's versions come from the
+    # closure file (never pinned twice); ext dir + create_makefile target
+    # are build mechanics, owned here.
+    #
+    # ORDER MATTERS — psych goes LAST. Gem::Package#spec loads yaml, and
+    # once psych.so sits in the stage it shadows the runtime's static
+    # default psych in every subsequent driver process; on windows that
+    # .so cannot load (it imports ruby.exp.dll — the G2 runtime gap), so
+    # any driver call that activates psych after its place dies with
+    # error 126. With psych last, no driver process ever sees it.
+    step "source-only native builds (in-process extconf + host make)"
+    for name in brotli ox oga ruby-ll websocket-driver psych; do
+      full="$(awk -v n="$name" 'index($1, n"-") == 1 {print $1}' "$CLOSURE")"
+      [ -n "$full" ] || { echo "no $name entry in $CLOSURE"; exit 1; }
+      extdir=""; target=""; args=""
+      case "$name" in
+        brotli)           extdir="ext/brotli";           target="brotli/brotli"; args="--enable-vendor" ;;
+        ox)               extdir="ext/ox";               target="ox/ox" ;;
+        oga)              extdir="ext/c";                target="liboga" ;;
+        ruby-ll)          extdir="ext/c";                target="libll" ;;
+        psych)            extdir="ext/psych";            target="psych"
+          args="--with-libyaml-include=$(winpath "$LIBYAML_SRC/include") --with-libyaml-lib=$(winpath "$LIBYAML_BUILD/src/.libs")" ;;
+        websocket-driver) extdir="ext/websocket-driver"; target="websocket_mask" ;;
+      esac
+      echo "-- $full ($extdir → $target.${SOEXT})"
+      NATIVE_GEM="$(winpath "$WORK/gempkgs/$full.gem")" \
+      NATIVE_EXTDIR="$extdir" \
+      NATIVE_TARGET="$target" \
+      NATIVE_ARGS="${args:-}" \
+      NATIVE_BUILD="$(winpath "$WORK/native-build/$name")" \
+      PKG_CONFIG_LIBDIR=/nonexistent \
+      RUBYOPT="-r$(winpath "$WORK/sdk_patch.rb")" \
+        run_driver /stage_native_manual.rb extconf
+      (cd "$WORK/native-build/$name/$extdir" && make -j"$(nproc_p)" > make.log 2>&1) || {
+        tail -30 "$WORK/native-build/$name/$extdir/make.log"; echo "host make FAILED for $full"; exit 1; }
+      NATIVE_GEM="$(winpath "$WORK/gempkgs/$full.gem")" \
+      NATIVE_EXTDIR="$extdir" \
+      NATIVE_TARGET="$target" \
+      NATIVE_BUILD="$(winpath "$WORK/native-build/$name")" \
+        run_driver /stage_native_manual.rb place
+    done
+    ;;
+esac
+
+# every per-triplet extension must be placed in the extensions bookkeeping
+# tree (the api-version dir name is the runtime's own — glob, don't assume)
 for ext in brotli ox liboga libll psych websocket_mask; do
-  found=$(find "$EXTDIR" -name "$ext.bundle" 2>/dev/null | head -1 || true)
-  [ -n "$found" ] || { echo "native build missing: $ext.bundle"; exit 1; }
+  found=$(find "$WORK/stage/extensions" -name "$ext.$SOEXT" 2>/dev/null | head -1 || true)
+  [ -n "$found" ] || { echo "native build missing: $ext.$SOEXT"; exit 1; }
   echo "native ext OK: $found"
 done
 
@@ -172,6 +422,7 @@ mkdir -p "$PAYLOAD/__tpkg__"
 sed -e "s|created: \"[^\"]*\"|created: \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"|" \
     -e "s|commit: \"0*\"|commit: \"$(git -C "$FEEDSTOCK" rev-parse HEAD)\"|" \
     -e "s|@@ABI@@|$EXT_PLATFORM|" \
+    -e "s|platforms: \[.*\]|platforms: [$TRIPLET]|" \
     "$FEEDSTOCK/manifests/payload.yaml" > "$MAN_EMBED"
 echo "embedded manifest: $MAN_EMBED"
 
@@ -180,7 +431,7 @@ step "tfs mkimage (the in-process dwarfs-t writer — never the mkdwarfs CLI)"
 IMG="$OUT/metanorma-$VERSION-$ASSET_PLATFORM.tfs"
 rm -f "$IMG"
 "$TFS_CLI" mkimage --format dwarfs "$PAYLOAD" --output "$IMG"
-sha=$(shasum -a 256 "$IMG" | cut -d' ' -f1)
+sha="$(sha256_file "$IMG")"
 echo "image: $IMG"
 echo "sha256: $sha"
 
