@@ -267,7 +267,9 @@ grep -v '^#' "$CLOSURE" | grep -v '^\s*$' | while read -r full sha; do
     [ "$actual" = "$sha" ] && continue
     echo "re-fetching $full (cached sha256 mismatch)"
   fi
-  curl -sL -o "$f" "https://rubygems.org/downloads/$full.gem"
+  curl -fSL --retry 5 --retry-all-errors --retry-delay 3 \
+    -o "$f" "https://rubygems.org/downloads/$full.gem" || {
+    echo "FETCH FAILED: $full"; exit 1; }
   actual="$(sha256_file "$f")"
   [ "$actual" = "$sha" ] || { echo "SHA256 MISMATCH $full: $actual != $sha"; exit 1; }
 done
