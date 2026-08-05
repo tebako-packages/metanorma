@@ -36,8 +36,6 @@ TARGET = ENV.fetch("NATIVE_TARGET")
 BUILD_DIR = ENV.fetch("NATIVE_BUILD")
 STAGE_DIR = ENV.fetch("STAGE_DIR")
 
-spec = Gem::Package.new(GEM_FILE).spec
-full_name = spec.full_name # e.g. brotli-0.8.0
 so_name = File.basename(TARGET) # the make product: <so_name>.<DLEXT>
 
 case PHASE
@@ -53,6 +51,12 @@ when "extconf"
   end
   puts "EXTCONF-OK #{File.join(ext_dir, 'Makefile')}"
 when "place"
+  # NB: Gem::Package#spec loads yaml (rubygems' checksum reader) — keep it
+  # out of the extconf phase, and see tools/build for why psych builds
+  # last: once its .so sits in STAGE_DIR it shadows the runtime's static
+  # default psych for every later driver process.
+  spec = Gem::Package.new(GEM_FILE).spec
+  full_name = spec.full_name # e.g. brotli-0.8.0
   soext = RbConfig::CONFIG["DLEXT"]
   ext_dir = File.join(BUILD_DIR, EXT_DIR)
   built = File.join(ext_dir, "#{so_name}.#{soext}")

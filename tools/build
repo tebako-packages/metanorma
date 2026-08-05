@@ -347,8 +347,15 @@ case "$TRIPLET" in
     # (tools/stage_native_manual.rb). The table's versions come from the
     # closure file (never pinned twice); ext dir + create_makefile target
     # are build mechanics, owned here.
+    #
+    # ORDER MATTERS — psych goes LAST. Gem::Package#spec loads yaml, and
+    # once psych.so sits in the stage it shadows the runtime's static
+    # default psych in every subsequent driver process; on windows that
+    # .so cannot load (it imports ruby.exp.dll — the G2 runtime gap), so
+    # any driver call that activates psych after its place dies with
+    # error 126. With psych last, no driver process ever sees it.
     step "source-only native builds (in-process extconf + host make)"
-    for name in brotli ox oga ruby-ll psych websocket-driver; do
+    for name in brotli ox oga ruby-ll websocket-driver psych; do
       full="$(awk -v n="$name" 'index($1, n"-") == 1 {print $1}' "$CLOSURE")"
       [ -n "$full" ] || { echo "no $name entry in $CLOSURE"; exit 1; }
       extdir=""; target=""; args=""

@@ -296,7 +296,13 @@ ships per-triplet with the ABI-line `runtime_requirement ~> 3.3.0`
   on it), the host runs `make` (ucrt64 gcc), and the script installs the
   `.so` the way rubygems would (gem tree at `lib/<target>.so`, extensions
   bookkeeping with `Gem::Platform.local`, `gem.build_complete`,
-  `spec.to_ruby` stub). The per-gem ext dirs and create_makefile targets
+  `spec.to_ruby` stub). **psych builds LAST**: `Gem::Package#spec` loads
+  yaml, and once `psych.so` sits in the stage it shadows the runtime's
+  static default psych in every subsequent driver process — and no
+  dynamic `.so` loads on windows today (§7.3b), so any later driver call
+  that activates psych dies with error 126 (observed in CI: the
+  websocket-driver build after psych's place). With psych last no driver
+  process ever sees it. The per-gem ext dirs and create_makefile targets
   (verified against the unpacked gems):
 
   | gem | extconf dir | target | placed at | notes |
