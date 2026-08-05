@@ -339,7 +339,12 @@ ships per-triplet with the ABI-line `runtime_requirement ~> 3.3.0`
 - **Entrypoint**: `templates/bin/metanorma` carries the windows
   mount-addressing guard (VFS-rooted paths stay lexical in
   `File.expand_path`/`File.realpath`; host paths keep real semantics) —
-  the fontist payload's provisional convention, unchanged.
+  the fontist payload's provisional convention, plus one metanorma-driven
+  widening: `realpath` is variadic because `Pathname#realpath` passes a
+  base arg on ruby 3.3 and metanorma-cli's exe calls exactly that
+  (`Pathname.new(__FILE__).realpath` — fontist's exe never does, so its
+  1-arg guard never saw the call; same widening belongs upstream in
+  fontist's template as a follow-up).
 
 ### 7.3 Runtime-layer gaps found by this leg (same two as fontist)
 

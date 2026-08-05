@@ -42,8 +42,16 @@ if RUBY_PLATFORM =~ /mingw|mswin/
       end
     end
 
-    def realpath(path)
-      path.start_with?("/") ? __tebako_payload_vfs_lexical(path, nil) : __tebako_payload_realpath(path)
+    def realpath(path, base = nil)
+      # File.realpath takes an optional base (Pathname#realpath passes one
+      # on ruby 3.3 — metanorma-cli's exe hits exactly that call).
+      if path.start_with?("/") || base.to_s.start_with?("/")
+        __tebako_payload_vfs_lexical(path, base || Dir.pwd)
+      elsif base.nil?
+        __tebako_payload_realpath(path)
+      else
+        __tebako_payload_realpath(path, base)
+      end
     end
   end
 end
