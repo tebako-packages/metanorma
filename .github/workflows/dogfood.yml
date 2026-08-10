@@ -1,14 +1,19 @@
 name: dogfood
 # THE dogfood (roadmap 32): a bare runner installs the tebako CLI from the
-# tebako-rs RELEASE BINARIES, adds the tebako-packages index, installs the
-# just-published metanorma payload, and runs a real compile whose figure
-# goes through the inkscape toolkit payload — proving the full dispatch
-# chain (registry -> runtime + app payload + toolkit payload -> shim exec).
+# published tamatebako/tebako release, adds the tebako-packages index,
+# installs the published metanorma payload, and runs a real compile whose
+# figure goes through the inkscape toolkit payload and whose PDF leg goes
+# through the openjdk JRE payload — proving the full dispatch chain
+# (registry -> runtime + app payload + toolkit payloads -> shim exec).
 #
-# GATED: tebako-rs v0.1.0 is not released yet (only v0.0.0-testN pipeline
-# pre-releases exist as of 2026-07-27, and they carry no tebako-shim asset).
-# When v0.1.0 is out: flip `if: false` on the dogfood job to enable it, and
-# confirm the asset names in the install step below against that release.
+# Legs:
+#   aarch64-macos — ACTIVE (payload published: metanorma 1.16.9 macos-arm64).
+#   x86_64-linux-gnu — joins when the recipe's linux leg publishes
+#     (recipe.yml platforms; the build-notes expect no new machinery).
+#   x86_64-windows-ucrt — joins when the windows native-extension question
+#     resolves (0.16.3 runtimes ship the ruby DLL facet + the dln dlmap
+#     patch; the feedstock boot smoke's smoke_verdict answers it), AND the
+#     windows payload then publishes.
 on:
   schedule:
     - cron: "17 3 * * *"        # nightly
@@ -22,34 +27,31 @@ permissions:
 jobs:
   dogfood:
     name: ${{ matrix.triplet }}
-    # FLIP when tebako-rs v0.1.0 is released (see header comment).
-    if: false
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { triplet: x86_64-linux-gnu, os: ubuntu-24.04, plat: linux-gnu-x86_64 }
-          # inkscape payload ships x86_64-linux-gnu only (phase A); the macos
-          # leg joins when tebako-packages/inkscape publishes aarch64-macos.
-          # - { triplet: aarch64-macos, os: macos-14, plat: macos-arm64 }
+          - { triplet: aarch64-macos, os: macos-14, plat: macos-arm64 }
+          # - { triplet: x86_64-linux-gnu, os: ubuntu-24.04, plat: linux-gnu-x86_64 }   # payload leg first (see header)
+          # - { triplet: x86_64-windows-ucrt, os: windows-latest, plat: windows-ucrt64 } # native-ext verdict first (see header)
     runs-on: ${{ matrix.os }}
     env:
-      TEBAKO_RELEASE: v0.1.0
+      TEBAKO_RELEASE: v0.1.2
       METANORMA_VERSION: "1.16.9"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install the tebako CLI from the tebako-rs release (sha256-verified)
+      - name: Install the tebako CLI from the release (SHA256SUMS-verified)
         # Nothing tebako-related is on this bare runner: no runtime, no
         # payloads, no shims — the install below is the full cold path.
         run: |
           set -euo pipefail
-          base="https://github.com/tamatebako/tebako-rs/releases/download/$TEBAKO_RELEASE"
+          base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
           mkdir -p "$RUNNER_TEMP/tebako-bin"
           cd "$RUNNER_TEMP/tebako-bin"
-          curl -sLO "$base/SHA256SUMS"
+          curl -sSfLO "$base/SHA256SUMS"
           for tool in tebako tebako-shim; do
-            curl -sLO "$base/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
+            curl -sSfLO "$base/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
             grep "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" SHA256SUMS | shasum -a 256 -c -
             chmod 755 "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
             ln -s "$PWD/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" "/usr/local/bin/$tool" 2>/dev/null \
@@ -63,25 +65,26 @@ jobs:
           tebako add-registry tfs:github:tebako-packages/index
           tebako install "metanorma@$METANORMA_VERSION"
 
-      - name: Assert runtime + payload + inkscape each downloaded exactly once
-        # Cache markers: the dispatcher's journal records every fetch; the
-        # cache dirs must each hold exactly one entry for the resolved unit.
-        # NOTE: the journal line format below is written against the spec-07
-        # design, not a shipped v0.1.0 — confirm the actual markers when the
-        # gate flips (the assertion intent is fixed: exactly one fetch each).
+      - name: Assert the store holds exactly one of each resolved unit
+        # Structural, not log-scraping: one runtime dir, one .tfs per
+        # payload of the closure (metanorma + inkscape + openjdk).
         run: |
           set -euo pipefail
-          journal="$HOME/.tebako/journal.log"
-          for unit in runtime payload inkscape; do
-            n=$(grep -c "downloaded.*$unit" "$journal" || true)
-            echo "$unit downloads: $n"
-            [ "$n" = "1" ] || { echo "FAIL: $unit downloaded $n times (expected 1)"; exit 1; }
+          store="$HOME/.tebako"
+          n_rt=$(ls "$store/runtimes" | wc -l | tr -d ' ')
+          [ "$n_rt" = "1" ] || { echo "FAIL: $n_rt runtime dirs (expected 1)"; ls -la "$store/runtimes"; exit 1; }
+          for payload in metanorma inkscape openjdk; do
+            n=$(ls "$store/payloads/$payload"/*.tfs 2>/dev/null | wc -l | tr -d ' ')
+            echo "$payload images in store: $n"
+            [ "$n" = "1" ] || { echo "FAIL: $payload has $n images (expected 1)"; exit 1; }
+            # the trust anchor rides every payload
+            ls "$store/payloads/$payload"/*.tfs.sha256 >/dev/null
           done
-          echo "one download each: runtime, metanorma payload, inkscape payload"
+          echo "store OK: 1 runtime; 1 image each for metanorma, inkscape, openjdk"
 
       - name: Put the shims on PATH
         run: |
-          tebako-shim install-shell --shell bash || echo "$HOME/.tebako/shims" >> "$GITHUB_PATH"
+          tebako-shim install-shell --shell bash || true
           echo "$HOME/.tebako/shims" >> "$GITHUB_PATH"
 
       - name: metanorma new site
@@ -98,7 +101,7 @@ jobs:
           set -euo pipefail
           cp fixtures/site.adoc fixtures/figure.svg site/
 
-      - name: metanorma compile (the figure goes through inkscape's SVG path)
+      - name: metanorma compile (figure via inkscape payload, PDF via openjdk payload)
         run: |
           set -euo pipefail
           cd site
@@ -113,45 +116,41 @@ jobs:
           head -c 5 "$pdf" | grep -q '%PDF-' && echo "PDF magic OK: $pdf"
 
       - name: Tight-jail variant (input dir rw, everything else denied)
-        # Same compile under the strictest jail: only the working directory
-        # is writable/readable; the VFS denies the rest. Proves the payload
-        # needs no host filesystem beyond its inputs.
-        # NOTE: TEBAKO_JAIL below is a placeholder for the v0.1.0 jail knob
-        # (spec 07 §jails) — confirm the actual env/flag when the gate flips.
-        # mn2pdf shells out to java for the PDF leg; if the jail forbids
-        # that subprocess, reduce this leg to `metanorma --version` in-jail
-        # and keep the full compile to the un-jailed leg above.
+        # The jail grammar (spec 08 §1): "deny; <host>:<mount>:rw" — the
+        # working directory bound rw, every other host path denied. Boot
+        # under the jail + a version print proves enforcement installs and
+        # the interpreter needs no host filesystem beyond the grant. (The
+        # full compile in-jail also needs TMPDIR and the java subprocess;
+        # that leg joins after the un-jailed compile proves stable.)
         run: |
           set -euo pipefail
           mkdir -p /tmp/mn-jail && cp fixtures/site.adoc fixtures/figure.svg /tmp/mn-jail/
           cd /tmp/mn-jail
-          TEBAKO_JAIL="rw:." metanorma compile site.adoc
-          pdf=$(ls *.pdf | head -1)
-          head -c 5 "$pdf" | grep -q '%PDF-' && echo "jail PDF magic OK: $pdf"
+          TEBAKO_JAIL="deny;$(pwd):$(pwd):rw" metanorma version
+          echo "jail boot OK (deny + cwd:rw)"
 
   dogfood-slim:
     name: pr-slim (${{ matrix.plat }})
     # Slim PR leg: install + version only (no compile — that needs fonts,
-    # Java for mn2pdf, and minutes of runtime). Same gate as the full leg.
-    if: false
+    # Java for mn2pdf, and minutes of runtime).
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, plat: linux-gnu-x86_64 }
+          - { os: macos-14, plat: macos-arm64 }
     runs-on: ${{ matrix.os }}
     env:
-      TEBAKO_RELEASE: v0.1.0
+      TEBAKO_RELEASE: v0.1.2
       METANORMA_VERSION: "1.16.9"
     steps:
-      - name: Install CLI, add registry, install metanorma, exec --version
+      - name: Install CLI, add registry, install metanorma, exec version
         run: |
           set -euo pipefail
-          base="https://github.com/tamatebako/tebako-rs/releases/download/$TEBAKO_RELEASE"
+          base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
           mkdir -p "$RUNNER_TEMP/tebako-bin" && cd "$RUNNER_TEMP/tebako-bin"
-          curl -sLO "$base/SHA256SUMS"
+          curl -sSfLO "$base/SHA256SUMS"
           for tool in tebako tebako-shim; do
-            curl -sLO "$base/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
+            curl -sSfLO "$base/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
             grep "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" SHA256SUMS | shasum -a 256 -c -
             chmod 755 "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
             sudo ln -s "$PWD/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" "/usr/local/bin/$tool"
@@ -159,4 +158,4 @@ jobs:
           tebako add-registry tfs:github:tebako-packages/index
           tebako install "metanorma@$METANORMA_VERSION"
           export PATH="$HOME/.tebako/shims:$PATH"
-          metanorma --version | grep -E "Metanorma::Cli $METANORMA_VERSION"
+          metanorma version | grep -E "Metanorma::Cli $METANORMA_VERSION"
