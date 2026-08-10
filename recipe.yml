@@ -17,7 +17,7 @@ build:
   runtime:
     engine: ruby
     version: "3.3.7"       # the staging + exec runtime (tebako-runtime-ruby)
-    tebako: "0.16.2"       # runtime release line (image-era; the v0.1.1 CLI
+    tebako: "0.16.3"       # runtime release line (image-era; the v0.1.2 CLI
                            # refuses pre-era releases by contract, exit 75)
   # mkmf SDK for the source-built native deps (brotli, ox, oga, ruby-ll,
   # psych, websocket-driver): headers of the exact ruby the runtime ships
@@ -55,13 +55,13 @@ depends:
 
 # Factory tools used by tools/build (image creation + the packager): the
 # tebako/tfs CLIs from the tamatebako/tebako release (the tfs CLI's
-# in-process dwarfs-t Writer images both legs). v0.1.1 predates that
-# release's SHA256SUMS asset, so the asset digests are pinned in
-# .github/workflows/build-payload.yml (the same trust-anchor role as
+# in-process dwarfs-t Writer images both legs). The asset digests are
+# pinned in .github/workflows/build-payload.yml and cross-checked
+# against the release's SHA256SUMS (the same trust-anchor role as
 # upstream.sha256; provenance in docs/build-notes.md).
 tools:
   repo: "tamatebako/tebako"
-  release: "v0.1.1"
+  release: "v0.1.2"
 
 platforms:
   - aarch64-macos          # triplet-bound (nokogiri/ffi/libpng/parsanol/sqlite3
