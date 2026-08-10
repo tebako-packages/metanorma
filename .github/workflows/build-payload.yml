@@ -252,7 +252,7 @@ jobs:
             --release "tfs:github:tebako-packages/metanorma:${{ github.ref_name }}" \
             --payload aarch64-macos="out/aarch64-macos/metanorma-1.16.9-macos-arm64.tfs" \
             --payload x86_64-linux-gnu="out/x86_64-linux-gnu/metanorma-1.16.9-linux-gnu-x86_64.tfs" \
-            --registry-out tpkg-registry.yaml
+            --registry-out "$PWD/tpkg-registry.yaml"
       # main is branch-protected (and the GitHub-Actions bypass is not
       # available on this plan): the registry lands by bot PR + auto-merge,
       # never by direct push. Idempotent across re-runs of the same tag.
