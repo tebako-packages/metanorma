@@ -131,17 +131,26 @@ case "$TRIPLET" in
   x86_64-windows-ucrt)
     # Direct fetch, verified against the release's SHA256SUMS.txt (the
     # resolver's own fallback index; tmp+rename, a partial download never
-    # poisons the cache). `tebako press` cannot run on windows today: its
-    # bootstrap resolution asks the tebako-bootstrap index for
-    # windows-ucrt64, but that release line still names its windows asset
-    # windows-x86_64 (exit 131) — and the windows leg needs no shim anyway
-    # (there is none on Windows).
+    # poisons the cache). The leg needs no shim (there is none on
+    # Windows), so the direct fetch stays the simplest path. 0.16.3+:
+    # the windows runtime is a stub exe + the ruby DLL facet — the exe
+    # does not start without the facet next to it under the manifest's
+    # dll.install_as name (the SSOT for the facet name).
     RT_RELEASE_URL="https://github.com/tamatebako/tebako-runtime-ruby/releases/download/v$TEBAKO_VERSION"
     RT_ASSET="tebako-runtime-$TEBAKO_VERSION-$RUBY_V-$RT_PLATFORM"
     mkdir -p "$RT_DIR"
     curl -sL -o "$WORK/SHA256SUMS.txt" "$RT_RELEASE_URL/SHA256SUMS.txt"
-    for f in "$RT_ASSET" "$RT_ASSET.tfs"; do
+    curl -sL -o "$WORK/manifest.json" "$RT_RELEASE_URL/manifest.json"
+    # The facet's install name follows the factory's rubyinstaller-style
+    # ABI rule (3.3.7 -> x64-ucrt-ruby330.dll) — derived, then asserted
+    # against the release manifest (the SSOT) so a convention change
+    # fails loudly. (No ruby on this step's PATH — awk only.)
+    DLL_INSTALL_AS="x64-ucrt-ruby$(echo "$RUBY_V" | awk -F. '{print $1 $2}')0.dll"
+    grep -q "\"$DLL_INSTALL_AS\"" "$WORK/manifest.json" \
+      || { echo "derived facet name $DLL_INSTALL_AS absent from the release manifest"; exit 1; }
+    for f in "$RT_ASSET" "$RT_ASSET.tfs" "$RT_ASSET.dll"; do
       dst="$f"; [ "$f" = "$RT_ASSET" ] && dst="$f.exe"   # resolver cache naming
+      [ "$f" = "$RT_ASSET.dll" ] && dst="$DLL_INSTALL_AS"
       grep -E "  $(echo "$f" | sed 's/\./\\./g')\$" "$WORK/SHA256SUMS.txt" > "$WORK/expected.sha" \
         || { echo "no SHA256SUMS entry for $f"; exit 1; }
       if [ ! -f "$RT_DIR/$dst" ]; then
@@ -152,7 +161,7 @@ case "$TRIPLET" in
         mv "$RT_DIR/$dst.part" "$RT_DIR/$dst"
       fi
     done
-    echo "runtime verified against tebako-runtime-ruby v$TEBAKO_VERSION SHA256SUMS"
+    echo "runtime verified against tebako-runtime-ruby v$TEBAKO_VERSION SHA256SUMS (exe + image + $DLL_INSTALL_AS)"
     RT_EXE="$RT_EXE.exe"
     ;;
 esac
