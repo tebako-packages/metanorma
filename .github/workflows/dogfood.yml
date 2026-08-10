@@ -59,10 +59,16 @@ jobs:
           done
           tebako --version
 
-      - name: Add the tebako-packages catalog and install metanorma
+      - name: Add the closure registries and install metanorma
+        # The tebako-packages index (registry-of-registries) is not walked
+        # by the v0.1.2 CLI (it registers as 0 payloads — the packages[]
+        # follow is a filed product gap, TODO.v2-1/22). Add the three
+        # feedstock registries directly.
         run: |
           set -euo pipefail
-          tebako add-registry tfs:github:tebako-packages/index
+          tebako add-registry tfs:github:tebako-packages/metanorma
+          tebako add-registry tfs:github:tebako-packages/inkscape
+          tebako add-registry tfs:github:tebako-packages/openjdk
           tebako install "metanorma@$METANORMA_VERSION"
 
       - name: Assert the store holds exactly one of each resolved unit
@@ -155,7 +161,9 @@ jobs:
             chmod 755 "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
             sudo ln -s "$PWD/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" "/usr/local/bin/$tool"
           done
-          tebako add-registry tfs:github:tebako-packages/index
+          tebako add-registry tfs:github:tebako-packages/metanorma
+          tebako add-registry tfs:github:tebako-packages/inkscape
+          tebako add-registry tfs:github:tebako-packages/openjdk
           tebako install "metanorma@$METANORMA_VERSION"
           export PATH="$HOME/.tebako/shims:$PATH"
           metanorma version | grep -E "Metanorma::Cli $METANORMA_VERSION"
