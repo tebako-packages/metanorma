@@ -230,6 +230,8 @@ compact index `/info/<gem>` checksum before staging.
   sha256-pinned — releases are the interface; the earlier from-source
   CLI build via vcpkg is retired, same repair as tebako-packages/fontist),
   runtime line 0.16.2, boot-smoke gate, tag-triggered publish. The
+  `x86_64-linux-gnu` leg runs the same POSIX shim staging on
+  `ubuntu-24.04` and publishes together with the mac leg (§8). The
   `x86_64-windows-ucrt` leg builds green but does not publish (§7).
 - The dogfood (`.github/workflows/dogfood.yml`) is **gated** until
   tebako-rs v0.1.0 ships release binaries incl. tebako-shim — see the
@@ -240,11 +242,9 @@ compact index `/info/<gem>` checksum before staging.
   any source-only ones as triplet-specific follow-ups"): brotli, ox,
   oga+ruby-ll, psych(+libyaml), websocket-driver all build from source
   per triplet; the macOS leg proves the shim pattern (SDK header dir +
-  RUBYOPT preload) and the windows leg proves the driver-image pattern
-  (§7). linux legs additionally need an `rbconfig`-matching `config.h`
-  for their arch (tools/build currently emits the darwin one) and psych's
-  libyaml configure will pick up the triplet's CC — same pattern, no new
-  machinery expected, but unproven until a linux leg runs.
+  RUBYOPT preload), the linux leg proves the same POSIX shim pattern off
+  the CLI-provisioned runtime SDK alone (§8), and the windows leg proves
+  the driver-image pattern (§7).
 
 ## 7. Windows leg (`x86_64-windows-ucrt`) — build green, publication gated at the runtime layer
 
@@ -434,3 +434,70 @@ follow-up — inkscape ships `x86_64-linux-gnu` only today).
 | ruby SDK tarball (native builds) | cache.ruby-lang.org `ruby-3.3.7.tar.gz` | `9c37c3b1…8628` (recipe pin) |
 | `win32_clock_rename_msys.patch` (windows SDK) | tamatebako/ruby v0.2.14 | `6158e743…d875` |
 | libyaml | pyyaml.org `yaml-0.2.5.tar.gz` | `c642ae9b…8ef4` (recipe pin) |
+
+## 8. Linux leg (`x86_64-linux-gnu`) — build + boot smoke green, publishes with the mac leg
+
+Proven in CI (PR #9, run
+[31398143330](https://github.com/tebako-packages/metanorma/actions/runs/31398143330),
+job `x86_64-linux-gnu`, ubuntu-24.04): tools fetch sha256-pinned and
+cross-checked, runtime 0.16.3 resolved, all 260 gems staged, the six
+source-only natives compiled, image written, boot smoke `BOOT-SMOKE-OK`
+(`Metanorma::Cli 1.16.9` exec'd from the mounted image through the
+published linux runtime driver — the same hard gate as the mac leg).
+
+### 8.1 The leg shape: POSIX shim staging, no feedstock SDK
+
+The leg is the macOS POSIX shape, not the windows driver-image shape: a
+stub `tebako press` resolves the runtime (`tebako-runtime-
+0.16.3-3.3.7-linux-gnu-x86_64` + env `.tfs`, sha256-verified by the CLI
+resolver) and yields the deploy-driver shim (`o/p/ruby`); every ruby
+process of the staging runs through it.
+
+The one deliberate divergence from the macOS arm: **no feedstock SDK and
+no `sdk_patch.rb` preload**. On POSIX the CLI's press itself provisions
+the runtime SDK (tebako-cli `sdk.rs`: the patched ruby source release
+the runtime was built from, configure args replayed from the runtime's
+own rbconfig, plus a symbol-stub archive re-declaring the runtime exe's
+exported ruby-ABI symbols) and the shim's driver applies the mkmf
+overrides itself (`rubyhdrdir`/`rubyarchhdrdir` → the SDK header tree,
+`LIBRUBYARG` → the stub — probe executables only; the shipped `.so`
+links no libruby and resolves against the runtime executable at load
+time, the linux dynamic-lookup default). The feedstock SDK + preload
+exist for the darwin link shape (`-undefined dynamic_lookup`,
+`-bundle_loader` strip) — neither has a linux reading, so the leg rides
+the CLI SDK alone. Psych's libyaml still builds from the pinned
+`yaml-0.2.5` source via `--with-libyaml-source-dir` (its configure runs
+in-process on POSIX; it picked up the runner's gcc — the §6 "unproven"
+note, now proven).
+
+### 8.2 Platform keys and the closure
+
+- Triplet (spec 03 §3): `x86_64-linux-gnu`; release-asset/runtime form:
+  `linux-gnu-x86_64` (`metanorma-1.16.9-linux-gnu-x86_64.tfs`).
+- The staging runtime reports `RbConfig arch = x86_64-linux`,
+  `Gem::Platform.local = x86_64-linux` (the manifest's `abi:` line is
+  derived from it, never pinned). The five precompiled natives ship two
+  spellings for glibc x86_64 — `nokogiri/ffi/sqlite3` as
+  `-x86_64-linux-gnu`, `libpng/parsanol` as plain `-x86_64-linux`; both
+  match the runtime's platform under rubygems' normalized-linux version
+  rule (`Gem::Platform#===`), install from the explicit `.gem` file, and
+  activate at boot — proven by the smoke.
+- `closure/1.16.9-x86_64-linux-gnu.txt`: the macOS resolution with those
+  five swaps; every sha256 re-verified against the downloaded `.gem`
+  (== its `/info/<gem>` checksum). The six source-only natives stay
+  per-triplet source builds (SOEXT `so`; the extensions bookkeeping tree
+  keys on `x86_64-linux/3.3.0-static`).
+
+### 8.3 Tool provenance (this leg)
+
+| tool | source | sha256 |
+|------|--------|--------|
+| `tebako-0.1.2-linux-gnu-x86_64` | tamatebako/tebako v0.1.2 | `8b45d11199a5b878abcae3746f8c0ecb6a53e871890bdbd5d9d1e537a8d1f59e` |
+| `tfs-0.1.2-linux-gnu-x86_64` | tamatebako/tebako v0.1.2 | `07e47cf05fe19cbc726ad028e2ec8463502809c819c71d78449bc7a5650b95b4` |
+| runtime | tebako-runtime-ruby v0.16.3, ruby 3.3.7, `linux-gnu-x86_64` | release manifest / SHA256SUMS (CLI-verified) |
+| runtime SDK (mkmf inputs) | CLI-provisioned from tamatebako/ruby `tfs-ruby-3.3.7-src.tar.gz` (v0.2.1) + the runtime's rbconfig | SHA256SUMS-verified by the CLI |
+| libyaml (psych) | pyyaml.org `yaml-0.2.5.tar.gz` | `c642ae9b…8ef4` (recipe pin) |
+
+First green image: `metanorma-1.16.9-linux-gnu-x86_64.tfs`,
+sha256 `15140aa885409e86de4ba4c3b1b175a2097b56efcc3da153ab3cb1b671594c1f`
+(CI-built bytes; any rebuild re-images from the same pinned inputs).
