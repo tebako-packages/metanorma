@@ -4,6 +4,9 @@ name: build-payload
 #
 # STATUS:
 #   aarch64-macos — green: build + boot smoke; tags publish.
+#   x86_64-linux-gnu — build + boot smoke (ubuntu-24.04, the POSIX shim
+#   staging — same shape as the mac leg; the five precompiled natives are
+#   the glibc-x86_64 variants); tags publish together with the mac leg.
 #   x86_64-windows-ucrt — the BUILD is green (staging incl. the six
 #   source-built natives, image, manifest). The boot smoke is pinned to a
 #   KNOWN runtime-layer blocker: current windows-ucrt64 runtimes cannot
@@ -149,13 +152,60 @@ jobs:
           name: dist-x86_64-windows-ucrt
           path: out/x86_64-windows-ucrt/
 
+  build-linux:
+    name: x86_64-linux-gnu
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Fetch tebako CLI tools (tamatebako/tebako v0.1.2, sha256-pinned)
+        # Same pins discipline as the mac leg (the digests are cross-checked
+        # against the release's SHA256SUMS); ubuntu has sha256sum, not shasum.
+        run: |
+          mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
+          base="https://github.com/tamatebako/tebako/releases/download/v0.1.2"
+          curl -sLO "$base/tebako-0.1.2-linux-gnu-x86_64"
+          curl -sLO "$base/tfs-0.1.2-linux-gnu-x86_64"
+          echo "8b45d11199a5b878abcae3746f8c0ecb6a53e871890bdbd5d9d1e537a8d1f59e  tebako-0.1.2-linux-gnu-x86_64" > SHA256PINS
+          echo "07e47cf05fe19cbc726ad028e2ec8463502809c819c71d78449bc7a5650b95b4  tfs-0.1.2-linux-gnu-x86_64" >> SHA256PINS
+          sha256sum -c SHA256PINS
+          chmod 755 tebako-0.1.2-linux-gnu-x86_64 tfs-0.1.2-linux-gnu-x86_64
+          mv tebako-0.1.2-linux-gnu-x86_64 tebako
+          mv tfs-0.1.2-linux-gnu-x86_64 tfs
+          echo "$RUNNER_TEMP/tebako-tools" >> "$GITHUB_PATH"
+
+      - name: Build the payload
+        env:
+          TRIPLET: x86_64-linux-gnu
+          TEBAKO_CLI: tebako
+          TFS_CLI: tfs
+        run: tools/build
+
+      - name: Boot-smoke
+        # Hard gate, same as the mac leg: the packaged tool's version
+        # command runs from the image against the linux 0.16.3 runtime
+        # (resolved by tools/build's stub press) before any release
+        # publishes.
+        env:
+          TFS: tfs
+        run: |
+          . out/x86_64-linux-gnu/runtime.env
+          TFS="$TFS" RUNTIME="$RUNTIME" RUNTIME_IMAGE="$RUNTIME_IMAGE" \
+            tools/boot_smoke out/x86_64-linux-gnu/metanorma-1.16.9-linux-gnu-x86_64.tfs
+
+      - name: Stage artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist-x86_64-linux-gnu
+          path: out/x86_64-linux-gnu/
+
   release:
     name: publish
     if: startsWith(github.ref, 'refs/tags/')
-    # needs the mac leg only: the windows artifact does NOT publish while
+    # needs the mac + linux legs: the windows artifact does NOT publish while
     # the runtime-layer native-extension gate stands (header comment); the
     # registry gains the windows entry when the gate is enforced.
-    needs: build
+    needs: [build, build-linux]
     runs-on: macos-14
     env:
       TEBAKO_CLI: ${{ github.workspace }}/.packager/tebako
@@ -201,6 +251,7 @@ jobs:
           "$TEBAKO_CLI" publish --name metanorma \
             --release "tfs:github:tebako-packages/metanorma:${{ github.ref_name }}" \
             --payload aarch64-macos="out/aarch64-macos/metanorma-1.16.9-macos-arm64.tfs" \
+            --payload x86_64-linux-gnu="out/x86_64-linux-gnu/metanorma-1.16.9-linux-gnu-x86_64.tfs" \
             --registry-out tpkg-registry.yaml
       # main is branch-protected (and the GitHub-Actions bypass is not
       # available on this plan): the registry lands by bot PR + auto-merge,
@@ -220,7 +271,7 @@ jobs:
           branch="publish/${{ github.ref_name }}-registry"
           git checkout -b "$branch"
           git add tpkg-registry.yaml
-          git commit -m "publish ${{ github.ref_name }}: registry entry (macos-arm64)"
+          git commit -m "publish ${{ github.ref_name }}: registry entry (macos-arm64, linux-gnu-x86_64)"
           git push origin "$branch"
           if ! gh pr view "$branch" >/dev/null 2>&1; then
             gh pr create --base main --head "$branch" \
