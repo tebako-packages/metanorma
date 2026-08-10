@@ -237,9 +237,13 @@ jobs:
           mkdir -p .packager
           curl -sL --fail -o .packager/tebako \
             https://github.com/tamatebako/tebako/releases/download/v0.1.2/tebako-0.1.2-macos-arm64
+          curl -sL --fail -o .packager/tebako-shim \
+            https://github.com/tamatebako/tebako/releases/download/v0.1.2/tebako-shim-0.1.2-macos-arm64
           echo "9d8328168b93c1828059ba90baf13b4855a7de483b25ae9df9c596c1e83634a3  .packager/tebako" \
             | shasum -a 256 -c -
-          chmod +x .packager/tebako
+          echo "03bf1d5c93a50a66e31ee6443c6d88527c325828ec5910ca1a9980e8b8f6a134  .packager/tebako-shim" \
+            | shasum -a 256 -c -
+          chmod +x .packager/tebako .packager/tebako-shim
           .packager/tebako --help > /dev/null
       - name: Publish payloads + registry
         # tebako publish: artifacts + registry upsert + clean-cache verify
