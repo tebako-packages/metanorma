@@ -44,6 +44,10 @@ jobs:
       - name: Install the tebako CLI from the release (SHA256SUMS-verified)
         # Nothing tebako-related is on this bare runner: no runtime, no
         # payloads, no shims — the install below is the full cold path.
+        # The binaries land under their BARE names (the install.sh
+        # convention): the CLI locates the dispatcher next to its own
+        # current_exe, which linux resolves through /proc/self/exe —
+        # a version-named real file breaks that sibling lookup (exit 74).
         run: |
           set -euo pipefail
           base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
@@ -53,9 +57,10 @@ jobs:
           for tool in tebako tebako-shim; do
             curl -sSfLO "$base/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
             grep "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" SHA256SUMS | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
-            chmod 755 "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
-            ln -s "$PWD/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" "/usr/local/bin/$tool" 2>/dev/null \
-              || sudo ln -s "$PWD/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" "/usr/local/bin/$tool"
+            mv "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" "$tool"
+            chmod 755 "$tool"
+            ln -s "$PWD/$tool" "/usr/local/bin/$tool" 2>/dev/null \
+              || sudo ln -s "$PWD/$tool" "/usr/local/bin/$tool"
           done
           tebako --version
 
@@ -71,22 +76,22 @@ jobs:
           tebako add-registry tfs:github:tebako-packages/openjdk
           tebako install "metanorma@$METANORMA_VERSION"
 
-      - name: Assert the store holds exactly one of each resolved unit
-        # Structural, not log-scraping: one runtime dir, one .tfs per
-        # payload of the closure (metanorma + inkscape + openjdk).
+      - name: Assert the store holds exactly one of each closure payload
+        # Structural, not log-scraping: one .tfs per closure payload
+        # (metanorma + inkscape + openjdk). The RUNTIME is deliberately
+        # absent here — install never fetches runtimes (kind: language
+        # edges resolve at run time); the post-first-run step asserts it.
         run: |
           set -euo pipefail
           store="$HOME/.tebako"
-          n_rt=$(ls "$store/runtimes" | wc -l | tr -d ' ')
-          [ "$n_rt" = "1" ] || { echo "FAIL: $n_rt runtime dirs (expected 1)"; ls -la "$store/runtimes"; exit 1; }
           for payload in metanorma inkscape openjdk; do
-            n=$(ls "$store/payloads/$payload"/*.tfs 2>/dev/null | wc -l | tr -d ' ')
+            n=$(ls "$store/payloads/$payload"/*.tfs 2>/dev/null | wc -l | tr -d ' ' || true)
             echo "$payload images in store: $n"
             [ "$n" = "1" ] || { echo "FAIL: $payload has $n images (expected 1)"; exit 1; }
             # the trust anchor rides every payload
             ls "$store/payloads/$payload"/*.tfs.sha256 >/dev/null
           done
-          echo "store OK: 1 runtime; 1 image each for metanorma, inkscape, openjdk"
+          echo "store OK: 1 image each for metanorma, inkscape, openjdk"
 
       - name: Put the shims on PATH
         run: |
@@ -101,6 +106,18 @@ jobs:
           set -euo pipefail
           metanorma new site -t iso -d international-standard
           test -d site
+
+      - name: Assert the runtime downloaded exactly once (on first run)
+        # The `new` above was the first shim dispatch: the runtime came
+        # down through the pref-less index resolution, once, verified.
+        run: |
+          set -euo pipefail
+          store="$HOME/.tebako"
+          n_rt=$(ls "$store/runtimes" | wc -l | tr -d ' ')
+          ls -la "$store/runtimes"
+          [ "$n_rt" = "1" ] || { echo "FAIL: $n_rt runtime dirs (expected 1)"; exit 1; }
+          ls "$store/runtimes"/*/sha256 "$store/runtimes"/*/origin >/dev/null
+          echo "runtime OK: exactly one, trust markers present"
 
       - name: Drop the fixture doc with the figure
         run: |
@@ -158,8 +175,9 @@ jobs:
           for tool in tebako tebako-shim; do
             curl -sSfLO "$base/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
             grep "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" SHA256SUMS | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
-            chmod 755 "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
-            sudo ln -s "$PWD/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" "/usr/local/bin/$tool"
+            mv "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" "$tool"
+            chmod 755 "$tool"
+            sudo ln -s "$PWD/$tool" "/usr/local/bin/$tool"
           done
           tebako add-registry tfs:github:tebako-packages/metanorma
           tebako add-registry tfs:github:tebako-packages/inkscape
