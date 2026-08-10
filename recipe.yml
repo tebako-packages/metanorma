@@ -68,6 +68,11 @@ platforms:
                            # precompiled; brotli/ox/oga/ruby-ll/psych/
                            # websocket-driver compiled per-triplet). More
                            # triplets: CI legs.
+  - x86_64-linux-gnu       # built by CI (ubuntu-24.04): the POSIX shim
+                           # staging, same shape as the mac leg — the
+                           # CLI-provisioned runtime SDK supplies the mkmf
+                           # inputs; precompiled natives swapped for their
+                           # glibc-x86_64 variants (closure file)
   - x86_64-windows-ucrt    # built by CI (green incl. the six source-built
                            # natives); NOT published yet — the windows
                            # runtimes cannot load dynamic native extensions
