@@ -32,7 +32,7 @@ jobs:
       matrix:
         include:
           - { triplet: aarch64-macos, os: macos-14, plat: macos-arm64 }
-          # - { triplet: x86_64-linux-gnu, os: ubuntu-24.04, plat: linux-gnu-x86_64 }   # payload leg first (see header)
+          - { triplet: x86_64-linux-gnu, os: ubuntu-24.04, plat: linux-gnu-x86_64 }
           # - { triplet: x86_64-windows-ucrt, os: windows-latest, plat: windows-ucrt64 } # native-ext verdict first (see header)
     runs-on: ${{ matrix.os }}
     env:
@@ -52,7 +52,7 @@ jobs:
           curl -sSfLO "$base/SHA256SUMS"
           for tool in tebako tebako-shim; do
             curl -sSfLO "$base/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
-            grep "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" SHA256SUMS | shasum -a 256 -c -
+            grep "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" SHA256SUMS | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
             chmod 755 "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
             ln -s "$PWD/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" "/usr/local/bin/$tool" 2>/dev/null \
               || sudo ln -s "$PWD/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" "/usr/local/bin/$tool"
@@ -157,7 +157,7 @@ jobs:
           curl -sSfLO "$base/SHA256SUMS"
           for tool in tebako tebako-shim; do
             curl -sSfLO "$base/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
-            grep "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" SHA256SUMS | shasum -a 256 -c -
+            grep "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" SHA256SUMS | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
             chmod 755 "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
             sudo ln -s "$PWD/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" "/usr/local/bin/$tool"
           done

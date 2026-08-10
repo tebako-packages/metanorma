@@ -282,4 +282,4 @@ jobs:
               --title "publish ${{ github.ref_name }}: registry entry" \
               --body "Automated registry entry for ${{ github.ref_name }} (the build-payload publish job; main is protected, so the registry lands by PR)."
           fi
-          gh pr merge --auto --squash "$branch"
+          gh pr merge --auto --squash "$branch" || gh pr merge --squash "$branch"
