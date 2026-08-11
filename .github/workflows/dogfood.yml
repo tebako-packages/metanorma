@@ -125,10 +125,13 @@ jobs:
           cp fixtures/site.adoc fixtures/figure.svg site/
 
       - name: metanorma compile (figure via inkscape payload, PDF via openjdk payload)
+        # --agree-to-terms: the fontist license acceptance (a clean
+        # machine's compile downloads fonts; the terms gate errors
+        # otherwise — Fontist::Errors::LicensingError).
         run: |
           set -euo pipefail
           cd site
-          metanorma compile site.adoc
+          metanorma compile site.adoc --agree-to-terms
           ls -la
 
       - name: Assert PDF magic bytes
