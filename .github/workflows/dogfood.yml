@@ -36,7 +36,7 @@ jobs:
           # - { triplet: x86_64-windows-ucrt, os: windows-latest, plat: windows-ucrt64 } # native-ext verdict first (see header)
     runs-on: ${{ matrix.os }}
     env:
-      TEBAKO_RELEASE: v0.1.5
+      TEBAKO_RELEASE: v0.1.6
       METANORMA_VERSION: "1.16.9"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -66,7 +66,7 @@ jobs:
 
       - name: Add the closure registries and install metanorma
         # The tebako-packages index (registry-of-registries) is not walked
-        # by the v0.1.5 CLI (it registers as 0 payloads — the packages[]
+        # by the v0.1.6 CLI (it registers as 0 payloads — the packages[]
         # follow is a filed product gap, TODO.v2-1/22). Add the three
         # feedstock registries directly.
         run: |
@@ -166,7 +166,7 @@ jobs:
           - { os: macos-14, plat: macos-arm64 }
     runs-on: ${{ matrix.os }}
     env:
-      TEBAKO_RELEASE: v0.1.5
+      TEBAKO_RELEASE: v0.1.6
       METANORMA_VERSION: "1.16.9"
     steps:
       - name: Install CLI, add registry, install metanorma, exec version
