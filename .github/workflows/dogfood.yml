@@ -98,6 +98,34 @@ jobs:
           tebako-shim install-shell --shell bash || true
           echo "$HOME/.tebako/shims" >> "$GITHUB_PATH"
 
+      - name: Verify the openjdk install tree and shims
+        # The openjdk payload declares java_home: its entrypoints are
+        # zero-runtime (no runtime_requirement), so install materializes the
+        # WHOLE tree into the store and links the shims. Verify both before
+        # the compile — the JVM's boot classpath failure means one of these
+        # is missing.
+        run: |
+          set -euo pipefail
+          store="$HOME/.tebako"
+          tree="$store/payloads/openjdk/21.0.12.tree"
+          echo "== openjdk install tree =="
+          if [ -d "$tree" ]; then
+            echo "tree exists: $tree"
+            ls -la "$tree/bin/java" 2>&1 || echo "FAIL: no bin/java in tree"
+            ls -la "$tree/conf/security/policy/unlimited" 2>&1 || echo "FAIL: no conf/security/policy/unlimited in tree"
+            ls -la "$tree/lib/modules" 2>&1 || echo "FAIL: no lib/modules in tree"
+          else
+            echo "FAIL: no install tree at $tree"
+            ls -la "$store/payloads/openjdk/" 2>&1 || true
+            exit 1
+          fi
+          echo "== shims =="
+          ls -la "$store/shims/" 2>&1 || true
+          echo "== which java =="
+          which java 2>&1 || echo "java not on PATH"
+          echo "== java -version =="
+          java -version 2>&1 || echo "java -version failed"
+
       - name: metanorma new site
         # `new` requires -t (flavor) and -d (doctype); the default template
         # skeleton is fetched from metanorma's git template registry (the
@@ -128,6 +156,8 @@ jobs:
         # --agree-to-terms: the fontist license acceptance (a clean
         # machine's compile downloads fonts; the terms gate errors
         # otherwise — Fontist::Errors::LicensingError).
+        env:
+          TEBAKO_DEBUG_TFS: "1"
         run: |
           set -euo pipefail
           cd site
