@@ -36,7 +36,7 @@ jobs:
           # - { triplet: x86_64-windows-ucrt, os: windows-latest, plat: windows-ucrt64 } # native-ext verdict first (see header)
     runs-on: ${{ matrix.os }}
     env:
-      TEBAKO_RELEASE: v0.1.6
+      TEBAKO_RELEASE: v0.1.7
       METANORMA_VERSION: "1.16.9"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -166,7 +166,7 @@ jobs:
           - { os: macos-14, plat: macos-arm64 }
     runs-on: ${{ matrix.os }}
     env:
-      TEBAKO_RELEASE: v0.1.6
+      TEBAKO_RELEASE: v0.1.7
       METANORMA_VERSION: "1.16.9"
     steps:
       - name: Install CLI, add registry, install metanorma, exec version
