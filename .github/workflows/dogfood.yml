@@ -124,6 +124,18 @@ jobs:
           set -euo pipefail
           cp fixtures/site.adoc fixtures/figure.svg site/
 
+      - name: Debug java resolution
+        run: |
+          set -euo pipefail
+          echo "PATH: $PATH"
+          echo "which java: $(which java 2>&1 || echo 'not found')"
+          echo "java shim: $(ls -la "$HOME/.tebako/shims/java" 2>&1 || echo 'no shim')"
+          echo "openjdk tree: $(ls -la "$HOME/.tebako/payloads/openjdk/21.0.12.tree/bin/java" 2>&1 || echo 'no tree')"
+          echo "== java -version =="
+          java -version 2>&1 || echo "java -version failed"
+          echo "== java via VFS path =="
+          /opt/openjdk/bin/java -version 2>&1 || echo "VFS path failed"
+
       - name: metanorma compile (figure via inkscape payload, PDF via openjdk payload)
         # --agree-to-terms: the fontist license acceptance (a clean
         # machine's compile downloads fonts; the terms gate errors
