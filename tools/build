@@ -485,6 +485,13 @@ rm -f "$IMG"
 sha="$(sha256_file "$IMG")"
 echo "image: $IMG"
 echo "sha256: $sha"
+# The payload image joins the runtime pair in runtime.env — ABSOLUTE:
+# `tebako check` runs its driver with cwd = the per-run scratch dir, so a
+# repo-relative spelling dies "cannot open image file (os error 2)" there
+# (boot_smoke's driver inherits the caller's cwd, which is why the smoke
+# never saw it). One owner, one spelling — every leg rides runtime.env.
+echo "PAYLOAD_IMG=$(winpath "$(cd "$OUT" && pwd)/$(basename "$IMG")")" \
+  >> "$OUT/runtime.env"
 
 # ------------------------------------------------------ sibling manifest
 step "fill the sibling manifest (release tier: real blob sha)"
