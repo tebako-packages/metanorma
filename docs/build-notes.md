@@ -322,15 +322,26 @@ ships per-triplet with the ABI-line `runtime_requirement ~> 3.3.0`
   `libyaml.a` into `psych.so` — the same self-contained outcome as the
   mac leg's `--with-libyaml-source-dir` build.
 - **mkmf inputs**: headers from the recipe-pinned ruby 3.3.7 tarball
-  (configure'd for x64-mingw-ucrt under MSYS2) and an **import library**
-  generated from the built static libruby via `dlltool --export-all` —
-  the runtime factory's own mechanism, so the extensions import
-  `ruby.exp.dll`, the same module name the runtime's own extensions use.
-  Two build-on-current-msys2 fixes ride along: `-Wno-incompatible-pointer-types`
-  (GCC ≥ 14 errors on ruby's ANYARGS idiom; the factory's configure
-  carries the same flag) and the factory's `win32_clock_rename_msys`
-  patch (ruby's clock fallbacks vs winpthreads headers), fetched pinned
-  from the tamatebako/ruby tag at build time.
+  (configure'd for x64-mingw-ucrt under MSYS2 — configure only; the
+  generated `config.h` is all the build needs) and an **import library**
+  whose def is parsed from the facet DLL's own export table
+  (`objdump -p` → def → `dlltool --input-def`), the facet being the
+  sha256-verified artifact fetched in the runtime step — the SSOT for
+  its export surface. Extensions therefore import
+  `x64-ucrt-ruby330.dll` (`$DLL_INSTALL_AS`, manifest-asserted), the
+  same module the runtime's own env-image extensions import
+  (tebako-runtime-ruby#40's gate). The earlier shape — `dlltool
+  --export-all` over a locally built static libruby — offered ~102
+  internals the facet does not export (mkexports `PrivateNames`:
+  `Init_*`, `InitVM_*`, `threadptr`, `DllMain`); every mingw
+  extension's CRT startup references `DllMain`, so the link bound it
+  against the ruby DLL and the boot smoke's `LoadLibrary` died
+  `ERROR_PROC_NOT_FOUND` (exit 127, psych.so simply loaded first).
+  Deriving the def from the facet makes a runtime-missing import
+  impossible by construction and retires the local ruby compile (and
+  with it the `win32_clock_rename_msys` patch — build-only; the
+  configure invocation is unchanged, so the generated `config.h` matches
+  the archive-era one).
 - **Closure**: `closure/1.16.9-x86_64-windows-ucrt.txt` — the mac
   resolution with the five precompiled natives swapped for their
   `x64-mingw-ucrt` variants (`/info` checksums; all five exist —
