@@ -218,13 +218,25 @@ case "$TRIPLET" in
     ;;
   x86_64-windows-ucrt)
     step "mkmf SDK header dir + import library (ruby $RUBY_V, pinned + sha256-verified)"
-    # Headers AND an import library (mkmf links on mingw): the import lib
-    # is generated from the built static libruby with dlltool, naming the
-    # REAL ruby DLL facet ($DLL_INSTALL_AS — derived + manifest-asserted
-    # above, never pinned twice). The W2-era rule (the 0.16.4 line): every
-    # dynamic extension imports the facet, the same module the runtime's
-    # own env-image extensions import (tebako-runtime-ruby issue 40's
-    # gate); the 0.16.3-era "ruby.exp.dll" import name exists no longer.
+    # Headers AND an import library (mkmf links on mingw). The import
+    # lib's def is parsed from the facet DLL's OWN export table (the
+    # facet is downloaded + sha256-verified in the runtime step above —
+    # the SSOT for its export surface), named via --dllname so every
+    # dynamic extension imports the REAL ruby DLL facet
+    # ($DLL_INSTALL_AS — derived + manifest-asserted above, never pinned
+    # twice), the same module the runtime's own env-image extensions
+    # import (tebako-runtime-ruby issue 40's gate).
+    #
+    # The previous shape ran dlltool --export-all over a near-vanilla
+    # static libruby built here. That archive's globals include ~102
+    # symbols the real facet does NOT export (mkexports.rb PrivateNames:
+    # Init_*, InitVM_*, threadptr, DllMain). Every mingw extension's CRT
+    # startup references DllMain; with --export-all offering it, the link
+    # bound it against the ruby DLL, and the boot smoke's LoadLibrary of
+    # the extension died ERROR_PROC_NOT_FOUND (exit 127 — psych.so was
+    # simply the first native to load). Deriving the def from the facet
+    # makes a runtime-missing import impossible by construction and also
+    # retires the ruby compile (configure stays: config.h is generated).
     IMPLIB="$SDK/lib/libruby-exp.a"
     if [ ! -f "$IMPLIB" ]; then
       mkdir -p "$SDK/include/ruby-$API_V" "$SDK/lib"
@@ -234,38 +246,26 @@ case "$TRIPLET" in
       rm -rf "$WORK/ruby-src" "$WORK/ruby-build"
       mkdir -p "$WORK/ruby-src" "$WORK/ruby-build"
       tar xzf "$WORK/ruby.tar.gz" -C "$WORK/ruby-src" --strip-components=1
-      # ruby 3.3.7 vs current mingw-w64 winpthreads headers: the clock
-      # fallback redefinition clash — the source factory's canonical fix,
-      # consumed pinned from the tamatebako/ruby tag (no vendored copy).
-      CLOCK_PATCH_URL="https://raw.githubusercontent.com/tamatebako/ruby/v0.2.14/patches/3.3/win32_clock_rename_msys.patch"
-      CLOCK_PATCH_SHA256="6158e7434eca15c6bcb1ee61855e83549baabac9a3c4fc5a488fe0600a26d875"
-      curl -sL -o "$WORK/win32_clock_rename_msys.patch" "$CLOCK_PATCH_URL"
-      actual="$(sha256_file "$WORK/win32_clock_rename_msys.patch")"
-      [ "$actual" = "$CLOCK_PATCH_SHA256" ] || { echo "SHA256 MISMATCH clock patch"; exit 1; }
-      (cd "$WORK/ruby-src" && patch -p1 < "$WORK/win32_clock_rename_msys.patch")
       (cd "$WORK/ruby-build" && "$WORK/ruby-src/configure" \
           --disable-shared --disable-install-doc \
           cppflags="-Wno-incompatible-pointer-types" > configure.log 2>&1)
-      # The build only needs the static archive (the import lib's input);
-      # the full `make` then dies at upstream's ruby.exp rule (obsolete
-      # dllwrap -mno-cygwin — the very rule the factory's pass-2 patch
-      # replaces), which the SDK does not use. Tolerate the tail failure,
-      # but fail loudly if the archive itself did not link.
-      (cd "$WORK/ruby-build" && make -j"$(nproc_p)" > make.log 2>&1 || true)
       cp -R "$WORK/ruby-src/include/." "$SDK/include/ruby-$API_V/"
       mkdir -p "$SDK/include/ruby-$API_V/x64-mingw-ucrt/ruby"
       cp "$WORK/ruby-build"/.ext/include/*/ruby/config.h \
          "$SDK/include/ruby-$API_V/x64-mingw-ucrt/ruby/config.h"
-      # The archive name follows lib$(RUBY_SO_NAME)-static.a — on mingw
-      # that is libx64-ucrt-ruby330-static.a (no "libruby" prefix).
-      STATIC_LIB="$(find "$WORK/ruby-build" -name 'lib*-static.a' | head -1)"
-      if [ -z "$STATIC_LIB" ]; then
-        tail -30 "$WORK/ruby-build/make.log"
-        echo "no static libruby under $WORK/ruby-build — the build failed before the archive"
-        exit 1
-      fi
-      dlltool --output-lib="$IMPLIB" --dllname "$DLL_INSTALL_AS" \
-              --output-def="$SDK/lib/ruby.exp.def" --export-all "$STATIC_LIB"
+      # objdump's [Ordinal/Name Pointer] table lists every exported name
+      # (binutils is present — dlltool below is too); dot-leading
+      # (.refptr.*) names must be quoted in def syntax.
+      objdump -p "$RT_DIR/$DLL_INSTALL_AS" | awk '
+        /^\[Ordinal\/Name Pointer\] Table/ { inexp = 1; next }
+        inexp && /^[ \t]*\[[ \t]*[0-9]+\]/  { print "\"" $NF "\"" }
+        inexp && /^[^ \t]/                  { inexp = 0 }' \
+        > "$WORK/facet.exports"
+      [ -s "$WORK/facet.exports" ] \
+        || { echo "no exports parsed from $RT_DIR/$DLL_INSTALL_AS"; exit 1; }
+      { echo EXPORTS; cat "$WORK/facet.exports"; } > "$SDK/lib/ruby.exp.def"
+      dlltool --input-def="$SDK/lib/ruby.exp.def" --dllname "$DLL_INSTALL_AS" \
+              --output-lib="$IMPLIB"
     fi
     sed -e "s|@@SDK_INCLUDE@@|$(winpath "$SDK/include/ruby-$API_V")|" \
         -e "s|@@IMPLIB@@|$(winpath "$IMPLIB")|" \

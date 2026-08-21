@@ -3,9 +3,10 @@
 # The tebako windows runtime image carries no ruby headers and no import
 # library; point mkmf at the SDK header tree (assembled by tools/build from
 # the pinned ruby source tarball, configured for x64-mingw-ucrt) and at the
-# import library generated from the SDK's static libruby (dlltool
-# --export-all — the produced extension imports the REAL ruby DLL facet,
-# the same module name the runtime's own extensions use; the W2-era rule).
+# import library whose def is parsed from the facet DLL's own export table
+# (dlltool --input-def — the produced extension imports the REAL ruby DLL
+# facet, the same module name the runtime's own extensions use; the W2-era
+# rule).
 # @@SDK_INCLUDE@@ and @@IMPLIB@@ are substituted by
 # tools/build.
 unless defined?(TG_SDK_PATCHED)
