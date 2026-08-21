@@ -219,9 +219,12 @@ case "$TRIPLET" in
   x86_64-windows-ucrt)
     step "mkmf SDK header dir + import library (ruby $RUBY_V, pinned + sha256-verified)"
     # Headers AND an import library (mkmf links on mingw): the import lib
-    # is generated from the built static libruby with dlltool — the runtime
-    # factory's own mechanism, so the produced extensions import
-    # "ruby.exp.dll", the same module name the runtime's own extensions use.
+    # is generated from the built static libruby with dlltool, naming the
+    # REAL ruby DLL facet ($DLL_INSTALL_AS — derived + manifest-asserted
+    # above, never pinned twice). The W2-era rule (the 0.16.4 line): every
+    # dynamic extension imports the facet, the same module the runtime's
+    # own env-image extensions import (tebako-runtime-ruby issue 40's
+    # gate); the 0.16.3-era "ruby.exp.dll" import name exists no longer.
     IMPLIB="$SDK/lib/libruby-exp.a"
     if [ ! -f "$IMPLIB" ]; then
       mkdir -p "$SDK/include/ruby-$API_V" "$SDK/lib"
@@ -261,7 +264,7 @@ case "$TRIPLET" in
         echo "no static libruby under $WORK/ruby-build — the build failed before the archive"
         exit 1
       fi
-      dlltool --output-lib="$IMPLIB" --dllname ruby.exp.dll \
+      dlltool --output-lib="$IMPLIB" --dllname "$DLL_INSTALL_AS" \
               --output-def="$SDK/lib/ruby.exp.def" --export-all "$STATIC_LIB"
     fi
     sed -e "s|@@SDK_INCLUDE@@|$(winpath "$SDK/include/ruby-$API_V")|" \
@@ -389,10 +392,10 @@ case "$TRIPLET" in
     #
     # ORDER MATTERS — psych goes LAST. Gem::Package#spec loads yaml, and
     # once psych.so sits in the stage it shadows the runtime's static
-    # default psych in every subsequent driver process; on windows that
-    # .so cannot load (it imports ruby.exp.dll — the G2 runtime gap), so
-    # any driver call that activates psych after its place dies with
-    # error 126. With psych last, no driver process ever sees it.
+    # default psych in every subsequent driver process. The .so imports
+    # the real facet now (loadable), but shadowing the static default
+    # mid-staging is an unneeded risk: with psych last, no driver process
+    # ever sees it.
     step "source-only native builds (in-process extconf + host make)"
     for name in brotli ox oga ruby-ll websocket-driver psych; do
       full="$(awk -v n="$name" 'index($1, n"-") == 1 {print $1}' "$CLOSURE")"

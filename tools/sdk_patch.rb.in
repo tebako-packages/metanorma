@@ -6,6 +6,13 @@
 # substituted by tools/build.
 unless defined?(TG_SDK_PATCHED)
   TG_SDK_PATCHED = true
+  # The v0.1.9+ runtime driver self-inserts its arm64 interpose dylib via
+  # DYLD_INSERT_LIBRARIES at every boot (spec 22 §2). Left in ENV, the var
+  # propagates to mkmf's compiler spawns — arm64e system binaries (clang)
+  # abort under an arm64-only insertion (dyld signal 6). Scrub it from the
+  # environment children inherit: each shim re-entry re-arms insertion at
+  # its own boot, and mkmf probes need no VFS library loads.
+  ENV.delete("DYLD_INSERT_LIBRARIES")
   sdk = "@@SDK_INCLUDE@@"
   [RbConfig::CONFIG, RbConfig::MAKEFILE_CONFIG].each do |c|
     c["rubyhdrdir"] = sdk
