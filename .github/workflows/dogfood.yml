@@ -10,10 +10,11 @@ name: dogfood
 #   aarch64-macos — ACTIVE (payload published: metanorma 1.16.9 macos-arm64).
 #   x86_64-linux-gnu — joins when the recipe's linux leg publishes
 #     (recipe.yml platforms; the build-notes expect no new machinery).
-#   x86_64-windows-ucrt — joins when the windows native-extension question
-#     resolves (0.16.3 runtimes ship the ruby DLL facet + the dln dlmap
-#     patch; the feedstock boot smoke's smoke_verdict answers it), AND the
-#     windows payload then publishes.
+#   x86_64-windows-ucrt — joins when the windows payload publishes. The
+#     native-extension question is ANSWERED: the 0.16.4 runtime line ships
+#     the ruby DLL facet + the loader interpose / library_aliases (spec 22
+#     phase W2) and the build-payload windows boot smoke is now ENFORCED
+#     against it (tools/smoke_verdict flipped fail-closed).
 on:
   schedule:
     - cron: "17 3 * * *"        # nightly
@@ -33,7 +34,7 @@ jobs:
         include:
           - { triplet: aarch64-macos, os: macos-14, plat: macos-arm64 }
           - { triplet: x86_64-linux-gnu, os: ubuntu-24.04, plat: linux-gnu-x86_64 }
-          # - { triplet: x86_64-windows-ucrt, os: windows-latest, plat: windows-ucrt64 } # native-ext verdict first (see header)
+          # - { triplet: x86_64-windows-ucrt, os: windows-latest, plat: windows-ucrt64 } # windows payload publish first (see header)
     runs-on: ${{ matrix.os }}
     env:
       TEBAKO_RELEASE: v0.1.7
