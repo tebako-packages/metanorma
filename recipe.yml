@@ -17,7 +17,7 @@ build:
   runtime:
     engine: ruby
     version: "3.3.7"       # the staging + exec runtime (tebako-runtime-ruby)
-    tebako: "0.16.3"       # runtime release line (image-era; the v0.1.5 CLI
+    tebako: "0.16.4"       # runtime release line (image-era; the pinned CLI
                            # refuses pre-era releases by contract, exit 75)
   # mkmf SDK for the source-built native deps (brotli, ox, oga, ruby-ll,
   # psych, websocket-driver): headers of the exact ruby the runtime ships
@@ -74,9 +74,10 @@ platforms:
                            # inputs; precompiled natives swapped for their
                            # glibc-x86_64 variants (closure file)
   - x86_64-windows-ucrt    # built by CI (green incl. the six source-built
-                           # natives); NOT published yet — the windows
-                           # runtimes cannot load dynamic native extensions
-                           # (docs/build-notes.md § Windows)
+                           # natives); the boot smoke is ENFORCED on this
+                           # runtime line (the W2 windows fixes landed in
+                           # 0.16.4); NOT published yet — the publish wiring
+                           # is the follow-up (docs/build-notes.md § Windows)
 
 provides:
   entrypoints:

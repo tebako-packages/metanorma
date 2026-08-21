@@ -7,16 +7,13 @@ name: build-payload
 #   x86_64-linux-gnu — build + boot smoke (ubuntu-24.04, the POSIX shim
 #   staging — same shape as the mac leg; the five precompiled natives are
 #   the glibc-x86_64 variants); tags publish together with the mac leg.
-#   x86_64-windows-ucrt — the BUILD is green (staging incl. the six
-#   source-built natives, image, manifest). The boot smoke is pinned to a
-#   KNOWN runtime-layer blocker: current windows-ucrt64 runtimes cannot
-#   load dynamically linked native extensions at all — the interpreter is
-#   --disable-shared/--with-static-linked-ext, exports no symbols, and the
-#   release ships no ruby DLL, so nokogiri/ffi/ox/psych/... .so files have
-#   nothing to bind to (docs/build-notes.md § Windows). tools/smoke_verdict
-#   turns exactly that signature green and fails any other failure mode;
-#   NO windows artifact publishes until the runtime factory ships a
-#   symbol provider and the gate here is enforced.
+#   x86_64-windows-ucrt — build + boot smoke ENFORCED: the 0.16.4 runtime
+#   line carries the windows runtime-layer fixes the exec gate waited on
+#   (the ruby DLL facet + the loader interpose / library_aliases — spec 22
+#   phase W2; re-cut green as tebako-runtime-ruby run 32346716268), so
+#   tools/smoke_verdict runs enforcing: ANY boot-smoke failure fails the
+#   leg. NO windows artifact publishes yet — the publish wiring is the
+#   follow-up once this gate proves green (docs/build-notes.md § Windows).
 on:
   push:
     branches: [main]
@@ -129,12 +126,10 @@ jobs:
           tools/build
 
       - name: Boot-smoke + verdict
-        # The in-image assertions and the extract round-trip are hard
-        # gates. The exec leg is pinned to the KNOWN windows runtime-
-        # layer blocker (header comment): only its exact LoadError
-        # signature is accepted as green; a PASS or any other failure
-        # mode is reported by tools/smoke_verdict (pass flips the gate,
-        # anything else fails the leg).
+        # Fully enforcing (header comment): on the 0.16.4 runtime line the
+        # exec leg must PASS — tools/smoke_verdict fails the leg on ANY
+        # nonzero rc, classifying the old LoadError signature as a named
+        # runtime regression vs. an undiagnosed failure.
         shell: msys2 {0}
         run: |
           . out/x86_64-windows-ucrt/runtime.env
@@ -183,7 +178,7 @@ jobs:
 
       - name: Boot-smoke
         # Hard gate, same as the mac leg: the packaged tool's version
-        # command runs from the image against the linux 0.16.3 runtime
+        # command runs from the image against the linux 0.16.4 runtime
         # (resolved by tools/build's stub press) before any release
         # publishes.
         env:
@@ -202,9 +197,10 @@ jobs:
   release:
     name: publish
     if: startsWith(github.ref, 'refs/tags/')
-    # needs the mac + linux legs: the windows artifact does NOT publish while
-    # the runtime-layer native-extension gate stands (header comment); the
-    # registry gains the windows entry when the gate is enforced.
+    # needs the mac + linux legs: the windows artifact does NOT publish yet —
+    # its boot-smoke gate is enforced on the 0.16.4 line (header comment) and
+    # the publish wiring (needs + --payload + the registry entry) lands once
+    # that gate proves green.
     needs: [build, build-linux]
     runs-on: macos-14
     env:
