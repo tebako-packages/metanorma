@@ -56,3 +56,18 @@ requires:
     name: openjdk
     constraint: ">= 21, < 26"
     mount: /opt/openjdk
+# The payload's in-image acceptance (spec 26 §1) — the Homebrew formula's
+# test block translated. Press-time moment (§3): build-payload.yml runs
+# `tebako check` against the just-imaged slice per leg; the engine reads
+# this block from /__tpkg__/manifest.yaml. fixtures images at
+# /__tpkg__/check/html-xml/ (tools/build), contents land at the engine's
+# scratch root; expect.files are scratch-relative, existence + non-empty
+# (byte-goldens forbidden — §1). No pdf level here: it needs the jvm
+# capability, which the bare-image press-time composition never provides.
+checks:
+  html-xml:
+    entry: /bin/metanorma
+    argv: ["--type", "iso", "{scratch}/test-iso.adoc", "--agree-to-terms"]
+    fixtures: /__tpkg__/check/html-xml
+    expect: { exit: 0, files: ["test-iso.xml", "test-iso.html"] }
+    timeout: 180
