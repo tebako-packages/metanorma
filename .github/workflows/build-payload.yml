@@ -88,9 +88,12 @@ jobs:
         # at a scratch root, runs the entrypoint, asserts exit 0 +
         # test-iso.xml/.html non-empty. FAIL → exit 79 (named); a check
         # with unmet prerequisites SKIPs loudly without failing the leg.
+        # PAYLOAD_IMG out of runtime.env: tools/build's absolute spelling —
+        # the check driver runs with cwd = the scratch dir, so a relative
+        # image path dies "cannot open image file" (os error 2).
         run: |
           . out/aarch64-macos/runtime.env
-          tebako check out/aarch64-macos/metanorma-1.16.9-macos-arm64.tfs \
+          tebako check "$PAYLOAD_IMG" \
             --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
 
       - name: Stage artifact
@@ -164,12 +167,13 @@ jobs:
 
       - name: Payload checks (spec 26 — the press-time moment)
         # Same gate as the POSIX legs (see the mac step's comment); FAIL
-        # is the engine's named exit 79.
+        # is the engine's named exit 79. PAYLOAD_IMG rides runtime.env
+        # (windows-form absolute) — the check driver's cwd is the scratch
+        # dir, a relative image path does not resolve there.
         shell: msys2 {0}
         run: |
           . out/x86_64-windows-ucrt/runtime.env
-          "$TEBAKO_TOOLS/tebako.exe" check \
-            out/x86_64-windows-ucrt/metanorma-1.16.9-windows-ucrt64.tfs \
+          "$TEBAKO_TOOLS/tebako.exe" check "$PAYLOAD_IMG" \
             --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
 
       - name: Stage artifact
@@ -220,10 +224,12 @@ jobs:
             tools/boot_smoke out/x86_64-linux-gnu/metanorma-1.16.9-linux-gnu-x86_64.tfs
 
       - name: Payload checks (spec 26 — the press-time moment)
-        # Same gate as the mac leg (see its comment for the contract).
+        # Same gate as the mac leg (see its comment for the contract);
+        # PAYLOAD_IMG rides runtime.env (absolute — the check driver's
+        # cwd is the scratch dir).
         run: |
           . out/x86_64-linux-gnu/runtime.env
-          tebako check out/x86_64-linux-gnu/metanorma-1.16.9-linux-gnu-x86_64.tfs \
+          tebako check "$PAYLOAD_IMG" \
             --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
 
       - name: Stage artifact
