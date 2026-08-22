@@ -28,7 +28,7 @@
 # Inputs (env, all with sane defaults):
 #   TRIPLET         aarch64-macos | x86_64-linux-gnu | x86_64-windows-ucrt
 #   TEBAKO_CLI      tebako-cli binary (default: tebako on PATH)
-#   TEBAKO_VERSION  runtime release line (default 0.16.4 — the v0.2.0 CLI's
+#   TEBAKO_VERSION  runtime release line (default 0.16.5 — the v0.2.0 CLI's
 #                   built-in default is 0.16.3; the feedstock pins the line)
 #   TFS_CLI         tfs CLI binary, the in-process imager (default: tfs on PATH)
 #   WORK            build workspace (default: out/work-$TRIPLET)
@@ -55,7 +55,7 @@ TEBAKO_CLI="${TEBAKO_CLI:-tebako}"
 TFS_CLI="${TFS_CLI:-tfs}"
 # The staging (and target) runtime's tebako version — the press resolves
 # exactly this (0.16.x = the v2 contract-2 runtime).
-TEBAKO_VERSION="${TEBAKO_VERSION:-0.16.4}"
+TEBAKO_VERSION="${TEBAKO_VERSION:-0.16.5}"
 WORK="${WORK:-$FEEDSTOCK/out/work-$TRIPLET}"
 OUT="${OUT:-$FEEDSTOCK/out/$TRIPLET}"
 export TEBAKO_HOME="${TEBAKO_HOME:-$FEEDSTOCK/out/tebako-home}"
