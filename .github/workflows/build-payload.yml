@@ -14,6 +14,11 @@ name: build-payload
 #   tools/smoke_verdict runs enforcing: ANY boot-smoke failure fails the
 #   leg. NO windows artifact publishes yet — the publish wiring is the
 #   follow-up once this gate proves green (docs/build-notes.md § Windows).
+#   ALL legs — the spec-26 press-time gate: after boot smoke, each leg
+#   runs `tebako check` (the v0.2.0 CLI) against the just-imaged slice +
+#   the pinned runtime — the payload's in-image acceptance (the Homebrew
+#   formula's test translated; manifests/payload.yaml `checks:`). FAIL is
+#   the engine's named exit 79.
 on:
   push:
     branches: [main]
@@ -39,24 +44,25 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Fetch tebako CLI tools (tamatebako/tebako v0.1.9, sha256-pinned)
+      - name: Fetch tebako CLI tools (tamatebako/tebako v0.2.0, sha256-pinned)
         # The packager is the RELEASE BINARY (releases are the
         # interface); the digests are pinned here and cross-checked
         # against the release's SHA256SUMS (provenance: docs/build-notes.md).
-        # v0.1.9 floor: the 0.16.4 runtime env images are gem-less (spec 22
-        # M2) — earlier CLIs gate the press on the retired tebako-runtime
-        # gem (exit 129).
+        # v0.2.0: the spec-26 `tebako check` engine (the press-time gate
+        # below). The v0.1.9 floor stays true: the 0.16.4 runtime env
+        # images are gem-less (spec 22 M2) — earlier CLIs gate the press
+        # on the retired tebako-runtime gem (exit 129).
         run: |
           mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
-          base="https://github.com/tamatebako/tebako/releases/download/v0.1.9"
-          curl -sLO "$base/tebako-0.1.9-macos-arm64"
-          curl -sLO "$base/tfs-0.1.9-macos-arm64"
-          echo "0e0d964ce1f08afa7f6d2d709da0a0f1c7e01b4b01f87530181f0439555755be  tebako-0.1.9-macos-arm64" > SHA256PINS
-          echo "3d7ec857b9527a75589e078072248d91dbb443d8c9965a5ce84e5473d8a9edaa  tfs-0.1.9-macos-arm64" >> SHA256PINS
+          base="https://github.com/tamatebako/tebako/releases/download/v0.2.0"
+          curl -sLO "$base/tebako-0.2.0-macos-arm64"
+          curl -sLO "$base/tfs-0.2.0-macos-arm64"
+          echo "e19d99147417e1bfd9b3bbbad39ec3945e1bf87cd13f876ee178be99601cf1e6  tebako-0.2.0-macos-arm64" > SHA256PINS
+          echo "7470e94bbadc9b7af63bccf186f2f4b82bf50a6495617a45d4f14d57f71e50f6  tfs-0.2.0-macos-arm64" >> SHA256PINS
           shasum -a 256 -c SHA256PINS
-          chmod 755 tebako-0.1.9-macos-arm64 tfs-0.1.9-macos-arm64
-          mv tebako-0.1.9-macos-arm64 tebako
-          mv tfs-0.1.9-macos-arm64 tfs
+          chmod 755 tebako-0.2.0-macos-arm64 tfs-0.2.0-macos-arm64
+          mv tebako-0.2.0-macos-arm64 tebako
+          mv tfs-0.2.0-macos-arm64 tfs
           echo "$RUNNER_TEMP/tebako-tools" >> "$GITHUB_PATH"
 
       - name: Build the payload
@@ -75,6 +81,21 @@ jobs:
           TFS="$TFS" RUNTIME="$RUNTIME" RUNTIME_IMAGE="$RUNTIME_IMAGE" \
             tools/boot_smoke out/aarch64-macos/metanorma-1.16.9-macos-arm64.tfs
 
+      - name: Payload checks (spec 26 — the press-time moment)
+        # The payload's in-image acceptance, the Homebrew formula's test
+        # translated (manifests/payload.yaml `checks:` block, imaged at
+        # /__tpkg__/manifest.yaml): the engine materializes the fixtures
+        # at a scratch root, runs the entrypoint, asserts exit 0 +
+        # test-iso.xml/.html non-empty. FAIL → exit 79 (named); a check
+        # with unmet prerequisites SKIPs loudly without failing the leg.
+        # PAYLOAD_IMG out of runtime.env: tools/build's absolute spelling —
+        # the check driver runs with cwd = the scratch dir, so a relative
+        # image path dies "cannot open image file" (os error 2).
+        run: |
+          . out/aarch64-macos/runtime.env
+          tebako check "$PAYLOAD_IMG" \
+            --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
+
       - name: Stage artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -89,8 +110,15 @@ jobs:
 
       - name: Set up MSYS2 (ucrt64 toolchain for the ruby SDK + the six natives)
         # gcc-libs rides along for the msys2 toolchain's own binaries;
-        # the v0.1.9 tebako windows binaries are statically linked (the
+        # the v0.2.0 tebako windows binaries are statically linked (the
         # release's ship gate audits PE imports).
+        # git: the spec-26 check's compile hits fontist's cold formulas-repo
+        # update, which spawns `git` (fontist 3.0.10 update.rb -> Git.clone).
+        # POSIX runners carry git on PATH natively; path-type: minimal does
+        # not — the round-2 windows leg died there (Errno::ENOENT, run
+        # 32538413907). Not a spec-23 `needs:`: a declaration cannot conjure
+        # an absent binary, and the POSIX legs prove host-git exec under the
+        # check policy needs none.
         uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2.32.0
         with:
           msystem: ucrt64
@@ -100,23 +128,24 @@ jobs:
             patch
             tar
             curl
+            git
             mingw-w64-ucrt-x86_64-toolchain
             mingw-w64-ucrt-x86_64-gcc-libs
 
-      - name: Fetch tebako CLI tools (tamatebako/tebako v0.1.9, sha256-pinned)
+      - name: Fetch tebako CLI tools (tamatebako/tebako v0.2.0, sha256-pinned)
         # the matrix context is not available to step-level `shell`, so
         # the windows leg gets its own steps with the literal msys2 keyword
         shell: msys2 {0}
         run: |
           mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
-          base="https://github.com/tamatebako/tebako/releases/download/v0.1.9"
-          curl -sLO "$base/tebako-0.1.9-windows-ucrt64.exe"
-          curl -sLO "$base/tfs-0.1.9-windows-ucrt64.exe"
-          echo "859136b63a78a057d6f401e7df5baa50f68fdd0db26dc6e6c29f5f3284e13750  tebako-0.1.9-windows-ucrt64.exe" > SHA256PINS
-          echo "44f21e1b7a3ca1aa138c17931669ef7a4e2608d3c166c6951aa5dbd62232978f  tfs-0.1.9-windows-ucrt64.exe" >> SHA256PINS
+          base="https://github.com/tamatebako/tebako/releases/download/v0.2.0"
+          curl -sLO "$base/tebako-0.2.0-windows-ucrt64.exe"
+          curl -sLO "$base/tfs-0.2.0-windows-ucrt64.exe"
+          echo "81de09d5bd5f4d3ddce45388b99967fabc5287b5ffba71eb9abf86f1827c80fe  tebako-0.2.0-windows-ucrt64.exe" > SHA256PINS
+          echo "e017a3c3ea0521c83a064cfb576fd9061fa78c2ce2ffa5a75e31385ff17f54b6  tfs-0.2.0-windows-ucrt64.exe" >> SHA256PINS
           sha256sum -c SHA256PINS
-          cp tebako-0.1.9-windows-ucrt64.exe tebako.exe
-          cp tfs-0.1.9-windows-ucrt64.exe tfs.exe
+          cp tebako-0.2.0-windows-ucrt64.exe tebako.exe
+          cp tfs-0.2.0-windows-ucrt64.exe tfs.exe
           echo "TEBAKO_TOOLS=$(cygpath -m "$RUNNER_TEMP/tebako-tools")" >> "$GITHUB_ENV"
 
       - name: Build the payload
@@ -144,6 +173,17 @@ jobs:
           set -e
           tools/smoke_verdict "$rc" "$RUNNER_TEMP/smoke.log"
 
+      - name: Payload checks (spec 26 — the press-time moment)
+        # Same gate as the POSIX legs (see the mac step's comment); FAIL
+        # is the engine's named exit 79. PAYLOAD_IMG rides runtime.env
+        # (windows-form absolute) — the check driver's cwd is the scratch
+        # dir, a relative image path does not resolve there.
+        shell: msys2 {0}
+        run: |
+          . out/x86_64-windows-ucrt/runtime.env
+          "$TEBAKO_TOOLS/tebako.exe" check "$PAYLOAD_IMG" \
+            --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
+
       - name: Stage artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -156,20 +196,20 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Fetch tebako CLI tools (tamatebako/tebako v0.1.9, sha256-pinned)
+      - name: Fetch tebako CLI tools (tamatebako/tebako v0.2.0, sha256-pinned)
         # Same pins discipline as the mac leg (the digests are cross-checked
         # against the release's SHA256SUMS); ubuntu has sha256sum, not shasum.
         run: |
           mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
-          base="https://github.com/tamatebako/tebako/releases/download/v0.1.9"
-          curl -sLO "$base/tebako-0.1.9-linux-gnu-x86_64"
-          curl -sLO "$base/tfs-0.1.9-linux-gnu-x86_64"
-          echo "07c51fd950c3a1be74ecfcc5e6944408fcdbff9d377901dd6af7b595861a1cbb  tebako-0.1.9-linux-gnu-x86_64" > SHA256PINS
-          echo "0a07f1188990a1e27244446691f25bf7b5337bc6be10d7e78c9a0147f0654bcf  tfs-0.1.9-linux-gnu-x86_64" >> SHA256PINS
+          base="https://github.com/tamatebako/tebako/releases/download/v0.2.0"
+          curl -sLO "$base/tebako-0.2.0-linux-gnu-x86_64"
+          curl -sLO "$base/tfs-0.2.0-linux-gnu-x86_64"
+          echo "5daaadd5a43d0597b1332bf07f4ff804ea688a0b047b28ba17d1e1948325ae9f  tebako-0.2.0-linux-gnu-x86_64" > SHA256PINS
+          echo "3037854282cf8885abfeeb0099905bc31a1dbc805824c179a5f81fe05fad524a  tfs-0.2.0-linux-gnu-x86_64" >> SHA256PINS
           sha256sum -c SHA256PINS
-          chmod 755 tebako-0.1.9-linux-gnu-x86_64 tfs-0.1.9-linux-gnu-x86_64
-          mv tebako-0.1.9-linux-gnu-x86_64 tebako
-          mv tfs-0.1.9-linux-gnu-x86_64 tfs
+          chmod 755 tebako-0.2.0-linux-gnu-x86_64 tfs-0.2.0-linux-gnu-x86_64
+          mv tebako-0.2.0-linux-gnu-x86_64 tebako
+          mv tfs-0.2.0-linux-gnu-x86_64 tfs
           echo "$RUNNER_TEMP/tebako-tools" >> "$GITHUB_PATH"
 
       - name: Build the payload
@@ -190,6 +230,15 @@ jobs:
           . out/x86_64-linux-gnu/runtime.env
           TFS="$TFS" RUNTIME="$RUNTIME" RUNTIME_IMAGE="$RUNTIME_IMAGE" \
             tools/boot_smoke out/x86_64-linux-gnu/metanorma-1.16.9-linux-gnu-x86_64.tfs
+
+      - name: Payload checks (spec 26 — the press-time moment)
+        # Same gate as the mac leg (see its comment for the contract);
+        # PAYLOAD_IMG rides runtime.env (absolute — the check driver's
+        # cwd is the scratch dir).
+        run: |
+          . out/x86_64-linux-gnu/runtime.env
+          tebako check "$PAYLOAD_IMG" \
+            --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
 
       - name: Stage artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -230,17 +279,17 @@ jobs:
           done
       # The publisher is the product repo's published CLI (releases are
       # the interface), sha256-pinned — never a from-source build.
-      - name: Fetch the publisher (tebako release v0.1.9, sha256-pinned)
+      - name: Fetch the publisher (tebako release v0.2.0, sha256-pinned)
         run: |
           set -euo pipefail
           mkdir -p .packager
           curl -sL --fail -o .packager/tebako \
-            https://github.com/tamatebako/tebako/releases/download/v0.1.9/tebako-0.1.9-macos-arm64
+            https://github.com/tamatebako/tebako/releases/download/v0.2.0/tebako-0.2.0-macos-arm64
           curl -sL --fail -o .packager/tebako-shim \
-            https://github.com/tamatebako/tebako/releases/download/v0.1.9/tebako-shim-0.1.9-macos-arm64
-          echo "0e0d964ce1f08afa7f6d2d709da0a0f1c7e01b4b01f87530181f0439555755be  .packager/tebako" \
+            https://github.com/tamatebako/tebako/releases/download/v0.2.0/tebako-shim-0.2.0-macos-arm64
+          echo "e19d99147417e1bfd9b3bbbad39ec3945e1bf87cd13f876ee178be99601cf1e6  .packager/tebako" \
             | shasum -a 256 -c -
-          echo "4a4ddb3f38846744a6ca9b09219388adf704b77680ff41fb70bf5eed38b59ac3  .packager/tebako-shim" \
+          echo "5944a047bd214645d95f211b1a16e1d8c24d877a6b0df4114007c4edf522130f  .packager/tebako-shim" \
             | shasum -a 256 -c -
           chmod +x .packager/tebako .packager/tebako-shim
           .packager/tebako --help > /dev/null

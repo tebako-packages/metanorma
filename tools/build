@@ -28,7 +28,7 @@
 # Inputs (env, all with sane defaults):
 #   TRIPLET         aarch64-macos | x86_64-linux-gnu | x86_64-windows-ucrt
 #   TEBAKO_CLI      tebako-cli binary (default: tebako on PATH)
-#   TEBAKO_VERSION  runtime release line (default 0.16.4 — the v0.1.9 CLI's
+#   TEBAKO_VERSION  runtime release line (default 0.16.5 — the v0.2.0 CLI's
 #                   built-in default is 0.16.3; the feedstock pins the line)
 #   TFS_CLI         tfs CLI binary, the in-process imager (default: tfs on PATH)
 #   WORK            build workspace (default: out/work-$TRIPLET)
@@ -55,7 +55,7 @@ TEBAKO_CLI="${TEBAKO_CLI:-tebako}"
 TFS_CLI="${TFS_CLI:-tfs}"
 # The staging (and target) runtime's tebako version — the press resolves
 # exactly this (0.16.x = the v2 contract-2 runtime).
-TEBAKO_VERSION="${TEBAKO_VERSION:-0.16.4}"
+TEBAKO_VERSION="${TEBAKO_VERSION:-0.16.5}"
 WORK="${WORK:-$FEEDSTOCK/out/work-$TRIPLET}"
 OUT="${OUT:-$FEEDSTOCK/out/$TRIPLET}"
 export TEBAKO_HOME="${TEBAKO_HOME:-$FEEDSTOCK/out/tebako-home}"
@@ -468,6 +468,15 @@ sed -e "s|created: \"[^\"]*\"|created: \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"|" \
     "$FEEDSTOCK/manifests/payload.yaml" > "$MAN_EMBED"
 echo "embedded manifest: $MAN_EMBED"
 
+# --------------------------------------------------------- check fixtures
+# spec 26 §1: the html-xml check's fixtures image at /__tpkg__/check/html-xml/
+# (the engine materializes the dir's CONTENTS at its scratch root). The
+# fixture is the Homebrew formula's test document verbatim (parity source:
+# homebrew-metanorma Formula/metanorma.rb's test block — :nodoc:/:novalid:/
+# :no-isobib:; invariant 8).
+mkdir -p "$PAYLOAD/__tpkg__/check/html-xml"
+cp "$FEEDSTOCK/fixtures/test-iso.adoc" "$PAYLOAD/__tpkg__/check/html-xml/test-iso.adoc"
+
 # ------------------------------------------------------------------ image
 step "tfs mkimage (the in-process dwarfs-t writer — never the mkdwarfs CLI)"
 IMG="$OUT/metanorma-$VERSION-$ASSET_PLATFORM.tfs"
@@ -476,6 +485,13 @@ rm -f "$IMG"
 sha="$(sha256_file "$IMG")"
 echo "image: $IMG"
 echo "sha256: $sha"
+# The payload image joins the runtime pair in runtime.env — ABSOLUTE:
+# `tebako check` runs its driver with cwd = the per-run scratch dir, so a
+# repo-relative spelling dies "cannot open image file (os error 2)" there
+# (boot_smoke's driver inherits the caller's cwd, which is why the smoke
+# never saw it). One owner, one spelling — every leg rides runtime.env.
+echo "PAYLOAD_IMG=$(winpath "$(cd "$OUT" && pwd)/$(basename "$IMG")")" \
+  >> "$OUT/runtime.env"
 
 # ------------------------------------------------------ sibling manifest
 step "fill the sibling manifest (release tier: real blob sha)"
