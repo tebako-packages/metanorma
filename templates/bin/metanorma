@@ -34,7 +34,12 @@ if RUBY_PLATFORM =~ /mingw|mswin/
       joined.start_with?("/") ? "/#{parts.join('/')}" : parts.join("/")
     end
 
+    # MRI's File.expand_path/realpath accept any path-like (Pathname
+    # included — git 3.1.1's normalize_working_directory passes one, round-3
+    # windows leg); the shim must keep that contract. String#to_s returns
+    # self, so the coercion is free for the common case.
     def expand_path(path, base = Dir.pwd)
+      path = path.to_s
       if path.start_with?("/") || base.to_s.start_with?("/")
         __tebako_payload_vfs_lexical(path, base)
       else
@@ -45,6 +50,7 @@ if RUBY_PLATFORM =~ /mingw|mswin/
     def realpath(path, base = nil)
       # File.realpath takes an optional base (Pathname#realpath passes one
       # on ruby 3.3 — metanorma-cli's exe hits exactly that call).
+      path = path.to_s
       if path.start_with?("/") || base.to_s.start_with?("/")
         __tebako_payload_vfs_lexical(path, base || Dir.pwd)
       elsif base.nil?
