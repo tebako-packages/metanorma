@@ -112,6 +112,13 @@ jobs:
         # gcc-libs rides along for the msys2 toolchain's own binaries;
         # the v0.2.0 tebako windows binaries are statically linked (the
         # release's ship gate audits PE imports).
+        # git: the spec-26 check's compile hits fontist's cold formulas-repo
+        # update, which spawns `git` (fontist 3.0.10 update.rb -> Git.clone).
+        # POSIX runners carry git on PATH natively; path-type: minimal does
+        # not — the round-2 windows leg died there (Errno::ENOENT, run
+        # 32538413907). Not a spec-23 `needs:`: a declaration cannot conjure
+        # an absent binary, and the POSIX legs prove host-git exec under the
+        # check policy needs none.
         uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2.32.0
         with:
           msystem: ucrt64
@@ -121,6 +128,7 @@ jobs:
             patch
             tar
             curl
+            git
             mingw-w64-ucrt-x86_64-toolchain
             mingw-w64-ucrt-x86_64-gcc-libs
 
