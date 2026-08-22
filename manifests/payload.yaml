@@ -70,4 +70,13 @@ checks:
     argv: ["--type", "iso", "{scratch}/test-iso.adoc", "--agree-to-terms"]
     fixtures: /__tpkg__/check/html-xml
     expect: { exit: 0, files: ["test-iso.xml", "test-iso.html"] }
-    timeout: 180
+    # Cold fontist is silent (metanorma passes no_progress) and slow: the
+    # formulas-repo git clone + the ISO font-set downloads + the system
+    # index build all happen inside this compile. Round-2 CI evidence (run
+    # 32538413907): both POSIX legs sat in that phase for 173s+ of total
+    # silence and died at 180; the dogfood run (warm-path equivalent on the
+    # same runner class) cleared it in ~58s — cold CI egress lands between.
+    # 600 is the generous bound; the PASS verdict line prints the measured
+    # elapsed (`check html-xml PASS <n>s`), so tighten to measured+headroom
+    # once a green run reports the real number.
+    timeout: 600
