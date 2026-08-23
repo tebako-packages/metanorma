@@ -189,10 +189,17 @@ jobs:
         # packaged exe is a native CRT reader — an msys spelling
         # (/d/a/...) does not resolve. Graceful no-op when the image
         # carries no /ssl/cert.pem (the POSIX runtime images ship none).
+        # The in-image path below is spelled SLASH-LESS ("ssl/cert.pem",
+        # which tfs accepts) on purpose: under msys2 a leading-slash argv
+        # element passed to a NATIVE exe is path-converted to a host path
+        # ("/ssl/cert.pem" → "D:/..."), tfs then finds nothing and the
+        # guard no-ops — the round-1 form of this workaround died exactly
+        # there. (boot_smoke shields with MSYS2_ARG_CONV_EXCL='*' instead;
+        # the slash-less spelling keeps the guard shell-agnostic.)
         shell: msys2 {0}
         run: |
           . out/x86_64-windows-ucrt/runtime.env
-          if "$TEBAKO_TOOLS/tfs.exe" cat "$RUNTIME_IMAGE" /ssl/cert.pem \
+          if "$TEBAKO_TOOLS/tfs.exe" cat "$RUNTIME_IMAGE" ssl/cert.pem \
                > "$RUNNER_TEMP/tebako-ca-cert.pem" 2>/dev/null \
              && [ -s "$RUNNER_TEMP/tebako-ca-cert.pem" ]; then
             export SSL_CERT_FILE="$(cygpath -w "$RUNNER_TEMP/tebako-ca-cert.pem")"
