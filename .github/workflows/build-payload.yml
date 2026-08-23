@@ -12,8 +12,9 @@ name: build-payload
 #   (the ruby DLL facet + the loader interpose / library_aliases — spec 22
 #   phase W2; re-cut green as tebako-runtime-ruby run 32346716268), so
 #   tools/smoke_verdict runs enforcing: ANY boot-smoke failure fails the
-#   leg. NO windows artifact publishes yet — the publish wiring is the
-#   follow-up once this gate proves green (docs/build-notes.md § Windows).
+#   leg. The gate proved green (PR #22, incl. the html-xml check with
+#   the tebako#437 CA-bundle workaround); tags publish the windows
+#   artifact together with the mac + linux legs (docs/build-notes.md § Windows).
 #   ALL legs — the spec-26 press-time gate: after boot smoke, each leg
 #   runs `tebako check` (the v0.2.0 CLI) against the just-imaged slice +
 #   the pinned runtime — the payload's in-image acceptance (the Homebrew
@@ -275,11 +276,11 @@ jobs:
   release:
     name: publish
     if: startsWith(github.ref, 'refs/tags/')
-    # needs the mac + linux legs: the windows artifact does NOT publish yet —
-    # its boot-smoke gate is enforced on the 0.16.6 line (header comment) and
-    # the publish wiring (needs + --payload + the registry entry) lands once
-    # that gate proves green.
-    needs: [build, build-linux]
+    # All three legs publish: the windows boot-smoke + html-xml gate
+    # proved green on the 0.16.6 line (PR #22, head 37396c0 — the
+    # tebako#437 SSL_CERT_FILE workaround), so the wiring (needs +
+    # --payload + the registry entry) now includes the windows artifact.
+    needs: [build, build-linux, build-windows]
     runs-on: macos-14
     env:
       TEBAKO_CLI: ${{ github.workspace }}/.packager/tebako
@@ -330,6 +331,7 @@ jobs:
             --release "tfs:github:tebako-packages/metanorma:${{ github.ref_name }}" \
             --payload aarch64-macos="out/aarch64-macos/metanorma-1.16.9-macos-arm64.tfs" \
             --payload x86_64-linux-gnu="out/x86_64-linux-gnu/metanorma-1.16.9-linux-gnu-x86_64.tfs" \
+            --payload x86_64-windows-ucrt="out/x86_64-windows-ucrt/metanorma-1.16.9-windows-ucrt64.tfs" \
             --registry-out "$PWD/tpkg-registry.yaml"
       # main is branch-protected (and the GitHub-Actions bypass is not
       # available on this plan): the registry lands by bot PR + auto-merge,
@@ -349,7 +351,7 @@ jobs:
           branch="publish/${{ github.ref_name }}-registry"
           git checkout -b "$branch"
           git add tpkg-registry.yaml
-          git commit -m "publish ${{ github.ref_name }}: registry entry (macos-arm64, linux-gnu-x86_64)"
+          git commit -m "publish ${{ github.ref_name }}: registry entry (macos-arm64, linux-gnu-x86_64, windows-ucrt64)"
           git push origin "$branch"
           if ! gh pr view "$branch" >/dev/null 2>&1; then
             gh pr create --base main --head "$branch" \

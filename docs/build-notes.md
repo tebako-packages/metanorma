@@ -226,13 +226,14 @@ compact index `/info/<gem>` checksum before staging.
   press → SDK → libyaml → verified gems → stage → tree → image →
   manifest); the release image was built by it.
 - CI (`.github/workflows/build-payload.yml`): the mac leg runs the same
-  build on `macos-14` with the tebako/tfs **release binaries** (v0.1.1,
+  build on `macos-14` with the tebako/tfs **release binaries** (v0.2.0,
   sha256-pinned — releases are the interface; the earlier from-source
   CLI build via vcpkg is retired, same repair as tebako-packages/fontist),
-  runtime line 0.16.2, boot-smoke gate, tag-triggered publish. The
+  runtime line 0.16.6, boot-smoke gate, tag-triggered publish. The
   `x86_64-linux-gnu` leg runs the same POSIX shim staging on
   `ubuntu-24.04` and publishes together with the mac leg (§8). The
-  `x86_64-windows-ucrt` leg builds green but does not publish (§7).
+  `x86_64-windows-ucrt` leg publishes together with the mac + linux legs
+  since the 0.16.6-line gate proved green (PR #22; §7).
 - The dogfood (`.github/workflows/dogfood.yml`) is **gated** until
   tebako-rs v0.1.0 ships release binaries incl. tebako-shim — see the
   workflow header. Also blocked on: an inkscape payload for the dogfood
@@ -410,6 +411,12 @@ published windows runtimes (the fontist feedstock's evidence, runtime
    into the interpreter exe and ship a `ruby.exp.dll`-named forwarding
    alias + import library, plus an `x64-msvcrt-ruby330.dll` alias if
    precompiled RubyInstaller gems should load.
+
+RESOLVED 2026-08-23 — PR #22 proved the gate green on the 0.16.6 line
+(incl. the html-xml check with the tebako#437 CA-bundle workaround) and
+the publish wiring now includes the windows artifact (needs +
+--payload + registry). The rest of this section is the pre-resolution
+record, kept as the incident log.
 
 Until then the windows leg stays build-only: `tools/smoke_verdict` turns
 exactly the known LoadError signature green
