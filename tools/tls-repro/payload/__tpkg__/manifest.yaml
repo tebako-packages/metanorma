@@ -1,0 +1,42 @@
+schema_version: 1
+# Minimal payload manifest for the tls-probe (spec 03 §2.2) — the smallest
+# self-describing app slice that exercises the runtime's https path.
+identity:
+  schema_version: 1
+  kind: app
+  name: "tls-probe"
+  version: "0.1.0"
+  producer: {tool: tls-repro, tool_version: "1"}
+  created: "2026-08-23T00:00:00Z"
+  source:
+    commit: "0000000000000000000000000000000000000000"
+    builder: "local"
+  digest:
+    tree_hash: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    blob_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+  signing: {state: unsigned}
+  encryption: {state: none}
+  annotations:
+    purpose: "tebako#437 local repro (tools/tls-repro)"
+provides:
+  entrypoints:
+    - name: tls-probe
+      path: /bin/tls-probe
+      args_default: []
+      runtime_requirement:
+        engine: ruby
+        constraint: "~> 3.3.0"
+        abi: "aarch64-linux"
+  platforms: [aarch64-linux-gnu]
+  capabilities: {exec: true, read: true}
+requires:
+  - kind: language
+    engine: ruby
+    constraint: "~> 3.3.0"
+# Lets leg A be the byte-identical CI invocation (`tebako check <img>
+# --runtime <exe> --runtime-image <env.tfs>`; spec 26 §1).
+checks:
+  tls:
+    entry: /bin/tls-probe
+    expect: { exit: 0 }
+    timeout: 120

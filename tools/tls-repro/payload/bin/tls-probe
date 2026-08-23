@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# tls-probe — the fontist TLS class without the fontist weight: one https
+# GET verified against a CA store loaded from a HOST file — the exact
+# resource tebako#437 turns on (the store file must be readable by native
+# IO; the jail governs that).
+#
+# The probe builds its OWN store from SSL_CERT_FILE or the runtime's
+# compiled-in DEFAULT_CERT_FILE instead of using the gem's
+# DEFAULT_CERT_STORE: stock ruby 3.3's openssl gem sets
+# V_FLAG_CRL_CHECK_ALL on DEFAULT_CERT_STORE, and OpenSSL 3.6 (this
+# runtime) hard-fails DP-bearing chains without CRLs under that flag —
+# an upstream gem×openssl incompatibility, orthogonal to tebako#437
+# (OpenSSL 3.5 tolerates it, which is why the windows runtime leg is
+# unaffected). tools/tls-repro/README.md has the evidence matrix.
+#
+# Output contract:
+#   store source lines, per-depth verify lines, then
+#   TLS-PROBE-OK <url> -> <code>          (exit 0)
+#   TLS-PROBE-FAIL <class>: <message>     (exit 1)
+
+require "net/http"
+require "openssl"
+
+url = ENV.fetch("TLS_PROBE_URL", "https://api.github.com")
+ca = ENV["SSL_CERT_FILE"] || OpenSSL::X509::DEFAULT_CERT_FILE
+
+puts "ruby:            #{RUBY_DESCRIPTION}"
+puts "openssl:         #{OpenSSL::OPENSSL_VERSION}"
+puts "openssl library: #{OpenSSL::OPENSSL_LIBRARY_VERSION}"
+puts "default cert file: #{OpenSSL::X509::DEFAULT_CERT_FILE}"
+puts "default cert dir:  #{OpenSSL::X509::DEFAULT_CERT_DIR}"
+puts "SSL_CERT_FILE=#{ENV['SSL_CERT_FILE'].inspect}"
+puts "SSL_CERT_DIR=#{ENV['SSL_CERT_DIR'].inspect}"
+
+store = OpenSSL::X509::Store.new
+begin
+  store.add_file(ca)
+  puts "store: loaded #{ca} (native IO)"
+rescue SystemCallError, OpenSSL::X509::StoreError => e
+  # the tebako#437 shape: the store path is VFS-visible to ruby but not
+  # host-readable by the native libcrypto (the windows bug) — or, in the
+  # baseline legs, genuinely absent. The handshake below then runs with
+  # an EMPTY store and fails "unable to get local issuer certificate".
+  puts "store: #{ca} not host-readable (#{e.class}: #{e.message}) — continuing with an EMPTY store"
+  puts "store: ruby-side File.file?(#{ca}) = #{File.file?(ca)} (the VFS/native divergence, tebako#437's essence)"
+end
+
+begin
+  uri = URI(url)
+  http = Net::HTTP.new(uri.host, uri.port)
+  http.use_ssl = true
+  http.cert_store = store
+  # Log every chain-element verdict; returning the engine's own verdict
+  # keeps the semantics untouched.
+  http.verify_callback = lambda do |ok, ctx|
+    cert = ctx.current_cert
+    puts "  verify depth=#{ctx.error_depth} ok=#{ok} " \
+         "err=#{ctx.error}(#{ctx.error_string}) subj=#{cert && cert.subject}"
+    ok
+  end
+  res = http.start { |h| h.request(Net::HTTP::Get.new(uri)) }
+  puts "TLS-PROBE-OK #{url} -> #{res.code}"
+rescue StandardError => e
+  puts "TLS-PROBE-FAIL #{e.class}: #{e.message}"
+  exit 1
+end
