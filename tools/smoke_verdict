@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # tools/smoke_verdict <rc> <log> — the windows leg's boot-smoke verdict,
-# ENFORCING since the runtime pin moved to the 0.16.4 line: any exec
+# ENFORCING since the runtime pin moved to the 0.16.6 line: any exec
 # failure fails the leg (fail-closed).
 #
 # The two RUNTIME-LAYER gaps this file used to tolerate
-# (docs/build-notes.md § Windows) are CLOSED on the 0.16.4 line (the
+# (docs/build-notes.md § Windows) are CLOSED on the 0.16.6 line (the
 # re-cut release — tebako-runtime-ruby run 32346716268):
 #
 #   G1 mount addressing — CLOSED by the spec-17 uniform namespace /
@@ -21,7 +21,7 @@
 #                              windows artifact into the publish job +
 #                              tpkg-registry.yaml.)
 #   rc != 0 + the old G1/G2 LoadError signature
-#                            → RED: a REGRESSION of the 0.16.4 windows
+#                            → RED: a REGRESSION of the 0.16.6 windows
 #                              fixes (or the wrong runtime resolved) —
 #                              named, never tolerated.
 #   anything else            → RED: an undiagnosed failure.
@@ -31,16 +31,16 @@ rc="${1:?usage: tools/smoke_verdict <rc> <log>}"
 log="${2:?usage: tools/smoke_verdict <rc> <log>}"
 
 if [ "$rc" -eq 0 ]; then
-  echo "BOOT SMOKE PASSED on windows-ucrt64 against the 0.16.4 runtime line"
+  echo "BOOT SMOKE PASSED on windows-ucrt64 against the 0.16.6 runtime line"
   echo "(enforcing gate). Follow-up: wire the windows artifact into the"
   echo "publish job + tpkg-registry.yaml."
   exit 0
 fi
 
 if grep -q "LoadError" "$log" && grep -qiE "cannot load such file -- (metanorma|nokogiri|ffi|brotli|ox|liboga|libll|psych|sqlite3|libpng|parsanol|websocket)" "$log"; then
-  echo "BOOT SMOKE REGRESSION (rc=$rc): the log carries the pre-0.16.4"
+  echo "BOOT SMOKE REGRESSION (rc=$rc): the log carries the pre-0.16.6"
   echo "runtime-layer signature (G1 mount addressing / G2 no dynamic native"
-  echo "extensions). Those gaps are CLOSED on the 0.16.4 line — the runtime"
+  echo "extensions). Those gaps are CLOSED on the 0.16.6 line — the runtime"
   echo "regressed or the wrong runtime resolved. Failing the leg."
   exit 1
 fi

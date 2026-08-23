@@ -7,7 +7,7 @@ name: build-payload
 #   x86_64-linux-gnu — build + boot smoke (ubuntu-24.04, the POSIX shim
 #   staging — same shape as the mac leg; the five precompiled natives are
 #   the glibc-x86_64 variants); tags publish together with the mac leg.
-#   x86_64-windows-ucrt — build + boot smoke ENFORCED: the 0.16.4 runtime
+#   x86_64-windows-ucrt — build + boot smoke ENFORCED: the 0.16.6 runtime
 #   line carries the windows runtime-layer fixes the exec gate waited on
 #   (the ruby DLL facet + the loader interpose / library_aliases — spec 22
 #   phase W2; re-cut green as tebako-runtime-ruby run 32346716268), so
@@ -49,7 +49,7 @@ jobs:
         # interface); the digests are pinned here and cross-checked
         # against the release's SHA256SUMS (provenance: docs/build-notes.md).
         # v0.2.0: the spec-26 `tebako check` engine (the press-time gate
-        # below). The v0.1.9 floor stays true: the 0.16.4 runtime env
+        # below). The v0.1.9 floor stays true: the 0.16.6 runtime env
         # images are gem-less (spec 22 M2) — earlier CLIs gate the press
         # on the retired tebako-runtime gem (exit 129).
         run: |
@@ -158,7 +158,7 @@ jobs:
           tools/build
 
       - name: Boot-smoke + verdict
-        # Fully enforcing (header comment): on the 0.16.4 runtime line the
+        # Fully enforcing (header comment): on the 0.16.6 runtime line the
         # exec leg must PASS — tools/smoke_verdict fails the leg on ANY
         # nonzero rc, classifying the old LoadError signature as a named
         # runtime regression vs. an undiagnosed failure.
@@ -178,9 +178,28 @@ jobs:
         # is the engine's named exit 79. PAYLOAD_IMG rides runtime.env
         # (windows-form absolute) — the check driver's cwd is the scratch
         # dir, a relative image path does not resolve there.
+        # tebako#437 workaround: with the runtime image passed as a bare
+        # path (no store sidecar) the exe shim's store-less fallback sets
+        # SSL_CERT_FILE to the IN-VFS A:/t/ssl/cert.pem, which the native
+        # libcrypto reads via CRT IO — the file is not on the host, so the
+        # OpenSSL store comes up empty and fontist's https dies "unable to
+        # get local issuer certificate". The shim honors a user-set
+        # SSL_CERT_FILE ("user wins"), so extract the CA bundle from the
+        # runtime image and point at the HOST copy. cygpath -w: the
+        # packaged exe is a native CRT reader — an msys spelling
+        # (/d/a/...) does not resolve. Graceful no-op when the image
+        # carries no /ssl/cert.pem (the POSIX runtime images ship none).
         shell: msys2 {0}
         run: |
           . out/x86_64-windows-ucrt/runtime.env
+          if "$TEBAKO_TOOLS/tfs.exe" cat "$RUNTIME_IMAGE" /ssl/cert.pem \
+               > "$RUNNER_TEMP/tebako-ca-cert.pem" 2>/dev/null \
+             && [ -s "$RUNNER_TEMP/tebako-ca-cert.pem" ]; then
+            export SSL_CERT_FILE="$(cygpath -w "$RUNNER_TEMP/tebako-ca-cert.pem")"
+            echo "SSL_CERT_FILE=$SSL_CERT_FILE (CA bundle extracted from the runtime image — tebako#437 workaround)"
+          else
+            echo "runtime image carries no /ssl/cert.pem — no SSL_CERT_FILE override (tebako#437 workaround no-op)"
+          fi
           "$TEBAKO_TOOLS/tebako.exe" check "$PAYLOAD_IMG" \
             --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
 
@@ -221,7 +240,7 @@ jobs:
 
       - name: Boot-smoke
         # Hard gate, same as the mac leg: the packaged tool's version
-        # command runs from the image against the linux 0.16.4 runtime
+        # command runs from the image against the linux 0.16.6 runtime
         # (resolved by tools/build's stub press) before any release
         # publishes.
         env:
@@ -250,7 +269,7 @@ jobs:
     name: publish
     if: startsWith(github.ref, 'refs/tags/')
     # needs the mac + linux legs: the windows artifact does NOT publish yet —
-    # its boot-smoke gate is enforced on the 0.16.4 line (header comment) and
+    # its boot-smoke gate is enforced on the 0.16.6 line (header comment) and
     # the publish wiring (needs + --payload + the registry entry) lands once
     # that gate proves green.
     needs: [build, build-linux]
