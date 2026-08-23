@@ -1,0 +1,133 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# tls-probe-deep — one-off diagnostics for the err=3-at-depth-0 anomaly:
+# capture the container's actual chain (verify NONE), then verify it
+# through bare X509::Store variants and a manual SSLSocket with an
+# explicit cert_store — separating store-content trouble from
+# SSLContext-default flags.
+
+require "socket"
+require "openssl"
+require "uri"
+
+uri = URI(ENV.fetch("TLS_PROBE_URL", "https://api.github.com"))
+puts "ruby: #{RUBY_DESCRIPTION}"
+puts "openssl: #{OpenSSL::OPENSSL_VERSION}"
+puts "DEFAULT_CERT_FILE=#{OpenSSL::X509::DEFAULT_CERT_FILE}"
+puts "DEFAULT_CERT_DIR=#{OpenSSL::X509::DEFAULT_CERT_DIR}"
+%w[SSL_CERT_FILE SSL_CERT_DIR OPENSSL_CONF OPENSSL_MODULES].each do |v|
+  puts "#{v}=#{ENV[v].inspect}"
+end
+
+# jail canaries: which syscall families does the enforcement choke point
+# actually interpose in this handoff shape?
+%w[/etc/ssl/cert.pem /etc/ssl/certs/ca-certificates.crt /etc/hostname /etc/ssl].each do |p|
+  begin
+    n = File.binread(p).bytesize
+    puts "canary binread #{p}: OK (#{n} bytes)"
+  rescue StandardError => e
+    puts "canary binread #{p}: #{e.class}"
+  end
+  begin
+    st = File.stat(p)
+    puts "canary stat    #{p}: OK (#{st.file? ? 'file' : 'other'})"
+  rescue StandardError => e
+    puts "canary stat    #{p}: #{e.class}"
+  end
+end
+# the libcrypto path: does the jail choke point cover openssl's own
+# BIO file reads (what add_file/set_default_paths use)?
+[%w[/etc/ssl/cert.pem], %w[/etc/hostname]].each do |(p)|
+  st = OpenSSL::X509::Store.new
+  begin
+    st.add_file(p)
+    puts "canary ossl-add_file #{p}: OK"
+  rescue StandardError => e
+    puts "canary ossl-add_file #{p}: #{e.class}"
+  end
+end
+
+tcp = TCPSocket.new(uri.host, 443)
+ctx = OpenSSL::SSL::SSLContext.new
+ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+ssl = OpenSSL::SSL::SSLSocket.new(tcp, ctx)
+ssl.hostname = uri.host
+ssl.sync_close = true
+ssl.connect
+chain = ssl.peer_cert_chain
+ssl.close
+tcp.close rescue nil
+puts "== chain (#{chain.size} certs):"
+chain.each_with_index do |c, i|
+  puts "[#{i}] subj=#{c.subject} issuer=#{c.issuer}"
+end
+
+def try_verify(store, leaf, rest, label)
+  ok = store.verify(leaf, rest)
+  puts "#{label}: verify -> #{ok} err=#{store.error}(#{store.error_string}) chain=#{(store.chain || []).map { |c| c.subject.to_s }}"
+rescue StandardError => e
+  puts "#{label}: RAISED #{e.class}: #{e.message}"
+end
+
+s1 = OpenSSL::X509::Store.new
+s1.set_default_paths
+try_verify(s1, chain[0], chain[1..], "store.set_default_paths")
+
+s2 = OpenSSL::X509::Store.new
+s2.add_file(OpenSSL::X509::DEFAULT_CERT_FILE)
+try_verify(s2, chain[0], chain[1..], "store.add_file(DEFAULT_CERT_FILE)")
+
+s3 = OpenSSL::X509::Store.new
+begin
+  s3.flags = 0
+  puts "flags=0 accepted"
+rescue NoMethodError
+  puts "flags= unsupported"
+end
+s3.add_file(OpenSSL::X509::DEFAULT_CERT_FILE)
+try_verify(s3, chain[0], chain[1..], "store.add_file, flags=0")
+
+# the runtime's DEFAULT_CERT_STORE shape (stock ruby 3.3 openssl gem sets
+# V_FLAG_CRL_CHECK_ALL on it) — the openssl-version behavior probe
+s6 = OpenSSL::X509::Store.new
+s6.add_file(OpenSSL::X509::DEFAULT_CERT_FILE)
+s6.flags = OpenSSL::X509::V_FLAG_CRL_CHECK_ALL
+try_verify(s6, chain[0], chain[1..], "store.add_file + CRL_CHECK_ALL")
+
+# manual SSLSocket with an explicit store (no SSLContext defaults)
+tcp2 = TCPSocket.new(uri.host, 443)
+c2 = OpenSSL::SSL::SSLContext.new
+c2.verify_mode = OpenSSL::SSL::VERIFY_PEER
+c2.cert_store = s2
+ss = OpenSSL::SSL::SSLSocket.new(tcp2, c2)
+ss.hostname = uri.host
+begin
+  ss.connect
+  puts "manual SSLSocket + add_file store: CONNECT-OK"
+rescue StandardError => e
+  puts "manual SSLSocket + add_file store: #{e.class}: #{e.message}"
+ensure
+  ss.close rescue nil
+  tcp2.close rescue nil
+end
+
+# manual SSLSocket, default context (what Net::HTTP effectively builds)
+tcp3 = TCPSocket.new(uri.host, 443)
+c3 = OpenSSL::SSL::SSLContext.new
+c3.verify_mode = OpenSSL::SSL::VERIFY_PEER
+s5 = OpenSSL::X509::Store.new
+s5.set_default_paths
+c3.cert_store = s5
+ss3 = OpenSSL::SSL::SSLSocket.new(tcp3, c3)
+ss3.hostname = uri.host
+begin
+  ss3.connect
+  puts "manual SSLSocket + set_default_paths store: CONNECT-OK"
+rescue StandardError => e
+  puts "manual SSLSocket + set_default_paths store: #{e.class}: #{e.message}"
+ensure
+  ss3.close rescue nil
+  tcp3.close rescue nil
+end
+puts "DEEP-DONE"
