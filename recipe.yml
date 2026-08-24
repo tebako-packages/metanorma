@@ -17,13 +17,15 @@ build:
   runtime:
     engine: ruby
     version: "3.3.7"       # the staging + exec runtime (tebako-runtime-ruby)
-    tebako: "0.16.6"       # runtime release line (image-era; the pinned CLI
+    tebako: "0.16.7"       # runtime release line (image-era; the pinned CLI
                            # refuses pre-era releases by contract, exit 75).
-                           # 0.16.6 carries the v0.2.1 link unit: the
-                           # fork/exec deadlock fix (tebako#433 — spawned git
-                           # wedged pre-exec under the preload, the round-3
-                           # POSIX check-gate blocker) + the windows CA-root
-                           # fix (ruby-side https from the windows runtime).
+                           # 0.16.7 carries the v0.2.2 link unit: the
+                           # fork/exec deadlock fix (tebako#433), the windows
+                           # CA-root fix, the driver-owned SSL_CERT_FILE
+                           # export (tebako#441), and the LFS64/fortify
+                           # alias-surface jail coverage (tebako#443 —
+                           # OpenSSL 3.6 binds fopen64). Ruby source pin
+                           # v0.2.27 (CRL_CHECK_ALL removal, ruby#95).
   # mkmf SDK for the source-built native deps (brotli, ox, oga, ruby-ll,
   # psych, websocket-driver): headers of the exact ruby the runtime ships
   # (the runtime image carries none). The windows leg additionally generates
