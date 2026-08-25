@@ -348,6 +348,22 @@ ships per-triplet with the ABI-line `runtime_requirement ~> 3.3.0`
   `x64-mingw-ucrt` variants (`/info` checksums; all five exist —
   nokogiri, ffi, libpng, parsanol, sqlite3). Imaging: `tfs mkimage`
   (the release CLI's in-process Writer, same as the mac leg).
+- **Vendored DLL siblings** (`tools/vendor_siblings.rb`, a driver entry
+  run after the payload tree is assembled): the libpng gem's
+  `x64-mingw-ucrt` package vendors `libpng16.dll` (loaded by full path
+  via `ffi_lib File.expand_path(...)`) but NOT the `zlib1.dll` it
+  imports — vendored nowhere in the payload, not a Windows system DLL,
+  so every PNG embed died LoadError 126 once the runtime-layer classes
+  unblocked (packed-mn#251 class 2; class 1 — `libwinpthread-1.dll` on
+  the source-built `.so` set — is the runtime factory's fix,
+  tebako-runtime-ruby#133). Spec 22 §2.1 resolves such non-system,
+  non-runtime imports importer-dir-relative, so the fix is payload-side:
+  the toolchain's `zlib1.dll` (`$MSYSTEM_PREFIX/bin`, pinned as
+  `mingw-w64-ucrt-x86_64-zlib` in the workflow) is copied next to every
+  `libpng16.dll` in the payload tree — keyed by an explicit
+  importer=>siblings map, fail-closed (a named error when an importer's
+  sibling cannot be sourced), keeping the runtime free of gem-specific
+  hacks. Unit specs: `spec/vendor_siblings_spec.rb` (`bundle exec rspec`).
 - **Entrypoint**: `templates/bin/metanorma` carries the windows
   mount-addressing guard (VFS-rooted paths stay lexical in
   `File.expand_path`/`File.realpath`; host paths keep real semantics) —
