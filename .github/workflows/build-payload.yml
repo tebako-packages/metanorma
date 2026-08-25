@@ -113,6 +113,9 @@ jobs:
         # gcc-libs rides along for the msys2 toolchain's own binaries;
         # the v0.2.0 tebako windows binaries are statically linked (the
         # release's ship gate audits PE imports).
+        # zlib: the explicit source of the zlib1.dll that
+        # tools/vendor_siblings.rb vendors next to the payload's
+        # libpng16.dll — pinned here, never relied on as a transitive dep.
         # git: the spec-26 check's compile hits fontist's cold formulas-repo
         # update, which spawns `git` (fontist 3.0.10 update.rb -> Git.clone).
         # POSIX runners carry git on PATH natively; path-type: minimal does
@@ -132,6 +135,7 @@ jobs:
             git
             mingw-w64-ucrt-x86_64-toolchain
             mingw-w64-ucrt-x86_64-gcc-libs
+            mingw-w64-ucrt-x86_64-zlib
 
       - name: Fetch tebako CLI tools (tamatebako/tebako v0.2.0, sha256-pinned)
         # the matrix context is not available to step-level `shell`, so

@@ -22,7 +22,9 @@ mount `/opt/inkscape`), so installing it exercises the full dispatch chain.
   (aarch64-macos + x86_64-linux-gnu + x86_64-windows-ucrt)
 - `tools/` — `build` (stage → image → manifest), `boot_smoke`,
   `smoke_verdict` (the windows leg's pinned exec verdict),
-  `stage_native_manual.rb` (windows native builds), `resolve_closure` +
+  `stage_native_manual.rb` (windows native builds),
+  `vendor_siblings.rb` (windows: vendored DLL siblings — zlib1.dll next to
+  the payload's libpng16.dll, spec 22 §2.1's importer-dir rule), `resolve_closure` +
   `gen_closure` (re-resolve a new upstream version)
 - `fixtures/` — the dogfood document (one figure through the inkscape path)
 - `docs/build-notes.md` — dep-tree findings, what ran, what's deferred

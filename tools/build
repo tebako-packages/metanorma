@@ -23,7 +23,10 @@
 #     against an SDK + import library assembled from the pinned ruby
 #     tarball; psych links a host-built static libyaml via dir_config (its
 #     extconf cannot run libyaml's configure in-process — a mingw ruby
-#     cannot exec a shell script). Imaging: tfs mkimage.
+#     cannot exec a shell script). After the payload tree is assembled,
+#     tools/vendor_siblings.rb vendors gem-peculiar DLL siblings next to
+#     their importers (zlib1.dll next to the libpng gem's libpng16.dll —
+#     the spec 22 §2.1 importer-dir rule). Imaging: tfs mkimage.
 #
 # Inputs (env, all with sane defaults):
 #   TRIPLET         aarch64-macos | x86_64-linux-gnu | x86_64-windows-ucrt
@@ -348,7 +351,8 @@ case "$TRIPLET" in
     DRIVER="$WORK/driver"
     rm -rf "$DRIVER"
     mkdir -p "$DRIVER"
-    cp "$FEEDSTOCK/tools/stage_app.rb" "$FEEDSTOCK/tools/stage_native_manual.rb" "$DRIVER/"
+    cp "$FEEDSTOCK/tools/stage_app.rb" "$FEEDSTOCK/tools/stage_native_manual.rb" \
+       "$FEEDSTOCK/tools/vendor_siblings.rb" "$DRIVER/"
     DRIVER_IMG="$WORK/stage-driver.tfs"
     rm -f "$DRIVER_IMG"
     "$TFS_CLI" mkimage --format dwarfs "$DRIVER" -o "$DRIVER_IMG"
@@ -451,6 +455,22 @@ cp -R "$WORK/stage/extensions" "$G/extensions"
 cp "$FEEDSTOCK/templates/bin/metanorma" "$PAYLOAD/bin/metanorma"
 chmod 755 "$PAYLOAD/bin/metanorma"
 cp "$FEEDSTOCK/templates/local/stub.rb" "$PAYLOAD/local/stub.rb"
+
+# --------------------------------------- vendored DLL siblings (windows)
+# The libpng gem's x64-mingw-ucrt package vendors libpng16.dll but NOT the
+# zlib1.dll it imports (a non-system, non-runtime DLL — the spec 22 §2.1 PE
+# closure walk resolves such imports importer-dir-relative), so the payload
+# itself must carry zlib1.dll next to every libpng16.dll. Payload-side by
+# design: zlib1.dll is gem-peculiar, the importer's gem dir is its one
+# owner, and the runtime stays free of gem-specific hacks (packed-mn#251
+# class 2; the libwinpthread class is the runtime factory's).
+# tools/vendor_siblings.rb fails closed when a source cannot be found.
+if [ "$TRIPLET" = "x86_64-windows-ucrt" ]; then
+  step "vendor importer DLL siblings (zlib1.dll next to libpng16.dll)"
+  VENDOR_DLL_SRC="$(winpath "${MSYSTEM_PREFIX:?MSYSTEM_PREFIX unset — cannot locate the toolchain zlib1.dll}/bin")" \
+  PAYLOAD_DIR="$(winpath "$PAYLOAD")" \
+    run_driver /vendor_siblings.rb
+fi
 
 # --------------------------------------------------------------- manifest
 step "fill the manifest (embedded at /__tpkg__/manifest.yaml — tier 1)"
