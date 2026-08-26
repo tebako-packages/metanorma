@@ -51,7 +51,7 @@ set -euo pipefail
 FEEDSTOCK="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="1.16.9"
 TRIPLET="${TRIPLET:-aarch64-macos}"   # the manifest platforms form (vcpkg, spec 03)
-RUBY_V="3.3.7"
+RUBY_V="3.3.12"
 API_V="3.3.0"
 
 TEBAKO_CLI="${TEBAKO_CLI:-tebako}"
@@ -66,8 +66,8 @@ OUT="${OUT:-$FEEDSTOCK/out/$TRIPLET}"
 export TEBAKO_HOME="${TEBAKO_HOME:-$FEEDSTOCK/out/tebako-home}"
 CLOSURE="$FEEDSTOCK/closure/$VERSION-$TRIPLET.txt"
 
-SDK_URL="https://cache.ruby-lang.org/pub/ruby/3.3/ruby-3.3.7.tar.gz"
-SDK_SHA256="9c37c3b12288c7aec20ca121ce76845be5bb5d77662a24919651aaf1d12c8628"
+SDK_URL="https://cache.ruby-lang.org/pub/ruby/3.3/ruby-3.3.12.tar.gz"
+SDK_SHA256="b06d63beae271933033e27f0a389bc582a009e7845357d44365c39de525a051b"
 LIBYAML_URL="https://pyyaml.org/download/libyaml/yaml-0.2.5.tar.gz"
 LIBYAML_SHA256="c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4"
 
@@ -147,7 +147,7 @@ case "$TRIPLET" in
     curl -sL -o "$WORK/SHA256SUMS.txt" "$RT_RELEASE_URL/SHA256SUMS.txt"
     curl -sL -o "$WORK/manifest.json" "$RT_RELEASE_URL/manifest.json"
     # The facet's install name follows the factory's rubyinstaller-style
-    # ABI rule (3.3.7 -> x64-ucrt-ruby330.dll) — derived, then asserted
+    # ABI rule (3.3.12 -> x64-ucrt-ruby330.dll) — derived, then asserted
     # against the release manifest (the SSOT) so a convention change
     # fails loudly. (No ruby on this step's PATH — awk only.)
     DLL_INSTALL_AS="x64-ucrt-ruby$(echo "$RUBY_V" | awk -F. '{print $1 $2}')0.dll"
