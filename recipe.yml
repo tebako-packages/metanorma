@@ -17,15 +17,15 @@ build:
   runtime:
     engine: ruby
     version: "3.3.7"       # the staging + exec runtime (tebako-runtime-ruby)
-    tebako: "0.16.7"       # runtime release line (image-era; the pinned CLI
+    tebako: "0.16.10"      # runtime release line (image-era; the pinned CLI
                            # refuses pre-era releases by contract, exit 75).
-                           # 0.16.7 carries the v0.2.2 link unit: the
-                           # fork/exec deadlock fix (tebako#433), the windows
-                           # CA-root fix, the driver-owned SSL_CERT_FILE
-                           # export (tebako#441), and the LFS64/fortify
-                           # alias-surface jail coverage (tebako#443 —
-                           # OpenSSL 3.6 binds fopen64). Ruby source pin
-                           # v0.2.27 (CRL_CHECK_ALL removal, ruby#95).
+                           # 0.16.10 carries the v0.2.6 link unit and the
+                           # windows support-DLL library_aliases payload
+                           # (tebako-runtime-ruby#133 — libwinpthread-1 /
+                           # libgcc_s_seh-1 / libstdc++-6 materialize next to
+                           # the ruby DLL; packed-mn's LoadError-126-on-ox.so).
+                           # Ruby source pin v0.2.27 (CRL_CHECK_ALL removal,
+                           # ruby#95).
   # mkmf SDK for the source-built native deps (brotli, ox, oga, ruby-ll,
   # psych, websocket-driver): headers of the exact ruby the runtime ships
   # (the runtime image carries none). The windows leg additionally generates
@@ -68,7 +68,7 @@ depends:
 # upstream.sha256; provenance in docs/build-notes.md).
 tools:
   repo: "tamatebako/tebako"
-  release: "v0.2.0"
+  release: "v0.2.6"
 
 platforms:
   - aarch64-macos          # triplet-bound (nokogiri/ffi/libpng/parsanol/sqlite3
