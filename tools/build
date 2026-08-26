@@ -129,7 +129,8 @@ case "$TRIPLET" in
     printf 'puts "stub"\n' > "$WORK/stubapp/stub.rb"
     printf 'source "https://rubygems.org"\ngem "base64"\n' > "$WORK/stubapp/Gemfile"
     "$TEBAKO_CLI" press -r "$WORK/stubapp" -e stub.rb -o "$WORK/stub-pkg" \
-      -p "$WORK/prefix" -l warn --tebako-version "$TEBAKO_VERSION"
+      -p "$WORK/prefix" -l warn --tebako-version "$TEBAKO_VERSION" \
+      -R "$RUBY_V"
     SHIM="$WORK/prefix/o/p/ruby"
     [ -x "$SHIM" ] || { echo "no deploy shim at $SHIM"; exit 1; }
     ;;
