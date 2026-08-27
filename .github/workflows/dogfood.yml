@@ -36,11 +36,15 @@ jobs:
           - { triplet: x86_64-linux-gnu, os: ubuntu-24.04, plat: linux-gnu-x86_64 }
           # - { triplet: x86_64-windows-ucrt, os: windows-latest, plat: windows-ucrt64 } # windows payload publish first (see header)
     runs-on: ${{ matrix.os }}
-    env:
-      TEBAKO_RELEASE: v0.3.1
-      METANORMA_VERSION: "1.16.9"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Every version flows from recipe.yml (tools.release +
+      # upstream.version) — the workflow carries no literals.
+      - name: Read the pins (recipe.yml is the SSOT)
+        run: |
+          ruby tools/pins.rb --release-only >> "$GITHUB_ENV"
+          echo "METANORMA_VERSION=$PKG_VERSION" >> "$GITHUB_ENV"
 
       - name: Install the tebako CLI from the release (SHA256SUMS-verified)
         # Nothing tebako-related is on this bare runner: no runtime, no
@@ -166,10 +170,16 @@ jobs:
         include:
           - { os: macos-14, plat: macos-arm64 }
     runs-on: ${{ matrix.os }}
-    env:
-      TEBAKO_RELEASE: v0.3.1
-      METANORMA_VERSION: "1.16.9"
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Every version flows from recipe.yml (tools.release +
+      # upstream.version) — the workflow carries no literals.
+      - name: Read the pins (recipe.yml is the SSOT)
+        run: |
+          ruby tools/pins.rb --release-only >> "$GITHUB_ENV"
+          echo "METANORMA_VERSION=$PKG_VERSION" >> "$GITHUB_ENV"
+
       - name: Install CLI, add registry, install metanorma, exec version
         run: |
           set -euo pipefail

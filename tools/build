@@ -31,8 +31,9 @@
 # Inputs (env, all with sane defaults):
 #   TRIPLET         aarch64-macos | x86_64-linux-gnu | x86_64-windows-ucrt
 #   TEBAKO_CLI      tebako-cli binary (default: tebako on PATH)
-#   TEBAKO_VERSION  runtime release line (default 0.16.11 — the v0.3.1 CLI's
-#                   built-in default is older; the feedstock pins the line)
+#   TEBAKO_VERSION  runtime release line (default: recipe.yml
+#                   build.runtime.tebako — the feedstock pins the line; the
+#                   CLI's built-in default is older)
 #   TFS_CLI         tfs CLI binary, the in-process imager (default: tfs on PATH)
 #   WORK            build workspace (default: out/work-$TRIPLET)
 #   OUT             artifact dir   (default: out/$TRIPLET)
@@ -49,28 +50,31 @@
 set -euo pipefail
 
 FEEDSTOCK="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="1.16.9"
+# Every version/digest flows from recipe.yml (the repo SSOT) — this script
+# carries no literals. Env overrides stay for one-off experiments.
+recipe() { ruby -ryaml -e "puts(YAML.load_file('$FEEDSTOCK/recipe.yml').dig(*ARGV) || '')" "$@"; }
+VERSION="${VERSION:-$(recipe upstream version)}"
 TRIPLET="${TRIPLET:-aarch64-macos}"   # the manifest platforms form (vcpkg, spec 03)
-RUBY_V="3.3.12"
-API_V="3.3.0"
+RUBY_V="${RUBY_V:-$(recipe build runtime version)}"
+API_V="$(echo "$RUBY_V" | sed -E 's/^([0-9]+\.[0-9]+)\..*/\1.0/')"
 
 TEBAKO_CLI="${TEBAKO_CLI:-tebako}"
 TFS_CLI="${TFS_CLI:-tfs}"
 # The staging (and target) runtime's tebako version — the press resolves
-# exactly this (0.16.x = the v2 contract-2 runtime). 0.16.11: the tebako
-# v0.3.x link unit (limnifs 0.3.x new-v1 image format + the #464 read-path
-# performance work) + the windows support-DLL library_aliases payload
-# (tebako-runtime-ruby#133).
-TEBAKO_VERSION="${TEBAKO_VERSION:-0.16.11}"
+# exactly this (0.16.x = the v2 contract-2 runtime). Owned by recipe.yml
+# build.runtime.tebako (0.16.11: the tebako v0.3.x link unit — limnifs
+# 0.3.x new-v1 image format + the #464 read-path work — + the windows
+# support-DLL library_aliases payload, tebako-runtime-ruby#133).
+TEBAKO_VERSION="${TEBAKO_VERSION:-$(recipe build runtime tebako)}"
 WORK="${WORK:-$FEEDSTOCK/out/work-$TRIPLET}"
 OUT="${OUT:-$FEEDSTOCK/out/$TRIPLET}"
 export TEBAKO_HOME="${TEBAKO_HOME:-$FEEDSTOCK/out/tebako-home}"
 CLOSURE="$FEEDSTOCK/closure/$VERSION-$TRIPLET.txt"
 
-SDK_URL="https://cache.ruby-lang.org/pub/ruby/3.3/ruby-3.3.12.tar.gz"
-SDK_SHA256="b06d63beae271933033e27f0a389bc582a009e7845357d44365c39de525a051b"
-LIBYAML_URL="https://pyyaml.org/download/libyaml/yaml-0.2.5.tar.gz"
-LIBYAML_SHA256="c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4"
+SDK_URL="${SDK_URL:-$(recipe build sdk url)}"
+SDK_SHA256="${SDK_SHA256:-$(recipe build sdk sha256)}"
+LIBYAML_URL="${LIBYAML_URL:-$(recipe build libyaml url)}"
+LIBYAML_SHA256="${LIBYAML_SHA256:-$(recipe build libyaml sha256)}"
 
 step() { printf '\n== %s\n' "$*"; }
 
