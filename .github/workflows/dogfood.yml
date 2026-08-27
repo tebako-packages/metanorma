@@ -44,7 +44,6 @@ jobs:
       - name: Read the pins (recipe.yml is the SSOT)
         run: |
           ruby tools/pins.rb --release-only >> "$GITHUB_ENV"
-          echo "METANORMA_VERSION=$PKG_VERSION" >> "$GITHUB_ENV"
 
       - name: Install the tebako CLI from the release (SHA256SUMS-verified)
         # Nothing tebako-related is on this bare runner: no runtime, no
@@ -79,7 +78,7 @@ jobs:
           tebako add-registry tfs:github:tebako-packages/metanorma
           tebako add-registry tfs:github:tebako-packages/inkscape
           tebako add-registry tfs:github:tebako-packages/openjdk
-          tebako install "metanorma@$METANORMA_VERSION"
+          tebako install "metanorma@$PKG_VERSION"
 
       - name: Assert the store holds exactly one of each closure payload
         # Structural, not log-scraping: one .tfs per closure payload
@@ -178,7 +177,6 @@ jobs:
       - name: Read the pins (recipe.yml is the SSOT)
         run: |
           ruby tools/pins.rb --release-only >> "$GITHUB_ENV"
-          echo "METANORMA_VERSION=$PKG_VERSION" >> "$GITHUB_ENV"
 
       - name: Install CLI, add registry, install metanorma, exec version
         run: |
@@ -196,6 +194,6 @@ jobs:
           tebako add-registry tfs:github:tebako-packages/metanorma
           tebako add-registry tfs:github:tebako-packages/inkscape
           tebako add-registry tfs:github:tebako-packages/openjdk
-          tebako install "metanorma@$METANORMA_VERSION"
+          tebako install "metanorma@$PKG_VERSION"
           export PATH="$HOME/.tebako/shims:$PATH"
-          metanorma version | grep -E "Metanorma::Cli $METANORMA_VERSION"
+          metanorma version | grep -E "Metanorma::Cli $PKG_VERSION"
