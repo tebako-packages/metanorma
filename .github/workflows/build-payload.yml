@@ -16,7 +16,7 @@ name: build-payload
 #   the tebako#437 CA-bundle workaround); tags publish the windows
 #   artifact together with the mac + linux legs (docs/build-notes.md § Windows).
 #   ALL legs — the spec-26 press-time gate: after boot smoke, each leg
-#   runs `tebako check` (the v0.2.6 CLI) against the just-imaged slice +
+#   runs `tebako check` (the v0.3.1 CLI) against the just-imaged slice +
 #   the pinned runtime — the payload's in-image acceptance (the Homebrew
 #   formula's test translated; manifests/payload.yaml `checks:`). FAIL is
 #   the engine's named exit 79.
@@ -45,26 +45,28 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Fetch tebako CLI tools (tamatebako/tebako v0.2.6, sha256-pinned)
+      - name: Fetch tebako CLI tools (tamatebako/tebako v0.3.1, sha256-pinned)
         # The packager is the RELEASE BINARY (releases are the
         # interface); the digests are pinned here and cross-checked
         # against the release's SHA256SUMS (provenance: docs/build-notes.md).
-        # v0.2.6: the spec-26 `tebako check` engine (the press-time gate
-        # below) + the spec-22/23 composition and alias surface. The v0.1.9
-        # floor stays true: the 0.16.x runtime env images are gem-less
-        # (spec 22 M2) — earlier CLIs gate the press on the retired
-        # tebako-runtime gem (exit 129).
+        # v0.3.1: limnifs 0.3.6 (the new-v1 image format + the #464
+        # read-path performance work) + the #482 SDK src-release fix (the
+        # 3.3.12 Gemfile press needs it) + the spec-26 `tebako check`
+        # engine (the press-time gate below). The v0.1.9 floor stays true:
+        # the 0.16.x runtime env images are gem-less (spec 22 M2) —
+        # earlier CLIs gate the press on the retired tebako-runtime gem
+        # (exit 129).
         run: |
           mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
-          base="https://github.com/tamatebako/tebako/releases/download/v0.2.6"
-          curl -sLO "$base/tebako-0.2.6-macos-arm64"
-          curl -sLO "$base/tfs-0.2.6-macos-arm64"
-          echo "fa811caf7570d3b236721fb73a696e0d98b764affc8d65c8ff8272cd953f0197  tebako-0.2.6-macos-arm64" > SHA256PINS
-          echo "1e29519f47dfa23b327f6a07c96c812ac58c4663f09a17e89058800bcc6a24b8  tfs-0.2.6-macos-arm64" >> SHA256PINS
+          base="https://github.com/tamatebako/tebako/releases/download/v0.3.1"
+          curl -sLO "$base/tebako-0.3.1-macos-arm64"
+          curl -sLO "$base/tfs-0.3.1-macos-arm64"
+          echo "ea95d642c8bfa03c23a7c4f868c42bb81cbbbbfb87fe28e0e28db0067a850b6e  tebako-0.3.1-macos-arm64" > SHA256PINS
+          echo "4136cf476a9e7470d401ee66546a841edf154e6a39f6083021b1f8786b6cc755  tfs-0.3.1-macos-arm64" >> SHA256PINS
           shasum -a 256 -c SHA256PINS
-          chmod 755 tebako-0.2.6-macos-arm64 tfs-0.2.6-macos-arm64
-          mv tebako-0.2.6-macos-arm64 tebako
-          mv tfs-0.2.6-macos-arm64 tfs
+          chmod 755 tebako-0.3.1-macos-arm64 tfs-0.3.1-macos-arm64
+          mv tebako-0.3.1-macos-arm64 tebako
+          mv tfs-0.3.1-macos-arm64 tfs
           echo "$RUNNER_TEMP/tebako-tools" >> "$GITHUB_PATH"
 
       - name: Build the payload
@@ -112,7 +114,7 @@ jobs:
 
       - name: Set up MSYS2 (ucrt64 toolchain for the ruby SDK + the six natives)
         # gcc-libs rides along for the msys2 toolchain's own binaries;
-        # the v0.2.6 tebako windows binaries are statically linked (the
+        # the v0.3.1 tebako windows binaries are statically linked (the
         # release's ship gate audits PE imports).
         # zlib: the explicit source of the zlib1.dll that
         # tools/vendor_siblings.rb vendors next to the payload's
@@ -138,20 +140,20 @@ jobs:
             mingw-w64-ucrt-x86_64-gcc-libs
             mingw-w64-ucrt-x86_64-zlib
 
-      - name: Fetch tebako CLI tools (tamatebako/tebako v0.2.6, sha256-pinned)
+      - name: Fetch tebako CLI tools (tamatebako/tebako v0.3.1, sha256-pinned)
         # the matrix context is not available to step-level `shell`, so
         # the windows leg gets its own steps with the literal msys2 keyword
         shell: msys2 {0}
         run: |
           mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
-          base="https://github.com/tamatebako/tebako/releases/download/v0.2.6"
-          curl -sLO "$base/tebako-0.2.6-windows-ucrt64.exe"
-          curl -sLO "$base/tfs-0.2.6-windows-ucrt64.exe"
-          echo "fce43150c9491d194f8b68362e1656f89e72576263382b6c09cfdc53c1aba623  tebako-0.2.6-windows-ucrt64.exe" > SHA256PINS
-          echo "886ca7b669014c9e792ce8238dc993166ed1aa6e58cb92039086e5cbea44a6d7  tfs-0.2.6-windows-ucrt64.exe" >> SHA256PINS
+          base="https://github.com/tamatebako/tebako/releases/download/v0.3.1"
+          curl -sLO "$base/tebako-0.3.1-windows-ucrt64.exe"
+          curl -sLO "$base/tfs-0.3.1-windows-ucrt64.exe"
+          echo "6e86abeb16b3745bdb65e936567bbb255b73b84bcb43fccbf6e93f971cd09984  tebako-0.3.1-windows-ucrt64.exe" > SHA256PINS
+          echo "4fde6e7252a0aef0767fb09c08971396b004f0d25f39f05c774ab8644bd1efe2  tfs-0.3.1-windows-ucrt64.exe" >> SHA256PINS
           sha256sum -c SHA256PINS
-          cp tebako-0.2.6-windows-ucrt64.exe tebako.exe
-          cp tfs-0.2.6-windows-ucrt64.exe tfs.exe
+          cp tebako-0.3.1-windows-ucrt64.exe tebako.exe
+          cp tfs-0.3.1-windows-ucrt64.exe tfs.exe
           echo "TEBAKO_TOOLS=$(cygpath -m "$RUNNER_TEMP/tebako-tools")" >> "$GITHUB_ENV"
 
       - name: Build the payload
@@ -228,20 +230,20 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Fetch tebako CLI tools (tamatebako/tebako v0.2.6, sha256-pinned)
+      - name: Fetch tebako CLI tools (tamatebako/tebako v0.3.1, sha256-pinned)
         # Same pins discipline as the mac leg (the digests are cross-checked
         # against the release's SHA256SUMS); ubuntu has sha256sum, not shasum.
         run: |
           mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
-          base="https://github.com/tamatebako/tebako/releases/download/v0.2.6"
-          curl -sLO "$base/tebako-0.2.6-linux-gnu-x86_64"
-          curl -sLO "$base/tfs-0.2.6-linux-gnu-x86_64"
-          echo "92f7e578a211c0e212844e265b1ea6b0490cce09fec652c8ee85ce6d063f589c  tebako-0.2.6-linux-gnu-x86_64" > SHA256PINS
-          echo "510083d0d545a3bdbe519cf7bcb7e849f7763c28144d756fd1092afcc5c2e96a  tfs-0.2.6-linux-gnu-x86_64" >> SHA256PINS
+          base="https://github.com/tamatebako/tebako/releases/download/v0.3.1"
+          curl -sLO "$base/tebako-0.3.1-linux-gnu-x86_64"
+          curl -sLO "$base/tfs-0.3.1-linux-gnu-x86_64"
+          echo "034804fae6e25f654c64f08889f11ff55e0bdf46dd446d489fb25734b47aadc0  tebako-0.3.1-linux-gnu-x86_64" > SHA256PINS
+          echo "2dca2fe24401dc7110d7d3297984023e44eb466727ec3cf74459d3d14ea8d623  tfs-0.3.1-linux-gnu-x86_64" >> SHA256PINS
           sha256sum -c SHA256PINS
-          chmod 755 tebako-0.2.6-linux-gnu-x86_64 tfs-0.2.6-linux-gnu-x86_64
-          mv tebako-0.2.6-linux-gnu-x86_64 tebako
-          mv tfs-0.2.6-linux-gnu-x86_64 tfs
+          chmod 755 tebako-0.3.1-linux-gnu-x86_64 tfs-0.3.1-linux-gnu-x86_64
+          mv tebako-0.3.1-linux-gnu-x86_64 tebako
+          mv tfs-0.3.1-linux-gnu-x86_64 tfs
           echo "$RUNNER_TEMP/tebako-tools" >> "$GITHUB_PATH"
 
       - name: Build the payload
@@ -311,17 +313,17 @@ jobs:
           done
       # The publisher is the product repo's published CLI (releases are
       # the interface), sha256-pinned — never a from-source build.
-      - name: Fetch the publisher (tebako release v0.2.6, sha256-pinned)
+      - name: Fetch the publisher (tebako release v0.3.1, sha256-pinned)
         run: |
           set -euo pipefail
           mkdir -p .packager
           curl -sL --fail -o .packager/tebako \
-            https://github.com/tamatebako/tebako/releases/download/v0.2.6/tebako-0.2.6-macos-arm64
+            https://github.com/tamatebako/tebako/releases/download/v0.3.1/tebako-0.3.1-macos-arm64
           curl -sL --fail -o .packager/tebako-shim \
-            https://github.com/tamatebako/tebako/releases/download/v0.2.6/tebako-shim-0.2.6-macos-arm64
-          echo "fa811caf7570d3b236721fb73a696e0d98b764affc8d65c8ff8272cd953f0197  .packager/tebako" \
+            https://github.com/tamatebako/tebako/releases/download/v0.3.1/tebako-shim-0.3.1-macos-arm64
+          echo "ea95d642c8bfa03c23a7c4f868c42bb81cbbbbfb87fe28e0e28db0067a850b6e  .packager/tebako" \
             | shasum -a 256 -c -
-          echo "67fb1a51cde715abc1cfe22a68d2b56e01306e52dd11554448da11d7b3b17a91  .packager/tebako-shim" \
+          echo "eaf022a9e889afc23a70872bf8233904897dd94c9b62a65eb77fbd5c36c20710  .packager/tebako-shim" \
             | shasum -a 256 -c -
           chmod +x .packager/tebako .packager/tebako-shim
           .packager/tebako --help > /dev/null

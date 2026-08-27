@@ -17,10 +17,12 @@ build:
   runtime:
     engine: ruby
     version: "3.3.12"      # the staging + exec runtime (tebako-runtime-ruby)
-    tebako: "0.16.10"      # runtime release line (image-era; the pinned CLI
+    tebako: "0.16.11"      # runtime release line (image-era; the pinned CLI
                            # refuses pre-era releases by contract, exit 75).
-                           # 0.16.10 carries the v0.2.6 link unit and the
-                           # windows support-DLL library_aliases payload
+                           # 0.16.11 carries the tebako v0.3.x link unit
+                           # (limnifs 0.3.x new-v1 image format + the #464
+                           # read-path performance work) and the windows
+                           # support-DLL library_aliases payload
                            # (tebako-runtime-ruby#133 — libwinpthread-1 /
                            # libgcc_s_seh-1 / libstdc++-6 materialize next to
                            # the ruby DLL; packed-mn's LoadError-126-on-ox.so).
@@ -68,7 +70,7 @@ depends:
 # upstream.sha256; provenance in docs/build-notes.md).
 tools:
   repo: "tamatebako/tebako"
-  release: "v0.2.6"
+  release: "v0.3.1"
 
 platforms:
   - aarch64-macos          # triplet-bound (nokogiri/ffi/libpng/parsanol/sqlite3
