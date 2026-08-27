@@ -36,11 +36,14 @@ jobs:
           - { triplet: x86_64-linux-gnu, os: ubuntu-24.04, plat: linux-gnu-x86_64 }
           # - { triplet: x86_64-windows-ucrt, os: windows-latest, plat: windows-ucrt64 } # windows payload publish first (see header)
     runs-on: ${{ matrix.os }}
-    env:
-      TEBAKO_RELEASE: v0.2.6
-      METANORMA_VERSION: "1.16.9"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Every version flows from recipe.yml (tools.release +
+      # upstream.version) — the workflow carries no literals.
+      - name: Read the pins (recipe.yml is the SSOT)
+        run: |
+          ruby tools/pins.rb --release-only >> "$GITHUB_ENV"
 
       - name: Install the tebako CLI from the release (SHA256SUMS-verified)
         # Nothing tebako-related is on this bare runner: no runtime, no
@@ -67,7 +70,7 @@ jobs:
 
       - name: Add the closure registries and install metanorma
         # The tebako-packages index (registry-of-registries) is not walked
-        # by the CLI (still true at v0.2.6: it registers as 0 payloads —
+        # by the CLI (still true at v0.3.1: it registers as 0 payloads —
         # the packages[] follow is a filed product gap, TODO.v2-1/22).
         # Add the three feedstock registries directly.
         run: |
@@ -75,7 +78,7 @@ jobs:
           tebako add-registry tfs:github:tebako-packages/metanorma
           tebako add-registry tfs:github:tebako-packages/inkscape
           tebako add-registry tfs:github:tebako-packages/openjdk
-          tebako install "metanorma@$METANORMA_VERSION"
+          tebako install "metanorma@$PKG_VERSION"
 
       - name: Assert the store holds exactly one of each closure payload
         # Structural, not log-scraping: one .tfs per closure payload
@@ -166,10 +169,15 @@ jobs:
         include:
           - { os: macos-14, plat: macos-arm64 }
     runs-on: ${{ matrix.os }}
-    env:
-      TEBAKO_RELEASE: v0.2.6
-      METANORMA_VERSION: "1.16.9"
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Every version flows from recipe.yml (tools.release +
+      # upstream.version) — the workflow carries no literals.
+      - name: Read the pins (recipe.yml is the SSOT)
+        run: |
+          ruby tools/pins.rb --release-only >> "$GITHUB_ENV"
+
       - name: Install CLI, add registry, install metanorma, exec version
         run: |
           set -euo pipefail
@@ -186,6 +194,6 @@ jobs:
           tebako add-registry tfs:github:tebako-packages/metanorma
           tebako add-registry tfs:github:tebako-packages/inkscape
           tebako add-registry tfs:github:tebako-packages/openjdk
-          tebako install "metanorma@$METANORMA_VERSION"
+          tebako install "metanorma@$PKG_VERSION"
           export PATH="$HOME/.tebako/shims:$PATH"
-          metanorma version | grep -E "Metanorma::Cli $METANORMA_VERSION"
+          metanorma version | grep -E "Metanorma::Cli $PKG_VERSION"
