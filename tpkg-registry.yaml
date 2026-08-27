@@ -7,15 +7,15 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: metanorma-1.16.9-macos-arm64.tfs
-        sha256: '666a877e78fcbbe3e358b7a7592b146410fe4047373b27aa22045113467b39ee'
+        sha256: '8eabdd208e8cd8a95de7eee180e0f5f3e38c0c9a3bb8e852eff8f82f7b27e609'
       x86_64-linux-gnu:
         artifact: metanorma-1.16.9-linux-gnu-x86_64.tfs
-        sha256: '00ec44ebf592d12e92a9039a9163b818475229410e326bbc78a46b57c68cb2e5'
+        sha256: '71f5933256e999f6e0053eedd2a35a0415f6e9c75b2439027405d6f9b1d035a0'
       x86_64-windows-ucrt:
         artifact: metanorma-1.16.9-windows-ucrt64.tfs
-        sha256: fff49f9bf29954536987bdba02db2ae49db3b294037f5dbf8430c6e5de8f503d
+        sha256: f0453dee9a3cf20c62ae3538730963ab9d4b185d86593632b1c6c864776da645
     release:
-      ref: tfs:github:tebako-packages/metanorma:1.16.9-3
+      ref: tfs:github:tebako-packages/metanorma:1.16.9-4
     runtime_requirement:
       engine: ruby
       constraint: ~> 3.3.0
