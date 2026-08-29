@@ -20,6 +20,20 @@ identity:
     gem: metanorma-cli
     gem_version: "1.16.9"
 provides:
+  # spec 03 §2.2 completeness: the COMPLETE inventory of user-invocable
+  # commands the image carries — 66 commands from the 52 executable-bearing
+  # gems of the closure, enumerated from the staged gemspecs (tools/build
+  # fails closed when a declared name is carried by no gem, or by two).
+  # Every non-primary command stages templates/bin/command at /bin/<name>;
+  # the stub derives its identity from its filename and resolves the owning
+  # gem via Gem::Specification — no exe→gem table to rot.
+  #
+  # `active` (default true) is the install-time PATH exposure ONLY: install
+  # shim-registers the active set; every declared command stays
+  # dispatchable (`tebako shim enable <name>` links it on demand, `tebako
+  # run <name>` reaches it directly) and mirrors into the self-contained
+  # package's L2 entries. Same runtime requirement on every entry: one
+  # closure, one abi line.
   entrypoints:
     - name: metanorma
       path: /bin/metanorma
@@ -33,6 +47,80 @@ provides:
         # runtime's Gem::Platform.local — filled by tools/build).
         constraint: "~> 3.3.0"
         abi: "@@ABI@@"
+    # --- the active set: the document toolchain's user-facing commands
+    - {name: metanorma-manifest, path: /bin/metanorma-manifest, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: asciidoctor, path: /bin/asciidoctor, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: canon, path: /bin/canon, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: coradoc, path: /bin/coradoc, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: expressir, path: /bin/expressir, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    # the font manager: repo setup/update, font install into the host
+    # ~/.fontist — the chocolatey OIML leg's packaged answer
+    # (chocolatey-metanorma#89).
+    - {name: fontist, path: /bin/fontist, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: fontisan, path: /bin/fontisan, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: glossarist, path: /bin/glossarist, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: lutaml, path: /bin/lutaml, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: lutaml-model, path: /bin/lutaml-model, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: lutaml-sysml, path: /bin/lutaml-sysml, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: lutaml-wsd2uml, path: /bin/lutaml-wsd2uml, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: lutaml-xsd, path: /bin/lutaml-xsd, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: lutaml-yaml2uml, path: /bin/lutaml-yaml2uml, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: omnizip, path: /bin/omnizip, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: plurimath, path: /bin/plurimath, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: png_conform, path: /bin/png_conform, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: relaton, path: /bin/relaton, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: reverse_adoc, path: /bin/reverse_adoc, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: suma, path: /bin/suma, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: svg_conform, path: /bin/svg_conform, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: unitsdb, path: /bin/unitsdb, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: vectory, path: /bin/vectory, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: w2a, path: /bin/w2a, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: w2m, path: /bin/w2m, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    # --- declared-but-inactive (active: false): library-bundled helper
+    # CLIs, format converters, gem dev tools. Dispatchable on demand,
+    # never PATH-registered by default — generic names (console, setup,
+    # thor, ...) must not shadow anything the user did not explicitly
+    # enable.
+    - {name: cabriolet, path: /bin/cabriolet, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: console, path: /bin/console, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: convert2oscalyaml.rb, path: /bin/convert2oscalyaml.rb, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: dot2ruby, path: /bin/dot2ruby, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: ea, path: /bin/ea, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: ebnf, path: /bin/ebnf, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: emf, path: /bin/emf, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: emfsvg, path: /bin/emfsvg, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: excavate, path: /bin/excavate, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: fractor, path: /bin/fractor, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: fuzzy_match, path: /bin/fuzzy_match, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: gem2gv, path: /bin/gem2gv, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: git2gv, path: /bin/git2gv, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: japanese_calendar, path: /bin/japanese_calendar, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: jsonld, path: /bin/jsonld, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: ldiff, path: /bin/ldiff, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: loc-mods, path: /bin/loc-mods, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: nokogiri, path: /bin/nokogiri, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: premailer, path: /bin/premailer, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: pubid-nist, path: /bin/pubid-nist, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: rdf, path: /bin/rdf, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: reverse_markdown, path: /bin/reverse_markdown, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: rng, path: /bin/rng, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: rougify, path: /bin/rougify, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: ruby-ll, path: /bin/ruby-ll, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: ruby2gv, path: /bin/ruby2gv, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: setup, path: /bin/setup, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: socksify_ruby, path: /bin/socksify_ruby, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: sparql, path: /bin/sparql, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: sxp2json, path: /bin/sxp2json, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: sxp2rdf, path: /bin/sxp2rdf, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: sxp2xml, path: /bin/sxp2xml, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: sxp2yaml, path: /bin/sxp2yaml, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: thor, path: /bin/thor, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: tokenize, path: /bin/tokenize, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: ukiryu, path: /bin/ukiryu, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: unibuf, path: /bin/unibuf, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: w3c_api, path: /bin/w3c_api, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: xml2gv, path: /bin/xml2gv, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: xsdvi, path: /bin/xsdvi, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
   platforms: [aarch64-macos]
   capabilities: {exec: true, read: true}
 requires:
@@ -80,3 +168,17 @@ checks:
     # elapsed (`check html-xml PASS <n>s`), so tighten to measured+headroom
     # once a green run reports the real number.
     timeout: 600
+  # The bundled-CLI smokes — spec 03 §2.2 completeness made executable:
+  # the generic stub (templates/bin/command staged at /bin/<name>) derives
+  # its identity from its filename, resolves the owning gem via
+  # Gem::Specification, and boots the CLI. No fixtures — a bare --help;
+  # exit 0 is the whole assertion. fontist and suma stand for the set
+  # (thor-based and plain-startup respectively).
+  fontist-cli:
+    entry: /bin/fontist
+    argv: ["--help"]
+    expect: { exit: 0 }
+  suma-cli:
+    entry: /bin/suma
+    argv: ["--help"]
+    expect: { exit: 0 }

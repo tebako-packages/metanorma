@@ -104,10 +104,18 @@ platforms:
                            # is the follow-up (docs/build-notes.md § Windows)
 
 provides:
+  # Informational shadow of the payload's command surface — the
+  # AUTHORITATIVE declaration is manifests/payload.yaml (the complete
+  # 66-command inventory with per-entrypoint `active` exposure, spec 03
+  # §2.2), which tools/build fills into the image and `tebako publish`
+  # mirrors into the registry. Do NOT grow this list here.
   entrypoints:
     - name: "metanorma"
       path: "/bin/metanorma"
       version: "1.16.9"
+      runtime_requirement: {engine: ruby, constraint: "~> 3.3.0"}
+    - name: "fontist"
+      path: "/bin/fontist"
       runtime_requirement: {engine: ruby, constraint: "~> 3.3.0"}
 
 annotations:
