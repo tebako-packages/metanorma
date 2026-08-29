@@ -449,6 +449,20 @@ for ext in brotli ox liboga libll psych websocket_mask; do
   [ -n "$found" ] || { echo "native build missing: $ext.$SOEXT"; exit 1; }
   echo "native ext OK: $found"
 done
+# …and the bookkeeping must live under the staging runtime's OWN platform
+# string: rubygems keys missing_extensions? on Gem::Platform.local at exec
+# time, and a skewed tree silently "ignores" the source-built natives in
+# strict dependency activation (Gem::Dependency#to_specs rejects ignored?
+# specs — seen in the field as fontist->fontisan->brotli ~> 0.5 failing
+# with MissingSpecVersionError against a darwin-24 tree on the darwin-23
+# runtime line). EXT_PLATFORM is the staging runtime's report; the tree
+# must match it exactly.
+for pdir in "$WORK/stage/extensions"/*/; do
+  pname="$(basename "$pdir")"
+  [ "$pname" = "$EXT_PLATFORM" ] || {
+    echo "extensions platform skew: bookkeeping under $pname, staging runtime reports $EXT_PLATFORM"
+    exit 1; }
+done
 
 # ----------------------------------------------------------- payload tree
 step "assemble the payload tree"
@@ -462,6 +476,31 @@ cp -R "$WORK/stage/extensions" "$G/extensions"
 [ -d "$WORK/stage/build_info" ] && cp -R "$WORK/stage/build_info" "$G/build_info"
 cp "$FEEDSTOCK/templates/bin/metanorma" "$PAYLOAD/bin/metanorma"
 chmod 755 "$PAYLOAD/bin/metanorma"
+# Every other declared command (manifests/payload.yaml provides.entrypoints
+# — the ONE inventory, spec 03 §2.2 completeness) stages the generic stub
+# templates/bin/command at /bin/<name>: the stub derives its identity from
+# its own filename and resolves the owning gem via Gem::Specification.
+# Active AND inactive alike — `active: false` gates install-time PATH
+# registration only; the command must exist in the image to stay
+# dispatchable (`tebako shim enable` / `tebako run` / the self-contained
+# package's argv0).
+ruby -ryaml -e 'YAML.load_file(ARGV[0]).fetch("provides").fetch("entrypoints").each { |e| puts e.fetch("name") }' \
+  "$FEEDSTOCK/manifests/payload.yaml" | while read -r cmdname; do
+  [ "$cmdname" = "metanorma" ] && continue
+  cp "$FEEDSTOCK/templates/bin/command" "$PAYLOAD/bin/$cmdname"
+  chmod 755 "$PAYLOAD/bin/$cmdname"
+done
+# Fail closed on declaration drift: every declared command is the
+# `executables` of EXACTLY ONE staged gemspec (zero = the closure dropped
+# the gem; two = an ambiguity the stub's Gem::Specification scan could
+# mis-resolve).
+ruby -ryaml -e 'YAML.load_file(ARGV[0]).fetch("provides").fetch("entrypoints").each { |e| puts e.fetch("name") }' \
+  "$FEEDSTOCK/manifests/payload.yaml" | while read -r cmdname; do
+  [ "$cmdname" = "metanorma" ] && continue
+  hits="$(grep -hE '\.executables\s*=' "$G"/specifications/*.gemspec | grep -cF "\"$cmdname\"" || true)"
+  [ "$hits" = "1" ] || { echo "declaration drift: $cmdname is the executable of $hits staged gems (want exactly 1)"; exit 1; }
+done
+echo "declared commands staged and verified against the closure"
 cp "$FEEDSTOCK/templates/local/stub.rb" "$PAYLOAD/local/stub.rb"
 
 # --------------------------------------- vendored DLL siblings (windows)

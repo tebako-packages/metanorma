@@ -1,0 +1,91 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# tebako-packages/metanorma generic payload command (kind: app,
+# runtime-required). ONE stub staged at /bin/<name> for every declared
+# entrypoint except the primary (templates/bin/metanorma stays hand-tuned
+# for the per-release version pin). The command's identity is its own
+# filename — spec 07 argv0 dispatch: the shim link name and the
+# self-contained package's L2 entry name both end at this file.
+#
+# exe→gem resolution is a Gem::Specification scan over the closure's own
+# specs — the closure carries every executable name exactly once
+# (tools/build fails closed on drift), so the match is unambiguous and
+# there is no hand-maintained exe→gem table to rot.
+#
+# Mounting discipline identical to templates/bin/metanorma: the gem home
+# is derived from this file's own location because the payload mounts at
+# an arbitrary point (spec 07 mounts it at "/"); the runtime's default
+# gem dir (its own image) supplies the default gems (strscan, rexml's
+# chain, json, ...).
+
+# Windows mount-addressing (identical to templates/bin/metanorma — keep
+# the two in lockstep): the mount triple grammar cannot carry a
+# drive-letter mount point, so the payload mounts at "/" — but ruby on
+# windows re-roots drive-relative absolute paths onto the cwd drive
+# (File.expand_path — rubygems calls it on every globbed gemspec with the
+# VFS dir as base) or the GetFullPathNameW answer (File.realpath), both of
+# which would escape the VFS ("D:/lib/..." is a host path). Keep
+# VFS-rooted paths literal: the VFS owns the "/" namespace and holds no
+# symlinks, so the lexical form IS the resolved form. Host paths (A:/t,
+# drive letters, cwd-based relatives) keep the real semantics.
+if RUBY_PLATFORM =~ /mingw|mswin/
+  class << File
+    alias_method :__tebako_payload_expand_path, :expand_path
+    alias_method :__tebako_payload_realpath, :realpath
+
+    def __tebako_payload_vfs_lexical(path, base)
+      absolute = path.match?(%r{\A(/|[A-Za-z]:[/\\])})
+      joined = absolute ? path.dup : File.join(base, path)
+      parts = joined.split("/").each_with_object([]) do |c, acc|
+        next acc if c.empty? || c == "."
+        c == ".." ? acc.pop : acc.push(c)
+      end
+      joined.start_with?("/") ? "/#{parts.join('/')}" : parts.join("/")
+    end
+
+    # MRI's File.expand_path/realpath accept any path-like (Pathname
+    # included); String#to_s returns self, so the coercion is free for
+    # the common case.
+    def expand_path(path, base = Dir.pwd)
+      path = path.to_s
+      if path.start_with?("/") || base.to_s.start_with?("/")
+        __tebako_payload_vfs_lexical(path, base)
+      else
+        __tebako_payload_expand_path(path, base)
+      end
+    end
+
+    def realpath(path, base = nil)
+      # File.realpath takes an optional base (Pathname#realpath passes
+      # one on ruby 3.3).
+      path = path.to_s
+      if path.start_with?("/") || base.to_s.start_with?("/")
+        __tebako_payload_vfs_lexical(path, base || Dir.pwd)
+      elsif base.nil?
+        __tebako_payload_realpath(path)
+      else
+        __tebako_payload_realpath(path, base)
+      end
+    end
+  end
+end
+
+# File.expand_path("..", __dir__) would already re-root "/bin" onto the
+# cwd drive on windows; File.dirname stays lexical.
+root = File.dirname(__dir__)
+gem_dir = File.join(root, "lib/ruby/gems/3.3.0")
+
+ENV["GEM_HOME"] = gem_dir
+ENV["GEM_PATH"] = [gem_dir, Gem.default_dir].join(File::PATH_SEPARATOR)
+Gem.clear_paths
+
+name = File.basename(__FILE__)
+spec = Gem::Specification.find { |s| s.executables.include?(name) }
+abort("#{name}: no gem in the payload declares this executable — " \
+      "the payload's command inventory drifted from its closure") if spec.nil?
+
+# Strict but unpinned: the closure carries exactly one version of the
+# owning gem, so activation is unambiguous without per-release churn here.
+gem spec.name, spec.version.to_s
+load Gem.bin_path(spec.name, name)
