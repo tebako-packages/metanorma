@@ -41,6 +41,7 @@ PRECOMPILED_NATIVES = {"nokogiri", "ffi", "libpng", "parsanol", "sqlite3"}
 # Resolution overrides, each justified in docs/build-notes.md (recipe.yml pins):
 PINS = {
     "liquid": "5.6.0",  # >= 5.6.1 demands strscan >= 3.1.1 (source-only native)
+    "metanorma": "2.5.4",  # portfolio directive materialisation (metanorma#596)
 }
 
 lock_path, platform = sys.argv[1], sys.argv[2]
