@@ -44,6 +44,10 @@ build:
   # Resolution overrides, each justified in docs/build-notes.md:
   pins:
     liquid: "5.6.0"        # >= 5.6.1 demands strscan >= 3.1.1 (source-only native)
+    metanorma: "2.5.4"     # portfolio directive materialisation (metanorma#596):
+                           # absolute pdf-portfolio cover/keystore paths are
+                           # copied into the output folder so external readers
+                           # (mn2pdf's JVM) never dereference an in-VFS gem path
   # Constraints the runtime's own default/bundled gems already satisfy — the
   # payload relies on the runtime for these (runtime-required kind: app):
   skip_defaults: [json, bigdecimal, strscan, racc, drb, uri, minitest,

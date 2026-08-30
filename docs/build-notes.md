@@ -99,6 +99,15 @@ compact index `/info/<gem>` checksum before staging.
 - **`liquid` pinned to 5.6.0** (same as fontist). liquid ≥ 5.6.1 requires
   `strscan >= 3.1.1`; strscan is source-only and the runtime's default is
   3.0.9. All liquid dependents accept 5.6.0 (`~> 5`, `>= 4.0, < 6.0`).
+- **`metanorma` pinned to 2.5.4** (metanorma-cli's `~> 2.5.1` would float).
+  2.5.4 materialises absolute pdf-portfolio cover/keystore directive paths
+  into the output folder (metanorma/metanorma#596): mn2pdf's JVM reads those
+  directives from the collection XML itself, and an in-VFS gem path is not a
+  real host path it can open. 2.5.2→2.5.4 runtime dependencies are
+  byte-identical, so the closure is a one-line version+digest change per
+  triplet (digest from the rubygems compact index, same source as
+  tools/gen_closure). The gem ships no executables (`executables: []`), so
+  the 66-entrypoint inventory is unaffected.
 - **Default-gem skips.** Constraints satisfied by the ruby 3.3.7 runtime's
   own default/bundled gems are not duplicated into the payload. Validated
   mechanically: the runtime's full default+bundled set was dumped through
