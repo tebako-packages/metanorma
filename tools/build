@@ -131,9 +131,12 @@ case "$TRIPLET" in
     # The Gemfile forces the bundler deploy ops (a SimpleScript stub produces
     # no driver); base64 is dep-free and installs in seconds.
     mkdir -p "$WORK/stubapp"
-    printf 'puts "stub"\n' > "$WORK/stubapp/stub.rb"
+    # The entry file must not be named stub.rb: the app root mounts at
+    # /local, so `stub.rb` collides with the press's reserved in-image
+    # dispatcher path /local/stub.rb (tebako 2.1.1 rejects it, exit 143).
+    printf 'puts "stub"\n' > "$WORK/stubapp/main.rb"
     printf 'source "https://rubygems.org"\ngem "base64"\n' > "$WORK/stubapp/Gemfile"
-    "$TEBAKO_CLI" press -r "$WORK/stubapp" -e stub.rb -o "$WORK/stub-pkg" \
+    "$TEBAKO_CLI" press -r "$WORK/stubapp" -e main.rb -o "$WORK/stub-pkg" \
       -p "$WORK/prefix" -l warn --tebako-version "$TEBAKO_VERSION" \
       -R "$RUBY_V"
     SHIM="$WORK/prefix/o/p/ruby"
