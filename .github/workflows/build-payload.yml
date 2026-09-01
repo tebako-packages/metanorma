@@ -382,8 +382,11 @@ jobs:
           # runtimes: prefs (tebako >= the verify-pref join), and the
           # pref-less pick would query the factory's default line, which
           # hosts no java. Append; the fresh runner's config has none.
+          # The publisher home is THIS job's TEBAKO_HOME (set at job
+          # level), not $HOME/.tebako — writing anywhere else both fails
+          # (the dir does not exist) and would be invisible to the verify.
           printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n' \
-            "$JAVA_VERSION" "$JAVA_TEBAKO" >> "$HOME/.tebako/config.yaml"
+            "$JAVA_VERSION" "$JAVA_TEBAKO" >> "$TEBAKO_HOME/config.yaml"
           "$TEBAKO_CLI" publish --name "$PKG_NAME" \
             --release "tfs:github:tebako-packages/metanorma:${{ github.ref_name }}" \
             --payload aarch64-macos="out/aarch64-macos/$PKG_NAME-$PKG_VERSION-macos-arm64.tfs" \
