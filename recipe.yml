@@ -74,21 +74,24 @@ depends:
 # upstream.sha256; provenance in docs/build-notes.md).
 tools:
   repo: "tamatebako/tebako"
-  release: "v2.1.0"          # spec 30 (the kind: runtime edge, TEBAKO_SPAWN_LOCK,
-                             # the expose install-time verify) shipped here
+  release: "v2.1.1"          # v2.1.0 shipped spec 30 (the kind: runtime edge,
+                             # TEBAKO_SPAWN_LOCK, the expose install-time
+                             # verify); v2.1.1 adds tebako#510 — the publish
+                             # verify inherits this repo's runtimes: prefs,
+                             # without which the java edge can never verify
   sha256:
     tebako:
-      macos-arm64: "003e28d88176c519264e2f72db5d36a03279db3feb6d38a42c181230ef35102a"
-      linux-gnu-x86_64: "bc51fcc4c1b921267256d4177d6fe3d21a2ff5d6ac61c88bbbce6b8d464fe749"
-      windows-ucrt64: "a5d37bfe5c056b7c452e3cb261cdae0663a6b33854d02f569c6d293e28bd9148"
+      macos-arm64: "94f86ddf4b58b825649b9f6fc7a3f576fff2eef7cf531098ed410063bf08c878"
+      linux-gnu-x86_64: "b6cbed567622f8d70dc3a516c1d901bfc665b094b2b792e7a42fdab16403c842"
+      windows-ucrt64: "ae5b4a98e9de6af30e7a976e677f61ad20b5489c7c6017f351a4b881b6fd4095"
     tebako-shim:
-      macos-arm64: "ab13c9e7a8696b3ff8198866adfc6a1c390ac88dd35724d435146a6d5ae65d3e"
-      linux-gnu-x86_64: "aa9993b317adbb3ad159b863127de219895faaff2178fd722014927e607fbda8"
-      windows-ucrt64: "421947b4670c64ade1fa699637e1d95d6f1508529cf7b7c19adda94159c9388c"
+      macos-arm64: "0f3123ef9405609e83d223ea984613af7fb606292d5f052b426bb76ecc7483f7"
+      linux-gnu-x86_64: "389e10beaa29a6962de09897d752c63954634498b19132030e17177fc91b9d2c"
+      windows-ucrt64: "5a7e60c0b82d8a0564663604d17b18fc6ce8a37a3acb8d2a8b00654b0fd0f4c3"
     tfs:
-      macos-arm64: "744e6e37f83b19d976400f55440cee4486c060e5f1b671f6a4456940e20659db"
-      linux-gnu-x86_64: "e724ffd1c121ee38a105dc8403128ca3da07016eb2d9bd03fbfba36fa31ff6b0"
-      windows-ucrt64: "154bdd9968a29257fdc0c3e71338f29a960bb89411695ff79535eb9767b03643"
+      macos-arm64: "df845189eb8857b758cb3963ee3e4de65866f0151ce34e8441b5fd8e62cae672"
+      linux-gnu-x86_64: "ac787ef33217d11ba32a3d8c97484a45942a76f251c1c7a651ec4e1793441812"
+      windows-ucrt64: "8cb1495d119e854cf30b21c32e1917f35c89026c835e3f8507dc7a366b4ca2ce"
 
 # The spawned java runtime behind payload.yaml's kind: runtime edge: the
 # openjdk feedstock's release line, consumed through the resolver's
