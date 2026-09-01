@@ -9,8 +9,10 @@
 #   ruby tools/pins.rb --release-only
 #
 # <tool-platform> is the tebako release asset platform (macos-arm64,
-# linux-gnu-x86_64, windows-ucrt64). --release-only emits just
-# TEBAKO_RELEASE/PKG_NAME/PKG_VERSION (dogfood's cold-install path).
+# linux-gnu-x86_64, windows-ucrt64). --release-only skips the per-platform
+# tool asset/digest keys (dogfood's cold-install path) but still emits the
+# java edge's JAVA_* keys — the dogfood install pre-stages the spawned
+# runtime through them.
 # Unknown platform / missing pin is a named error, never a guess
 # (spec 00 §9).
 #
@@ -39,6 +41,18 @@ pairs = {
   "PKG_NAME" => recipe.fetch("name"),
   "PKG_VERSION" => recipe.dig("upstream", "version") ||
                    die("recipe.yml upstream.version missing"),
+  # The spawned java runtime's release line (recipe.java — spec 30). The
+  # workflows scope this to TEBAKO_RUNTIME_MIRROR at install/publish
+  # steps ONLY (never at dispatch — one base for all engines), and write
+  # the JAVA_VERSION/JAVA_TEBAKO preference into the config so the edge's
+  # download resolves to the exact pinned pair (a pref-less pick queries
+  # the factory's default line, which hosts no java).
+  "JAVA_RELEASES_BASE" => recipe.dig("java", "releases_base") ||
+                   die("recipe.yml java.releases_base missing"),
+  "JAVA_VERSION" => recipe.dig("java", "version") ||
+                   die("recipe.yml java.version missing"),
+  "JAVA_TEBAKO" => recipe.dig("java", "tebako") ||
+                   die("recipe.yml java.tebako missing"),
 }
 
 unless ARGV.include?("--release-only")

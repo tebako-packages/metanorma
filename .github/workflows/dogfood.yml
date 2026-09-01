@@ -1,10 +1,12 @@
 name: dogfood
 # THE dogfood (roadmap 32): a bare runner installs the tebako CLI from the
-# published tamatebako/tebako release, adds the tebako-packages index,
+# published tamatebako/tebako release, adds the tebako-packages registries,
 # installs the published metanorma payload, and runs a real compile whose
-# figure goes through the inkscape toolkit payload and whose PDF leg goes
-# through the openjdk JRE payload — proving the full dispatch chain
-# (registry -> runtime + app payload + toolkit payloads -> shim exec).
+# figure goes through the inkscape toolkit payload and whose PDF leg spawns
+# the openjdk RUNTIME (the kind: runtime edge, spec 30 — the JVM is a child
+# process dispatched from the store, never a host-PATH lookup) — proving the
+# full dispatch chain (registry -> runtime + app payload + toolkit payloads
+# + spawned runtime edges -> shim exec).
 #
 # Legs:
 #   aarch64-macos — ACTIVE (payload published: metanorma 1.16.9 macos-arm64).
@@ -70,32 +72,58 @@ jobs:
 
       - name: Add the closure registries and install metanorma
         # The tebako-packages index (registry-of-registries) is not walked
-        # by the CLI (still true at v0.3.1: it registers as 0 payloads —
+        # by the CLI (still true at v2.1.0: it registers as 0 payloads —
         # the packages[] follow is a filed product gap, TODO.v2-1/22).
-        # Add the three feedstock registries directly.
+        # Add the feedstock registries directly. The java runtime edge does
+        # NOT ride a payload registry: install pre-stages the spawned
+        # runtime through the runtime release index (spec 30 §3), which the
+        # config preference (recipe.yml's java block) + the step-scoped
+        # TEBAKO_RUNTIME_MIRROR resolve to the pinned openjdk pair. The
+        # mirror NEVER leaves this step — the first dispatch downloads the
+        # primary ruby runtime from the product default base, and the
+        # one-base-for-all-engines mirror would misdirect it.
+        env:
+          TEBAKO_RUNTIME_MIRROR: ${{ env.JAVA_RELEASES_BASE }}
         run: |
           set -euo pipefail
           tebako add-registry tfs:github:tebako-packages/metanorma
           tebako add-registry tfs:github:tebako-packages/inkscape
-          tebako add-registry tfs:github:tebako-packages/openjdk
+          printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n' \
+            "$JAVA_VERSION" "$JAVA_TEBAKO" >> "$HOME/.tebako/config.yaml"
           tebako install "metanorma@$PKG_VERSION"
 
       - name: Assert the store holds exactly one of each closure payload
         # Structural, not log-scraping: one .tfs per closure payload
-        # (metanorma + inkscape + openjdk). The RUNTIME is deliberately
-        # absent here — install never fetches runtimes (kind: language
-        # edges resolve at run time); the post-first-run step asserts it.
+        # (metanorma + inkscape). The java RUNTIME is not a payload — the
+        # install's edge pre-staging lands it under runtimes/ (asserted
+        # below). The primary RUBY runtime is deliberately absent here —
+        # kind: language resolves at run time; the post-first-run step
+        # asserts it.
         run: |
           set -euo pipefail
           store="$HOME/.tebako"
-          for payload in metanorma inkscape openjdk; do
+          for payload in metanorma inkscape; do
             n=$(ls "$store/payloads/$payload"/*.tfs 2>/dev/null | wc -l | tr -d ' ' || true)
             echo "$payload images in store: $n"
             [ "$n" = "1" ] || { echo "FAIL: $payload has $n images (expected 1)"; exit 1; }
             # the trust anchor rides every payload
             ls "$store/payloads/$payload"/*.tfs.sha256 >/dev/null
           done
-          echo "store OK: 1 image each for metanorma, inkscape, openjdk"
+          echo "store OK: 1 image each for metanorma, inkscape"
+
+      - name: Assert the java runtime pre-staged at install
+        # spec 30 §3: install_runtime_edge resolves + downloads the spawned
+        # runtime into runtimes/ BEFORE the first dispatch. Exe + env image
+        # + trust markers, and the image is read-only (0444).
+        run: |
+          set -euo pipefail
+          store="$HOME/.tebako"
+          n_java=$(ls -d "$store"/runtimes/java-* 2>/dev/null | wc -l | tr -d ' ' || true)
+          ls -la "$store/runtimes" || true
+          [ "$n_java" = "1" ] || { echo "FAIL: $n_java java runtime dirs (expected 1)"; exit 1; }
+          ls "$store"/runtimes/java-*/sha256 "$store"/runtimes/java-*/origin >/dev/null
+          ls "$store"/runtimes/java-*/*.tfs "$store"/runtimes/java-*/*.tfs.sha256 >/dev/null
+          echo "java runtime OK: pre-staged with trust markers"
 
       - name: Put the shims on PATH
         run: |
@@ -112,23 +140,28 @@ jobs:
           test -d site
 
       - name: Assert the runtime downloaded exactly once (on first run)
-        # The `new` above was the first shim dispatch: the runtime came
-        # down through the pref-less index resolution, once, verified.
+        # The `new` above was the first shim dispatch: the primary ruby
+        # runtime came down through the pref-less index resolution, once,
+        # verified — joining the java runtime pre-staged at install.
         run: |
           set -euo pipefail
           store="$HOME/.tebako"
           n_rt=$(ls "$store/runtimes" | wc -l | tr -d ' ')
           ls -la "$store/runtimes"
-          [ "$n_rt" = "1" ] || { echo "FAIL: $n_rt runtime dirs (expected 1)"; exit 1; }
-          ls "$store/runtimes"/*/sha256 "$store/runtimes"/*/origin >/dev/null
-          echo "runtime OK: exactly one, trust markers present"
+          [ "$n_rt" = "2" ] || { echo "FAIL: $n_rt runtime dirs (expected 2: ruby + java)"; exit 1; }
+          ls "$store"/runtimes/ruby-*/sha256 "$store"/runtimes/ruby-*/origin >/dev/null
+          echo "runtime OK: exactly one ruby + the pre-staged java, trust markers present"
 
       - name: Drop the fixture doc with the figure
         run: |
           set -euo pipefail
           cp fixtures/site.adoc fixtures/figure.svg site/
 
-      - name: metanorma compile (figure via inkscape payload, PDF via openjdk payload)
+      - name: metanorma compile (figure via inkscape payload, PDF via the spawned java runtime)
+        # The PDF leg (mn2pdf) spawns `java` — the spec-30 surface rewrites
+        # it to a full dispatch of the pre-staged openjdk runtime's wrapper
+        # exe from the store (never a host PATH lookup; a host without java
+        # compiles identically).
         # --agree-to-terms: the fontist license acceptance (a clean
         # machine's compile downloads fonts; the terms gate errors
         # otherwise — Fontist::Errors::LicensingError).
@@ -151,6 +184,8 @@ jobs:
         # under the jail + a version print proves enforcement installs and
         # the interpreter needs no host filesystem beyond the grant. (The
         # full compile in-jail also needs TMPDIR and the java subprocess;
+        # the spawned runtime's OWN jail is the driver-computed union of
+        # the parent's policy and the edge's declared needs (spec 30 §4) —
         # that leg joins after the un-jailed compile proves stable.)
         run: |
           set -euo pipefail
@@ -179,6 +214,12 @@ jobs:
           ruby tools/pins.rb --release-only >> "$GITHUB_ENV"
 
       - name: Install CLI, add registry, install metanorma, exec version
+        # Same runtime-edge wiring as the full leg: the java edge resolves
+        # through the config pref + the step-scoped mirror at INSTALL time
+        # (install_runtime_edge pre-stages the spawned runtime) — the slim
+        # leg never dispatches java, but install fails without the pref.
+        env:
+          TEBAKO_RUNTIME_MIRROR: ${{ env.JAVA_RELEASES_BASE }}
         run: |
           set -euo pipefail
           base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
@@ -193,7 +234,8 @@ jobs:
           done
           tebako add-registry tfs:github:tebako-packages/metanorma
           tebako add-registry tfs:github:tebako-packages/inkscape
-          tebako add-registry tfs:github:tebako-packages/openjdk
+          printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n' \
+            "$JAVA_VERSION" "$JAVA_TEBAKO" >> "$HOME/.tebako/config.yaml"
           tebako install "metanorma@$PKG_VERSION"
           export PATH="$HOME/.tebako/shims:$PATH"
           metanorma version | grep -E "Metanorma::Cli $PKG_VERSION"

@@ -36,9 +36,11 @@ staging/exec runtime is ruby 3.3.7), per spec 05 §5.
 
 Everything else in the closure is pure ruby — including the heavy data
 gems (isodoc-i18n, twitter_cldr, the relaton family) and `mn2pdf 2.62`,
-which wraps a Java jar: **PDF output needs a `java` on PATH at exec
-time** (GitHub runners ship one; the payload cannot and should not
-bundle a JRE).
+which wraps a Java jar: **PDF output spawns `java` at exec time** — a
+spec-30 `kind: runtime` edge (`engine: java`) that `tebako install`
+pre-stages from the tebako-packages/openjdk runtime release. The JVM is
+a child process dispatched from the store (never a host-PATH lookup; a
+host without java compiles identically). See §7.4.
 
 ### Reverse-dependency map of the natives (who drags in what)
 
@@ -243,11 +245,12 @@ compact index `/info/<gem>` checksum before staging.
   `ubuntu-24.04` and publishes together with the mac leg (§8). The
   `x86_64-windows-ucrt` leg publishes together with the mac + linux legs
   since the 0.16.6-line gate proved green (PR #22; §7).
-- The dogfood (`.github/workflows/dogfood.yml`) is **gated** until
-  tebako-rs v0.1.0 ships release binaries incl. tebako-shim — see the
-  workflow header. Also blocked on: an inkscape payload for the dogfood
-  triplet (today: `x86_64-linux-gnu` only, so the linux leg goes first)
-  and a Java runtime for the mn2pdf PDF leg (GitHub runners ship one).
+- The dogfood (`.github/workflows/dogfood.yml`) runs the published
+  payload on macos + linux (see the workflow header): the figure path
+  rides the inkscape toolkit payload, and the PDF leg's java need is
+  answered by the spec-30 runtime edge — install pre-stages the openjdk
+  runtime and mn2pdf's `java` spawn dispatches it from the store (§7.4).
+  The windows leg joins when the windows payload publishes.
 - Source-only natives for FUTURE triplets (per the task brief, "document
   any source-only ones as triplet-specific follow-ups"): brotli, ox,
   oga+ruby-ll, psych(+libyaml), websocket-driver all build from source
@@ -450,20 +453,31 @@ fails any other failure mode, and **no windows artifact is published**
 (the publish job needs only the mac leg; the registry gains the windows
 entry when the gate is enforced — the same gate as tebako-packages/fontist).
 
-### 7.4 The openjdk dependency on the windows leg
+### 7.4 The openjdk dependency (spec 30 runtime edge — toolkit mount retired)
 
-The manifest's DEPENDS edges are platform-agnostic and unchanged
-(`{kind: toolkit, name: inkscape, constraint: ">= 1.3", mount: /opt/inkscape}`
-and `{kind: toolkit, name: openjdk, constraint: ">= 21, < 26", mount: /opt/openjdk}`).
-They stay coherent with what the toolkit feedstocks publish for windows:
-tebako-packages/openjdk's windows payload (PR #2) declares its executables
-windows-truthfully (`/bin/java.exe`, `/bin/keytool.exe`) and records
-`annotations.java_home: "/"` — mounted at metanorma's declared point
-`/opt/openjdk`, java is at `/opt/openjdk/bin/java.exe` and
-JAVA_HOME=`/opt/openjdk`, which is exactly the PROVIDES surface the
-jing/mn2pdf edge resolves against (`TebakoRuntime.mounted_exe`). The
-inkscape edge is unchanged as well (its windows payload is a separate
-follow-up — inkscape ships `x86_64-linux-gnu` only today).
+The manifest's java edge is platform-agnostic and is now a **runtime**
+edge:
+
+```yaml
+- kind: runtime
+  engine: java
+  constraint: ">= 21, < 26"
+  expose: [java]
+```
+
+The earlier toolkit form (`{kind: toolkit, name: openjdk, mount:
+/opt/openjdk}`) is retired. A toolkit mount exists only inside the
+interpreter's userspace VFS, so a subprocess cannot exec `java` from it —
+the kernel needs a real host path, strictest on windows where the JVM's
+own DLL search never follows the VFS. The runtime edge instead pre-stages
+the JVM as real store artifacts at install (spec 30 §3
+`install_runtime_edge`: exe + env `.tfs` + trust markers under
+`~/.tebako/runtimes/java-*`), and at exec time mn2pdf's `java` spawn is
+rewritten to a full dispatch of that runtime's wrapper exe with
+`TEBAKO_RUNTIME_IMAGE` and the driver-computed union jail (spec 30 §4) —
+no `/opt/openjdk` mount, no `JAVA_HOME`, no host-PATH fallback, on every
+platform. The inkscape edge stays a toolkit mount (its windows payload is
+a separate follow-up — inkscape ships `x86_64-linux-gnu` only today).
 
 ### 7.5 Tool provenance (this era)
 

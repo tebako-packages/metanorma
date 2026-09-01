@@ -17,17 +17,15 @@ build:
   runtime:
     engine: ruby
     version: "3.3.12"      # the staging + exec runtime (tebako-runtime-ruby)
-    tebako: "0.16.11"      # runtime release line (image-era; the pinned CLI
+    tebako: "0.16.18"      # runtime release line (image-era; the pinned CLI
                            # refuses pre-era releases by contract, exit 75).
-                           # 0.16.11 carries the tebako v0.3.x link unit
-                           # (limnifs 0.3.x new-v1 image format + the #464
-                           # read-path performance work) and the windows
-                           # support-DLL library_aliases payload
-                           # (tebako-runtime-ruby#133 — libwinpthread-1 /
-                           # libgcc_s_seh-1 / libstdc++-6 materialize next to
-                           # the ruby DLL; packed-mn's LoadError-126-on-ox.so).
-                           # Ruby source pin v0.2.27 (CRL_CHECK_ALL removal,
-                           # ruby#95).
+                           # 0.16.18 carries the tebako v2.1.0 link unit AND
+                           # the spec-30 spawn FFI head (ruby#106's
+                           # process_c_tebako_spawn patch — array-form spawns
+                           # of an exposed command offer the driver's plan
+                           # FIRST; without it the java edge cannot intercept
+                           # mn2pdf/jing's spawns on POSIX). Ruby source pin
+                           # v0.2.32.
   # mkmf SDK for the source-built native deps (brotli, ox, oga, ruby-ll,
   # psych, websocket-driver): headers of the exact ruby the runtime ships
   # (the runtime image carries none). The windows leg additionally generates
@@ -76,20 +74,38 @@ depends:
 # upstream.sha256; provenance in docs/build-notes.md).
 tools:
   repo: "tamatebako/tebako"
-  release: "v0.3.1"
+  release: "v2.1.0"          # spec 30 (the kind: runtime edge, TEBAKO_SPAWN_LOCK,
+                             # the expose install-time verify) shipped here
   sha256:
     tebako:
-      macos-arm64: "ea95d642c8bfa03c23a7c4f868c42bb81cbbbbfb87fe28e0e28db0067a850b6e"
-      linux-gnu-x86_64: "034804fae6e25f654c64f08889f11ff55e0bdf46dd446d489fb25734b47aadc0"
-      windows-ucrt64: "6e86abeb16b3745bdb65e936567bbb255b73b84bcb43fccbf6e93f971cd09984"
+      macos-arm64: "003e28d88176c519264e2f72db5d36a03279db3feb6d38a42c181230ef35102a"
+      linux-gnu-x86_64: "bc51fcc4c1b921267256d4177d6fe3d21a2ff5d6ac61c88bbbce6b8d464fe749"
+      windows-ucrt64: "a5d37bfe5c056b7c452e3cb261cdae0663a6b33854d02f569c6d293e28bd9148"
     tebako-shim:
-      macos-arm64: "eaf022a9e889afc23a70872bf8233904897dd94c9b62a65eb77fbd5c36c20710"
-      linux-gnu-x86_64: "3fa00b2e91199514407cb2100fd9c08c787923422cf2c223d74f1c6d97032e1d"
-      windows-ucrt64: "1c1a5dd9384b0952286eec1141d3164ae6e34baa2f0e040f787a7d5b0a8ef5a5"
+      macos-arm64: "ab13c9e7a8696b3ff8198866adfc6a1c390ac88dd35724d435146a6d5ae65d3e"
+      linux-gnu-x86_64: "aa9993b317adbb3ad159b863127de219895faaff2178fd722014927e607fbda8"
+      windows-ucrt64: "421947b4670c64ade1fa699637e1d95d6f1508529cf7b7c19adda94159c9388c"
     tfs:
-      macos-arm64: "4136cf476a9e7470d401ee66546a841edf154e6a39f6083021b1f8786b6cc755"
-      linux-gnu-x86_64: "2dca2fe24401dc7110d7d3297984023e44eb466727ec3cf74459d3d14ea8d623"
-      windows-ucrt64: "4fde6e7252a0aef0767fb09c08971396b004f0d25f39f05c774ab8644bd1efe2"
+      macos-arm64: "744e6e37f83b19d976400f55440cee4486c060e5f1b671f6a4456940e20659db"
+      linux-gnu-x86_64: "e724ffd1c121ee38a105dc8403128ca3da07016eb2d9bd03fbfba36fa31ff6b0"
+      windows-ucrt64: "154bdd9968a29257fdc0c3e71338f29a960bb89411695ff79535eb9767b03643"
+
+# The spawned java runtime behind payload.yaml's kind: runtime edge: the
+# openjdk feedstock's release line, consumed through the resolver's
+# {base}/v<tebako_version>/<asset> URL shape (spec 13 §2a). The workflows
+# scope this as TEBAKO_RUNTIME_MIRROR to install/publish-verify steps
+# ONLY — never at dispatch/compile time, where the primary ruby runtime's
+# download would be misdirected (the mirror is one base for ALL engines;
+# a per-engine source key in config.yaml is the filed product follow-up).
+java:
+  # The pinned java runtime pair (tebako-packages/openjdk release v2.1.0,
+  # kind: runtime — the spec 30 spawn edge in manifests/payload.yaml).
+  # The preference flows into ~/.tebako/config.yaml `runtimes:` at
+  # install/publish time so the edge's download resolves to THIS exact
+  # pair (a pref-less pick would query the wrong release line).
+  version: "21.0.12"       # Temurin JRE 21.0.12+8 repack
+  tebako: "2.1.0"          # the release line = the wrapper's tebako build
+  releases_base: "https://github.com/tebako-packages/openjdk/releases/download"
 
 platforms:
   - aarch64-macos          # triplet-bound (nokogiri/ffi/libpng/parsanol/sqlite3
