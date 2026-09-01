@@ -215,11 +215,14 @@ jobs:
 
       - name: Install CLI, add registry, install metanorma, exec version
         # Same runtime-edge wiring as the full leg: the java edge resolves
-        # through the config pref + the step-scoped mirror at INSTALL time
+        # through the config pref + the mirror at INSTALL time
         # (install_runtime_edge pre-stages the spawned runtime) — the slim
         # leg never dispatches java, but install fails without the pref.
-        env:
-          TEBAKO_RUNTIME_MIRROR: ${{ env.JAVA_RELEASES_BASE }}
+        # The mirror is an INLINE env on the install command only: it must
+        # NEVER reach a dispatch — `metanorma version` below downloads the
+        # primary RUBY runtime, whose index lives on the product default
+        # base, and a one-base-for-all-engines mirror misdirects that read
+        # ("the default-line release index did not read").
         run: |
           set -euo pipefail
           base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
@@ -236,6 +239,6 @@ jobs:
           tebako add-registry tfs:github:tebako-packages/inkscape
           printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n' \
             "$JAVA_VERSION" "$JAVA_TEBAKO" >> "$HOME/.tebako/config.yaml"
-          tebako install "metanorma@$PKG_VERSION"
+          TEBAKO_RUNTIME_MIRROR="$JAVA_RELEASES_BASE" tebako install "metanorma@$PKG_VERSION"
           export PATH="$HOME/.tebako/shims:$PATH"
           metanorma version | grep -E "Metanorma::Cli $PKG_VERSION"
