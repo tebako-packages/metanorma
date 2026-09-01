@@ -4,7 +4,10 @@ Feedstock for **metanorma** — the flagship `kind: app` payload of the
 `tebako-packages` org (a runtime-required ruby application) and the org's
 CI dogfood: its payload declares a toolkit dependency on
 [`inkscape`](https://github.com/tebako-packages/inkscape) (consumer-declared
-mount `/opt/inkscape`), so installing it exercises the full dispatch chain.
+mount `/opt/inkscape`) and a spec-30 runtime edge on
+[`openjdk`](https://github.com/tebako-packages/openjdk) (`engine: java` —
+the mn2pdf PDF leg spawns the JVM from the store, never a host-PATH
+lookup), so installing it exercises the full dispatch chain.
 
 - Upstream: [metanorma-cli](https://github.com/metanorma/metanorma-cli) 1.16.9 (RubyGems)
 - Payload: `metanorma-1.16.9-<asset-platform>.tfs` (DwarFS image, per-triplet;

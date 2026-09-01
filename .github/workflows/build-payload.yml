@@ -365,11 +365,25 @@ jobs:
           .packager/tebako --help > /dev/null
       - name: Publish payloads + registry
         # tebako publish: artifacts + registry upsert + clean-cache verify
-        # (the publisher home carries the dep registries for the closure proof)
+        # (the publisher home carries the dep registries for the closure proof).
+        # TEBAKO_RUNTIME_MIRROR (from recipe.yml's java block via pins.rb) lets
+        # the verify's clean-cache install resolve the kind: runtime java edge
+        # — the openjdk release line is NOT the product default runtime base.
+        # Scoped to THIS step: the verify never downloads the primary ruby
+        # runtime (kind: language resolves at run time), so the one-base-for-
+        # all-engines mirror cannot misdirect it here.
+        env:
+          TEBAKO_RUNTIME_MIRROR: ${{ env.JAVA_RELEASES_BASE }}
         run: |
           set -euo pipefail
           "$TEBAKO_CLI" add-registry tfs:github:tebako-packages/inkscape
-          "$TEBAKO_CLI" add-registry tfs:github:tebako-packages/openjdk
+          # The java runtime preference (recipe.yml's java block) — the
+          # verify's clean-cache install inherits the publisher home's
+          # runtimes: prefs (tebako >= the verify-pref join), and the
+          # pref-less pick would query the factory's default line, which
+          # hosts no java. Append; the fresh runner's config has none.
+          printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n' \
+            "$JAVA_VERSION" "$JAVA_TEBAKO" >> "$HOME/.tebako/config.yaml"
           "$TEBAKO_CLI" publish --name "$PKG_NAME" \
             --release "tfs:github:tebako-packages/metanorma:${{ github.ref_name }}" \
             --payload aarch64-macos="out/aarch64-macos/$PKG_NAME-$PKG_VERSION-macos-arm64.tfs" \

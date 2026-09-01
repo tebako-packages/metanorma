@@ -134,16 +134,20 @@ requires:
     name: inkscape
     constraint: ">= 1.3"
     mount: /opt/inkscape
-  # the hermetic java answer (jing + mn2pdf): the openjdk toolkit payload
-  # mounts at /opt/openjdk; the tebako-runtime adapters prefer its java
-  # over PATH (mounted_exe). The constraint is a RANGE, not a pin: jing
-  # and FOP are Java-8+ consumers, so any current LTS satisfies; the
-  # upper bound is the honesty line — a future major we have not validated
-  # is a named resolution miss, never a silent pick.
-  - kind: toolkit
-    name: openjdk
+  # the hermetic java answer (jing + mn2pdf): the openjdk RUNTIME
+  # (kind: runtime, spec 30) — the JVM runs as a spawned child process
+  # dispatched through tebako from the store, never co-mounted, never a
+  # host-PATH fallback. `expose: [java]` is the spawn surface: the
+  # payload's `java …` spawns rewrite to a full dispatch of the depended
+  # runtime's wrapper exe; an undeclared command name is never rewritten.
+  # The constraint is a RANGE, not a pin: jing and FOP are Java-8+
+  # consumers, so any current LTS satisfies; the upper bound is the
+  # honesty line — a future major we have not validated is a named
+  # resolution miss, never a silent pick.
+  - kind: runtime
+    engine: java
     constraint: ">= 21, < 26"
-    mount: /opt/openjdk
+    expose: [java]
 # The payload's in-image acceptance (spec 26 §1) — the Homebrew formula's
 # test block translated. Press-time moment (§3): build-payload.yml runs
 # `tebako check` against the just-imaged slice per leg; the engine reads
