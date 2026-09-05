@@ -148,6 +148,29 @@ requires:
     engine: java
     constraint: ">= 21, < 26"
     expose: [java]
+  # the ietf output chain (spec 32 — the FIRST kind: executable spawn
+  # edge): metanorma-ietf/mn2rfc shells out to the `xml2rfc` console
+  # script for the rfc text/html renderings. xml2rfc is a python app —
+  # an interpreter-needing console script has no co-mountable exec form
+  # (spec 32 §0), so the edge opens the SPAWN surface only: the
+  # provider payload dispatches as a child through its own full spec-17
+  # dispatch (its kind: language edge resolving the python runtime
+  # pair), the parent's in-VFS .xml carried by the spec 30 §2
+  # re-mount/materialize rule. `payload: xml2rfc` pins the provider by
+  # name (the §8 AmbiguousProvider escape hatch — the capability name
+  # IS the payload name here, pinned for explicitness); the press
+  # cross-check validates it against the provider's L1. This retires
+  # the host-python xml2rfc convention (PROGRESS/25 — the chocolatey
+  # python313/1603 saga): an undeclared `xml2rfc` on the host PATH is
+  # never a fallback. critical: the ietf document class cannot render
+  # without the edge, so a schema_minor < 5 reader must refuse, not
+  # skip (the evolution law).
+  - kind: executable
+    name: xml2rfc
+    payload: xml2rfc
+    constraint: ">= 3.34"
+    expose: [xml2rfc]
+    critical: true
 # The payload's in-image acceptance (spec 26 §1) — the Homebrew formula's
 # test block translated. Press-time moment (§3): build-payload.yml runs
 # `tebako check` against the just-imaged slice per leg; the engine reads
