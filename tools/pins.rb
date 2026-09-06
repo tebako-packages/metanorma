@@ -53,6 +53,17 @@ pairs = {
                    die("recipe.yml java.version missing"),
   "JAVA_TEBAKO" => recipe.dig("java", "tebako") ||
                    die("recipe.yml java.tebako missing"),
+  # The nested python runtime behind the spec-32 xml2rfc executable edge
+  # (recipe.python — the java block's analogue). Same scoping rules: the
+  # base feeds TEBAKO_RUNTIME_MIRROR at install/publish steps ONLY, and
+  # the PYTHON_VERSION/PYTHON_TEBAKO preference lands in the config so the
+  # provider's nested edge resolves to the exact pinned pair.
+  "PYTHON_RELEASES_BASE" => recipe.dig("python", "releases_base") ||
+                   die("recipe.yml python.releases_base missing"),
+  "PYTHON_VERSION" => recipe.dig("python", "version") ||
+                   die("recipe.yml python.version missing"),
+  "PYTHON_TEBAKO" => recipe.dig("python", "tebako") ||
+                   die("recipe.yml python.tebako missing"),
 }
 
 unless ARGV.include?("--release-only")
