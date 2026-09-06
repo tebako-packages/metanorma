@@ -88,9 +88,9 @@ depends:
   # Expose-only (never co-mounted): the provider payload dispatches as a
   # child through its own spec-17 composition on the python runtime.
   # Resolution at install/publish-verify rides the xml2rfc feedstock's
-  # registry + the python runtime mirror (the proof wiring lives in the
-  # PR; the permanent mirror block — the java: block's analogue — lands
-  # with the python factory's first PUBLISHED line, an owner gate).
+  # registry + the python runtime mirror — the permanent wiring (the
+  # python: block below + the publish/dogfood steps) landed with the
+  # python factory's first published line (v0.1.0).
   - kind: executable
     name: xml2rfc
     payload: xml2rfc
@@ -151,6 +151,22 @@ java:
   version: "21.0.12"       # Temurin JRE 21.0.12+8 repack
   tebako: "2.1.5"          # the release line = the wrapper's tebako build
   releases_base: "https://github.com/tebako-packages/openjdk/releases/download"
+
+# The nested python runtime behind payload.yaml's spec-32 kind: executable
+# edge (the xml2rfc provider dispatches as a child on its own python
+# runtime): the tebako-runtime-python factory's first published line,
+# consumed through the same {base}/v<tebako_version>/<asset> URL shape as
+# the java block. Same scoping law: the workflows feed this to
+# TEBAKO_RUNTIME_MIRROR at install/publish steps ONLY (one base for ALL
+# engines — the publish/dogfood steps stage a COMBINED local mirror with
+# the java leg so both spawned edges resolve), and the preference flows
+# into ~/.tebako/config.yaml `runtimes:` so the nested edge resolves to
+# THIS exact pair (a pref-less pick queries the default line, which hosts
+# no python).
+python:
+  version: "3.13.15"       # the xml2rfc provider's staging + exec line
+  tebako: "0.1.0"          # tebako-runtime-python's first published line
+  releases_base: "https://github.com/tamatebako/tebako-runtime-python/releases/download"
 
 platforms:
   - aarch64-macos          # triplet-bound (nokogiri/ffi/libpng/parsanol/sqlite3
