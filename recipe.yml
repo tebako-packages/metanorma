@@ -17,32 +17,27 @@ build:
   runtime:
     engine: ruby
     version: "3.3.12"      # the staging + exec runtime (tebako-runtime-ruby)
-    tebako: "0.16.19"      # runtime release line (image-era; the pinned CLI
+    tebako: "0.16.22"      # runtime release line (image-era; the pinned CLI
                            # refuses pre-era releases by contract, exit 75).
-                           # NOT bumped for the spec-32 xml2rfc edge — and
-                           # the edge cannot GO LIVE on this line: the
-                           # runtime exe's embedded driver predates
-                           # schema_minor 5, so it refuses the manifest at
-                           # boot by name ("requires.[3].kind: unknown
-                           # variant `executable`" — proven 2026-09-05 with
-                           # the local spec-32 build on the 0.16.19/0.16.21
-                           # lines; 0.16.21 still rides the tebako v2.1.5
+                           # 0.16.22 is the factory re-cut on the tebako
+                           # v2.2.0 link unit (the spec-32 driver plan +
+                           # schema_minor-5 parse) — it UNBLOCKS the
+                           # xml2rfc executable edge below: pre-0.16.22
+                           # exes refused the manifest at boot by name
+                           # ("requires.[3].kind: unknown variant
+                           # `executable`" — proven 2026-09-05 with the
+                           # local spec-32 build on the 0.16.19/0.16.21
+                           # lines; 0.16.21 still rode the tebako v2.1.5
                            # link unit per the factory's contract.yml
-                           # link_unit_release). The edge ships when the
-                           # factory re-cuts on the tebako v2.2.0 link unit
-                           # (the spec-32 driver plan + parse) — owner gate.
-                           # The loader-side surfaces (install's transitive
-                           # closure, the expose shim's provider dispatch,
-                           # the press two-level cross-check) all ride the
-                           # v2.2.0 TOOLCHAIN and are proven green.
-                           # 0.16.18 carries the tebako v2.1.0 link unit AND
-                           # the spec-30 spawn FFI head (ruby#106's
-                           # process_c_tebako_spawn patch — array-form spawns
-                           # of an exposed command offer the driver's plan
-                           # FIRST; without it the java edge cannot intercept
-                           # mn2pdf/jing's spawns on POSIX). Ruby source pin
-                           # v0.2.32. 0.16.19 rides the tebako v2.1.5 link
-                           # unit (tebako#516: the realpath NULL-buffer arm
+                           # link_unit_release). 0.16.18 carries the tebako
+                           # v2.1.0 link unit AND the spec-30 spawn FFI
+                           # head (ruby#106's process_c_tebako_spawn patch
+                           # — array-form spawns of an exposed command
+                           # offer the driver's plan FIRST; without it the
+                           # java edge cannot intercept mn2pdf/jing's
+                           # spawns on POSIX). Ruby source pin v0.2.32.
+                           # 0.16.19 rides the tebako v2.1.5 link unit
+                           # (tebako#516: the realpath NULL-buffer arm
                            # routes to canonicalize_file_name — the
                            # glibc ≤ 2.31 compat-twin EINVAL that refused
                            # every jailed spawn, exit 78, on the factory
