@@ -40,6 +40,11 @@ provides:
       args_default: []
       runtime_requirement:
         engine: ruby
+        # spec 28 §8's native law: an abi in force REQUIRES the
+        # implementation named (an ABI is per-implementation by
+        # construction; mri is the ruby implementation of record) —
+        # enforced at press/publish (tebako#556's authoring gate).
+        implementation: mri
         # native-extension payload (nokogiri/ffi/libpng/parsanol/sqlite3
         # precompiled; brotli/ox/psych/websocket-driver compiled per triplet):
         # the abi line of the staging runtime, per spec 05 §5 — BOTH the
@@ -48,79 +53,79 @@ provides:
         constraint: "~> 3.3.0"
         abi: "@@ABI@@"
     # --- the active set: the document toolchain's user-facing commands
-    - {name: metanorma-manifest, path: /bin/metanorma-manifest, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: asciidoctor, path: /bin/asciidoctor, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: canon, path: /bin/canon, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: coradoc, path: /bin/coradoc, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: expressir, path: /bin/expressir, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: metanorma-manifest, path: /bin/metanorma-manifest, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: asciidoctor, path: /bin/asciidoctor, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: canon, path: /bin/canon, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: coradoc, path: /bin/coradoc, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: expressir, path: /bin/expressir, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
     # the font manager: repo setup/update, font install into the host
     # ~/.fontist — the chocolatey OIML leg's packaged answer
     # (chocolatey-metanorma#89).
-    - {name: fontist, path: /bin/fontist, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: fontisan, path: /bin/fontisan, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: glossarist, path: /bin/glossarist, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: lutaml, path: /bin/lutaml, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: lutaml-model, path: /bin/lutaml-model, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: lutaml-sysml, path: /bin/lutaml-sysml, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: lutaml-wsd2uml, path: /bin/lutaml-wsd2uml, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: lutaml-xsd, path: /bin/lutaml-xsd, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: lutaml-yaml2uml, path: /bin/lutaml-yaml2uml, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: omnizip, path: /bin/omnizip, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: plurimath, path: /bin/plurimath, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: png_conform, path: /bin/png_conform, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: relaton, path: /bin/relaton, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: reverse_adoc, path: /bin/reverse_adoc, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: suma, path: /bin/suma, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: svg_conform, path: /bin/svg_conform, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: unitsdb, path: /bin/unitsdb, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: vectory, path: /bin/vectory, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: w2a, path: /bin/w2a, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: w2m, path: /bin/w2m, args_default: [], runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: fontist, path: /bin/fontist, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: fontisan, path: /bin/fontisan, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: glossarist, path: /bin/glossarist, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: lutaml, path: /bin/lutaml, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: lutaml-model, path: /bin/lutaml-model, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: lutaml-sysml, path: /bin/lutaml-sysml, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: lutaml-wsd2uml, path: /bin/lutaml-wsd2uml, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: lutaml-xsd, path: /bin/lutaml-xsd, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: lutaml-yaml2uml, path: /bin/lutaml-yaml2uml, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: omnizip, path: /bin/omnizip, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: plurimath, path: /bin/plurimath, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: png_conform, path: /bin/png_conform, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: relaton, path: /bin/relaton, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: reverse_adoc, path: /bin/reverse_adoc, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: suma, path: /bin/suma, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: svg_conform, path: /bin/svg_conform, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: unitsdb, path: /bin/unitsdb, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: vectory, path: /bin/vectory, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: w2a, path: /bin/w2a, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: w2m, path: /bin/w2m, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
     # --- declared-but-inactive (active: false): library-bundled helper
     # CLIs, format converters, gem dev tools. Dispatchable on demand,
     # never PATH-registered by default — generic names (console, setup,
     # thor, ...) must not shadow anything the user did not explicitly
     # enable.
-    - {name: cabriolet, path: /bin/cabriolet, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: console, path: /bin/console, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: convert2oscalyaml.rb, path: /bin/convert2oscalyaml.rb, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: dot2ruby, path: /bin/dot2ruby, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: ea, path: /bin/ea, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: ebnf, path: /bin/ebnf, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: emf, path: /bin/emf, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: emfsvg, path: /bin/emfsvg, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: excavate, path: /bin/excavate, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: fractor, path: /bin/fractor, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: fuzzy_match, path: /bin/fuzzy_match, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: gem2gv, path: /bin/gem2gv, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: git2gv, path: /bin/git2gv, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: japanese_calendar, path: /bin/japanese_calendar, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: jsonld, path: /bin/jsonld, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: ldiff, path: /bin/ldiff, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: loc-mods, path: /bin/loc-mods, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: nokogiri, path: /bin/nokogiri, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: premailer, path: /bin/premailer, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: pubid-nist, path: /bin/pubid-nist, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: rdf, path: /bin/rdf, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: reverse_markdown, path: /bin/reverse_markdown, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: rng, path: /bin/rng, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: rougify, path: /bin/rougify, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: ruby-ll, path: /bin/ruby-ll, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: ruby2gv, path: /bin/ruby2gv, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: setup, path: /bin/setup, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: socksify_ruby, path: /bin/socksify_ruby, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: sparql, path: /bin/sparql, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: sxp2json, path: /bin/sxp2json, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: sxp2rdf, path: /bin/sxp2rdf, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: sxp2xml, path: /bin/sxp2xml, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: sxp2yaml, path: /bin/sxp2yaml, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: thor, path: /bin/thor, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: tokenize, path: /bin/tokenize, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: ukiryu, path: /bin/ukiryu, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: unibuf, path: /bin/unibuf, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: w3c_api, path: /bin/w3c_api, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: xml2gv, path: /bin/xml2gv, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
-    - {name: xsdvi, path: /bin/xsdvi, args_default: [], active: false, runtime_requirement: {engine: ruby, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: cabriolet, path: /bin/cabriolet, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: console, path: /bin/console, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: convert2oscalyaml.rb, path: /bin/convert2oscalyaml.rb, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: dot2ruby, path: /bin/dot2ruby, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: ea, path: /bin/ea, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: ebnf, path: /bin/ebnf, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: emf, path: /bin/emf, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: emfsvg, path: /bin/emfsvg, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: excavate, path: /bin/excavate, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: fractor, path: /bin/fractor, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: fuzzy_match, path: /bin/fuzzy_match, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: gem2gv, path: /bin/gem2gv, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: git2gv, path: /bin/git2gv, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: japanese_calendar, path: /bin/japanese_calendar, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: jsonld, path: /bin/jsonld, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: ldiff, path: /bin/ldiff, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: loc-mods, path: /bin/loc-mods, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: nokogiri, path: /bin/nokogiri, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: premailer, path: /bin/premailer, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: pubid-nist, path: /bin/pubid-nist, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: rdf, path: /bin/rdf, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: reverse_markdown, path: /bin/reverse_markdown, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: rng, path: /bin/rng, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: rougify, path: /bin/rougify, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: ruby-ll, path: /bin/ruby-ll, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: ruby2gv, path: /bin/ruby2gv, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: setup, path: /bin/setup, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: socksify_ruby, path: /bin/socksify_ruby, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: sparql, path: /bin/sparql, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: sxp2json, path: /bin/sxp2json, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: sxp2rdf, path: /bin/sxp2rdf, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: sxp2xml, path: /bin/sxp2xml, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: sxp2yaml, path: /bin/sxp2yaml, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: thor, path: /bin/thor, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: tokenize, path: /bin/tokenize, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: ukiryu, path: /bin/ukiryu, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: unibuf, path: /bin/unibuf, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: w3c_api, path: /bin/w3c_api, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: xml2gv, path: /bin/xml2gv, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
+    - {name: xsdvi, path: /bin/xsdvi, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "~> 3.3.0", abi: "@@ABI@@"}}
   platforms: [aarch64-macos]
   capabilities: {exec: true, read: true}
 requires:

@@ -32,7 +32,9 @@ skip-defaults policy, with these **native extensions**:
 
 So the payload is **not** `universal`: it ships per-triplet and the
 entrypoint's `runtime_requirement` is the ABI line **`~> 3.3.0`** (the
-staging/exec runtime is ruby 3.3.7), per spec 05 §5.
+staging/exec runtime is ruby 3.3.7) with **`implementation: mri`** named
+alongside `abi` (spec 28 §8's native law — enforced at press/publish per
+tebako#556's authoring gate), per spec 05 §5.
 
 Everything else in the closure is pure ruby — including the heavy data
 gems (isodoc-i18n, twitter_cldr, the relaton family) and `mn2pdf 2.62`,
