@@ -173,6 +173,13 @@ case "$TRIPLET" in
       -R "$RUBY_V"
     SHIM="$WORK/prefix/o/p/ruby"
     [ -x "$SHIM" ] || { echo "no deploy shim at $SHIM"; exit 1; }
+    # The manifest reads below (assemble/drift-guard) run AFTER GEM_HOME
+    # exports the stage: a bare `ruby` there is a HOST ruby, whose rubygems
+    # activates the staged psych against the wrong ABI (the 4.0 linux leg
+    # died in the staged libyaml's assert). The line-correct runtime ruby
+    # is the shim; windows has no shim, but its branch never exports
+    # GEM_HOME, so the host read there stays clean.
+    MANIFEST_RUBY="$SHIM"
     ;;
   x86_64-windows-ucrt)
     # Direct fetch, verified against the release's SHA256SUMS.txt (the
@@ -209,6 +216,7 @@ case "$TRIPLET" in
     done
     echo "runtime verified against tebako-runtime-ruby v$TEBAKO_VERSION SHA256SUMS (exe + image + $DLL_INSTALL_AS)"
     RT_EXE="$RT_EXE.exe"
+    MANIFEST_RUBY="ruby"
     ;;
 esac
 [ -f "$RT_EXE" ] || { echo "no cached runtime at $RT_EXE"; exit 1; }
@@ -519,7 +527,7 @@ chmod 755 "$PAYLOAD/bin/metanorma"
 # registration only; the command must exist in the image to stay
 # dispatchable (`tebako shim enable` / `tebako run` / the self-contained
 # package's argv0).
-ruby -ryaml -e 'YAML.load_file(ARGV[0]).fetch("provides").fetch("entrypoints").each { |e| puts e.fetch("name") }' \
+"$MANIFEST_RUBY" -ryaml -e 'YAML.load_file(ARGV[0]).fetch("provides").fetch("entrypoints").each { |e| puts e.fetch("name") }' \
   "$FEEDSTOCK/manifests/payload.yaml" | while read -r cmdname; do
   [ "$cmdname" = "metanorma" ] && continue
   cp "$FEEDSTOCK/templates/bin/command" "$PAYLOAD/bin/$cmdname"
@@ -529,7 +537,7 @@ done
 # `executables` of EXACTLY ONE staged gemspec (zero = the closure dropped
 # the gem; two = an ambiguity the stub's Gem::Specification scan could
 # mis-resolve).
-ruby -ryaml -e 'YAML.load_file(ARGV[0]).fetch("provides").fetch("entrypoints").each { |e| puts e.fetch("name") }' \
+"$MANIFEST_RUBY" -ryaml -e 'YAML.load_file(ARGV[0]).fetch("provides").fetch("entrypoints").each { |e| puts e.fetch("name") }' \
   "$FEEDSTOCK/manifests/payload.yaml" | while read -r cmdname; do
   [ "$cmdname" = "metanorma" ] && continue
   hits="$(grep -hE '\.executables\s*=' "$G"/specifications/*.gemspec | grep -cF "\"$cmdname\"" || true)"
