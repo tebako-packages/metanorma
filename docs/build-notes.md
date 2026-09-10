@@ -707,6 +707,23 @@ edge downloaded + cached `java-21.0.12-2.4.0-macos-arm64` at dispatch,
 and the fixture compile produced the PDF (mn2pdf + Jing both ran on
 the spawned runtime).
 
+A fourth break, CI-only (the 4.0 linux leg, exit 134): tools/build's
+assemble/drift-guard manifest reads ran a bare `ruby` AFTER GEM_HOME
+exported the stage — on the ubuntu runner that is a HOST ruby 3.2 whose
+rubygems activates the staged psych 5.2.6, a .so built for the line's
+runtime ABI, and the process died in the staged libyaml's assert
+(`yaml_parser_delete(NULL)`, the feedstock's pinned libyaml-src path).
+The 3.3 linux leg survived by ABI luck (a 3.3-built ext happens to load
+into host 3.2); macOS's system ruby 2.6 never activates the staged psych
+at all. Fix: the manifest reads ride `MANIFEST_RUBY` — the deploy shim
+(the line-correct runtime ruby the build already pressed) on POSIX;
+host ruby on windows, whose branch never exports GEM_HOME into the
+shared steps. Rehearsed locally under the crash conditions
+(GEM_HOME/GEM_PATH=stage): both line shims read the 66-entrypoint
+manifest clean (psych 5.3.1 default wins over the staged 5.2.6 on the
+4.0 line — the consistent pair). This was the last host-ruby leak in
+tools/build's post-staging steps (the §2 law is now literal there).
+
 The `dogfood-ruby40` job is the 4.0 flavor's slim proof: install
 `metanorma@1.16.9-ruby4.0`, run `metanorma version` through the env
 link of the version chain, and force the ABI guard — the 4.0 flavor
