@@ -688,6 +688,25 @@ locally: the pref'd dispatch of the published 1.16.9 downloads
 factory default-index lag itself is a tebako-runtime-ruby-side
 observation (flagged in the PR); the dogfood must not ride it.
 
+A third lurking break surfaced at COMPILE (the full legs, 2026-09-10):
+the spawned java runtime's launcher co-mounts this payload (mn2pdf's
+jar lives in its image) and parses its manifest — and the pinned
+openjdk line (2.1.5) predates spec 32, dying on the same
+`kind: executable` edge (`Jing failed with error: … unknown variant
+'executable'`). Masked since 09-06 because install was already failing
+(the registry gap above). Fix: `recipe.yml java.tebako` 2.1.5 → **2.4.0**
+— the oldest spec-32-era openjdk line, and the LAST temurin-only one:
+v2.4.1/v2.5.0 turn manifest.json into a two-flavor list (graalvm
+25.0.4.1 first), and the v2.2.0 resolver takes the first platform match
+ignoring the `version: "21.0.12"` pref (reproduced locally: the spawn
+fetch asked for `tebako-runtime-2.5.0-25.0.4.1-macos-arm64`). The
+flavor-mispick is a product-side resolver observation (flagged in the
+PR); the pin advances past 2.4.0 only with a CLI that selects by
+version. Rehearsed green in the scratch store: pref 2.4.0, the spawn
+edge downloaded + cached `java-21.0.12-2.4.0-macos-arm64` at dispatch,
+and the fixture compile produced the PDF (mn2pdf + Jing both ran on
+the spawned runtime).
+
 The `dogfood-ruby40` job is the 4.0 flavor's slim proof: install
 `metanorma@1.16.9-ruby4.0`, run `metanorma version` through the env
 link of the version chain, and force the ABI guard — the 4.0 flavor

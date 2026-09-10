@@ -167,15 +167,22 @@ tools:
 # download would be misdirected (the mirror is one base for ALL engines;
 # a per-engine source key in config.yaml is the filed product follow-up).
 java:
-  # The pinned java runtime pair (tebako-packages/openjdk release v2.1.5,
-  # kind: runtime — the spec 30 spawn edge in manifests/payload.yaml;
-  # the wrapper rides tebako#516+#517 — the realpath NULL-arm reroute,
-  # glibc-scoped after the musl constructor panic).
+  # The pinned java runtime pair (tebako-packages/openjdk release v2.4.0,
+  # kind: runtime — the spec 30 spawn edge in manifests/payload.yaml).
+  # v2.4.0 is the oldest line whose launcher parses spec 32: the spawned
+  # JVM co-mounts THIS payload (mn2pdf's jar lives in its image) and its
+  # launcher parses the payload manifest — v2.1.5 predates spec 32 and
+  # dies "unknown variant 'executable'" (the 2026-09-10 full-dogfood
+  # failure). 2.4.0 is also the LAST temurin-only line: v2.4.1+ adds a
+  # graalvm sibling flavor to manifest.json, and the v2.2.0 resolver
+  # (tools.release) takes the first platform match — graalvm 25.0.4.1 —
+  # ignoring the version pref; the pin stays on 2.4.0 until the CLI
+  # pin advances past that (rehearsed locally, build-notes §9.3).
   # The preference flows into ~/.tebako/config.yaml `runtimes:` at
   # install/publish time so the edge's download resolves to THIS exact
   # pair (a pref-less pick would query the wrong release line).
   version: "21.0.12"       # Temurin JRE 21.0.12+8 repack
-  tebako: "2.1.5"          # the release line = the wrapper's tebako build
+  tebako: "2.4.0"          # the release line = the wrapper's tebako build
   releases_base: "https://github.com/tebako-packages/openjdk/releases/download"
 
 # The nested python runtime behind payload.yaml's spec-32 kind: executable
