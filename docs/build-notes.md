@@ -40,7 +40,7 @@ Everything else in the closure is pure ruby — including the heavy data
 gems (isodoc-i18n, twitter_cldr, the relaton family) and `mn2pdf 2.62`,
 which wraps a Java jar: **PDF output spawns `java` at exec time** — a
 spec-30 `kind: runtime` edge (`engine: java`) that `tebako install`
-pre-stages from the tebako-packages/openjdk runtime release. The JVM is
+pre-stages from the tamatebako/tebako-runtime-openjdk release. The JVM is
 a child process dispatched from the store (never a host-PATH lookup; a
 host without java compiles identically). See §7.4.
 

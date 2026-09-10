@@ -167,8 +167,10 @@ tools:
 # download would be misdirected (the mirror is one base for ALL engines;
 # a per-engine source key in config.yaml is the filed product follow-up).
 java:
-  # The pinned java runtime pair (tebako-packages/openjdk release v2.4.0,
-  # kind: runtime — the spec 30 spawn edge in manifests/payload.yaml).
+  # The pinned java runtime pair (tamatebako/tebako-runtime-openjdk
+  # release v2.4.0 — the runtime feedstock's canonical home per the
+  # 2026-09-10 org split; tebako-packages/openjdk redirects there —
+  # kind: runtime, the spec 30 spawn edge in manifests/payload.yaml).
   # v2.4.0 is the oldest line whose launcher parses spec 32: the spawned
   # JVM co-mounts THIS payload (mn2pdf's jar lives in its image) and its
   # launcher parses the payload manifest — v2.1.5 predates spec 32 and
@@ -183,7 +185,7 @@ java:
   # pair (a pref-less pick would query the wrong release line).
   version: "21.0.12"       # Temurin JRE 21.0.12+8 repack
   tebako: "2.4.0"          # the release line = the wrapper's tebako build
-  releases_base: "https://github.com/tebako-packages/openjdk/releases/download"
+  releases_base: "https://github.com/tamatebako/tebako-runtime-openjdk/releases/download"
 
 # The nested python runtime behind payload.yaml's spec-32 kind: executable
 # edge (the xml2rfc provider dispatches as a child on its own python
