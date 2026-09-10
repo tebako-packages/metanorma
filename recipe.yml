@@ -16,7 +16,6 @@ build:
   system: gemstage         # stage a GEM_HOME closure with a tebako runtime's own ruby
   runtime:
     engine: ruby
-    version: "3.3.12"      # the staging + exec runtime (tebako-runtime-ruby)
     tebako: "0.16.22"      # runtime release line (image-era; the pinned CLI
                            # refuses pre-era releases by contract, exit 75).
                            # 0.16.22 is the factory re-cut on the tebako
@@ -47,14 +46,36 @@ build:
                            # the v2.1.4 musl unit's constructor panicked on
                            # the RTLD_NEXT lookup; tebako#515's realpath
                            # family + vfork gate included).
-  # mkmf SDK for the source-built native deps (brotli, ox, oga, ruby-ll,
-  # psych, websocket-driver): headers of the exact ruby the runtime ships
-  # (the runtime image carries none). The windows leg additionally generates
-  # an import library from the built static libruby with dlltool (the
-  # runtime factory's own mechanism — docs/build-notes.md § Windows).
-  sdk:
-    url: "https://cache.ruby-lang.org/pub/ruby/3.3/ruby-3.3.12.tar.gz"
-    sha256: "b06d63beae271933033e27f0a389bc582a009e7845357d44365c39de525a051b"
+    # The ruby axis (roadmap 77): ONE upstream version publishes ONE
+    # registry version entry per line — the default line keeps the bare
+    # upstream version (1.16.9), every other line suffixes "-ruby<line>"
+    # (1.16.9-ruby4.0). Users choose through the existing spec 07 §2.1
+    # version chain; each flavor's entrypoint runtime_requirement fills
+    # from the line's `constraint` (spec 28 §8's native law locks each
+    # flavor to its own ABI line — never cross-paired). Per line:
+    #   version    — the staging + exec runtime (tebako-runtime-ruby)
+    #   constraint — the ABI line declared on every entrypoint
+    #   sdk        — mkmf SDK for the source-built native deps (brotli, ox,
+    #                oga, ruby-ll, psych, websocket-driver): headers of the
+    #                exact ruby the runtime ships (the runtime image carries
+    #                none). The windows leg additionally generates an import
+    #                library from the facet DLL's own export table with
+    #                dlltool (docs/build-notes.md § Windows). sha256 == the
+    #                source-factory SSOT (tamatebako/ruby versions.yml).
+    default_line: "3.3"
+    lines:
+      "3.3":
+        version: "3.3.12"
+        constraint: "~> 3.3.0"
+        sdk:
+          url: "https://cache.ruby-lang.org/pub/ruby/3.3/ruby-3.3.12.tar.gz"
+          sha256: "b06d63beae271933033e27f0a389bc582a009e7845357d44365c39de525a051b"
+      "4.0":
+        version: "4.0.6"
+        constraint: "~> 4.0.0"
+        sdk:
+          url: "https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.6.tar.gz"
+          sha256: "837d299e8f7ddf2be31a229a7a7e019d354979825117989acb3b32b1a9be262a"
   # libyaml for psych 5.2.6 (psych ships no precompiled gems and vendors no
   # libyaml; see docs/build-notes.md §3). mac leg: --with-libyaml-source-dir
   # inside the gem build; windows leg: host-built static libyaml + dir_config
@@ -70,7 +91,12 @@ build:
                            # copied into the output folder so external readers
                            # (mn2pdf's JVM) never dereference an in-VFS gem path
   # Constraints the runtime's own default/bundled gems already satisfy — the
-  # payload relies on the runtime for these (runtime-required kind: app):
+  # payload relies on the runtime for these (runtime-required kind: app).
+  # Shared by both ruby lines today; if a future line's default-gem set
+  # drifts (a skip unsatisfied, or a pin made moot), the override shape is a
+  # per-line `pins:`/`skip_defaults:` block under build.runtime.lines.<line>
+  # merged over these — derive the delta from the line runtime's own
+  # `gem list --default`, never by guess (docs/build-notes.md §9).
   skip_defaults: [json, bigdecimal, strscan, racc, drb, uri, minitest,
                   securerandom, benchmark, ostruct, rexml, date, time,
                   nkf, reline, io-console, prism,
@@ -190,14 +216,16 @@ provides:
   # 66-command inventory with per-entrypoint `active` exposure, spec 03
   # §2.2), which tools/build fills into the image and `tebako publish`
   # mirrors into the registry. Do NOT grow this list here.
+  # identity.version and each entrypoint's runtime_requirement are PER-LINE
+  # (roadmap 77): they flow from build.runtime.lines (version →
+  # 1.16.9 / 1.16.9-ruby4.0, constraint → the line's ABI line) through
+  # tools/build's @@PAYLOAD_VERSION@@/@@CONSTRAINT@@ fill — one owner, no
+  # second copy here.
   entrypoints:
     - name: "metanorma"
       path: "/bin/metanorma"
-      version: "1.16.9"
-      runtime_requirement: {engine: ruby, constraint: "~> 3.3.0"}
     - name: "fontist"
       path: "/bin/fontist"
-      runtime_requirement: {engine: ruby, constraint: "~> 3.3.0"}
 
 annotations:
   gem: metanorma-cli

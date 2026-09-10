@@ -560,3 +560,199 @@ note, now proven).
 First green image: `metanorma-1.16.9-linux-gnu-x86_64.tfs`,
 sha256 `15140aa885409e86de4ba4c3b1b175a2097b56efcc3da153ab3cb1b671594c1f`
 (CI-built bytes; any rebuild re-images from the same pinned inputs).
+
+## 9. The ruby axis (roadmap 77): one recipe, two payload flavors
+
+The feedstock builds the payload per RUBY LINE (`build.runtime.lines`):
+the default line `3.3` (ruby 3.3.12, ABI `~> 3.3.0`) and the `4.0` line
+(ruby 4.0.6, ABI `~> 4.0.0`), sharing the runtime release line
+(`build.runtime.tebako: 0.16.22`). The line key drives everything
+per-line — the staging/exec runtime version, the entrypoint ABI
+constraint (the manifest's `@@CONSTRAINT@@` placeholder, filled per
+line at build), the mkmf SDK pin, the closure file, and the registry
+version entry: the default line keeps the bare upstream version
+(`1.16.9`), other lines suffix (`1.16.9-ruby4.0`). One upstream version,
+one registry entry per line; the user picks through the spec 07 §2.1
+version chain (`TEBAKO_METANORMA_VERSION` / `.tebako-tools.yaml` /
+`defaults:`), and a native-extension payload stays locked to its ABI
+line (spec 28 §8 — the dispatcher refuses a cross-line pairing by name,
+exit 69, never a segfault).
+
+Publish order is load-bearing: the CLI's registry upsert sets
+`default:` only when absent, so the default line's entry must land
+first — `pins.rb` emits `RUBY_LINES` default-first and the publish job
+loops it in that order into one `--registry-out`.
+
+The SDK pins' provenance is tamatebako/ruby's `versions.yml` (the
+source factory SSOT): it owns each version's upstream tarball url +
+sha256, and the recipe carries the flowed copy per line
+(`build.runtime.lines.<line>.sdk` — 3.3.12 `b06d63be…`, 4.0.6
+`837d299e…`, both diff-verified against versions.yml).
+
+### 9.1 The 4.0 closure: a fresh per-line resolution
+
+Closures are per line and pinned per release — the 3.3 files
+(`closure/1.16.9-*.txt`) are untouched; the 4.0 files
+(`closure/1.16.9-ruby4.0-*.txt`) were resolved fresh against the 4.0.6
+runtime's own shim (`tools/resolve_closure`, 311-spec lock) and
+rendered per platform by `tools/gen_closure`:
+
+- **Platform candidates** (new in gen_closure): a precompiled native is
+  emitted in the first candidate spelling present in the lock
+  (`x86_64-linux-gnu` → plain `x86_64-linux` fallback — libpng/parsanol
+  publish only the plain spelling), else swapped in by name with the
+  `/info/<gem>` checksum (fail-closed when absent). Windows resolved all
+  five swap-ins (`nokogiri/ffi/libpng/parsanol/sqlite3` as
+  `-x64-mingw-ucrt`), including `sqlite3-2.9.6-x64-mingw-ucrt`.
+- **The closure serves the manifest's declared commands.** The naive
+  fresh resolution dropped `lutaml-xsd` (with its `xsdvi`/`rng`/`tty-*`
+  subtree) and `ukiryu` (with `versionian` + `json-schema`) — no current
+  gem depends on either (mn2pdf 2.72 dropped ukiryu) — but
+  `manifests/payload.yaml` DECLARES both commands, and `tools/build`'s
+  declaration-drift guard failed closed, one at a time ("executable of 0
+  staged gems"). Dropping the declarations would regress the PUBLISHED
+  contract (the 1.16.9 payload ships them; `lutaml-xsd` is even
+  PATH-active), so both gems are now explicit resolution roots in
+  `tools/resolve_closure` — on both lines, keeping future
+  re-resolutions symmetric.
+- **Net drift after the roots: the gem SETS are identical but for one
+  gem** — 261 gems vs the 3.3 line's 260; the only 4.0-only name is
+  `postsvg` (vectory 0.12.0's new dependency), and nothing the 3.3 line
+  ships is absent. `ukiryu`'s `git ~> 3.0` pin also restored `git
+  3.1.1` (fresh resolution otherwise floats to 5.4.1) and with it
+  `process_executer 1.3.0` — byte-identical sha256s with the published
+  3.3 closure; the remaining drift is ~68 version bumps from the
+  fresh-resolution patch train (`mn2pdf 2.62→2.72`,
+  `moxml 0.1.26→0.5.30`, `canon 0.2.12→0.3.29`, `xmi 0.6.2→0.7.4`,
+  `mnconvert 1.87→1.89`, `ferrum 0.17.2→0.18.0`, the metanorma-* patch
+  releases, …). Bundler cannot silently drop a still-required edge —
+  absence means the newer parents no longer depend on them.
+- The `liquid 5.6.0` pin is retained on BOTH lines (5.13.0 resolves
+  today; the pin re-applies — parity with the 3.3 line, the original
+  justification stands).
+- The six source-only natives are unchanged and still source-built per
+  line (`brotli 0.8.0`, `ox 2.14.29`, `oga 3.5`, `ruby-ll 2.2.0`,
+  `psych 5.2.6`, `websocket-driver 0.8.2`) — the 4.0 line's mkmf rides
+  the same SDK preload flow against the 4.0.6 SDK pin.
+
+### 9.2 skip_defaults re-validated against the 4.0.6 runtime
+
+The `skip_defaults` set is shared by both lines; the 4.0 line required
+an edge-by-edge re-validation (a skipped default is a promise that the
+runtime's bundled copy satisfies every consumer's constraint). The
+4.0.6 runtime's default+bundled list (84 gems, captured from the
+runtime's own shim — `gem list` on the pressed runtime) satisfies all
+49 requires-edges the closure's gems declare onto the skipped defaults
+(script-validated against `/info`: every edge's requirement ⊆ the
+bundled version, 0 unsatisfied). Notables on the 4.0 line:
+`strscan 3.1.6`, `psych 5.3.1` (default), `json 2.18.0`,
+`bigdecimal 4.0.1`, `singleton 0.3.0`, `net-ftp 0.3.9`.
+
+The one candidate conflict validates clean: `versionian` (back via the
+`ukiryu` root, §9.1) constrains `singleton ~> 0.2` — [0.2, 1.0) — and
+the 4.0.6 runtime bundles `singleton 0.3.0`, which satisfies it (the
+same reading as the 3.3 line's long-standing skip). No per-line
+`pins:`/`skip_defaults:` override is needed today; the escape hatch
+shape (per-line blocks under `build.runtime.lines.<line>` merged over
+the top-level set) is documented in recipe.yml for future drift —
+derive any delta from the line runtime's own `gem list --default`,
+never by guess.
+
+`psych` stays in the payload on the 4.0 line even though the runtime's
+bundled 5.3.1 would satisfy the constraint: the windows leg's manual
+staging flow and the pinned-libyaml build keep the payload
+self-contained, identical in shape to the 3.3 line.
+
+### 9.3 The dogfood repair (spec 32 fallout — pre-existing on main)
+
+The dual-line work surfaced that the nightly dogfood was already red on
+main (since 2026-09-06): tag 1.16.9-9 added the spec-32 xml2rfc
+`kind: executable` edge, so install additionally needs (a) the xml2rfc
+provider registry, (b) the python runtime preference, (c) a COMBINED
+java+python local mirror (`TEBAKO_RUNTIME_MIRROR` is one base for ALL
+engines — the bare java base misdirects the python leg). Reproduced
+locally by name (exit 65, "requires executable xml2rfc … no registered
+registry carries it"), repaired, rehearsed green in a scratch
+TEBAKO_HOME (store: payloads metanorma+inkscape+xml2rfc, runtimes
+java+python pre-staged at install).
+
+A second lurking break surfaced at dispatch: pref-less ruby resolution
+rides the factory's DEFAULT index line, which lags the recipe pin
+(3.3.12-**0.16.18** vs the pinned 0.16.22) — and the lagging driver
+predates spec 32, dying on the payload manifest's `kind: executable`
+edge (`unknown variant 'executable'`). Fix: every main-leg config pins
+`runtimes.ruby` to the recipe pair (`RUBY_V`/`RUNTIME_TEBAKO` from
+pins.rb — the collision-free name, see the pins.rb header). Proven
+locally: the pref'd dispatch of the published 1.16.9 downloads
+`ruby-3.3.12-0.16.22` and runs (`Metanorma::Cli 1.16.9`, rc 0). The
+factory default-index lag itself is a tebako-runtime-ruby-side
+observation (flagged in the PR); the dogfood must not ride it.
+
+The `dogfood-ruby40` job is the 4.0 flavor's slim proof: install
+`metanorma@1.16.9-ruby4.0`, run `metanorma version` through the env
+link of the version chain, and force the ABI guard — the 4.0 flavor
+pinned onto the 3.3-line runtime preference with `TEBAKO_OFFLINE=1`
+must fail with spec 28 §8's named error. Proven locally in the mirror
+direction (pref 4.0.6 against the ~> 3.3.0 payload): rc 69,
+"…a native-extension payload locks to its ABI line…". The guard step
+runs BEFORE any 4.0 runtime is cached (a cached COMPATIBLE runtime
+silently beats a conflicting pref — resolver semantics observed
+locally), with the config riding a save/restore. The job skips loudly
+(via the `ruby40-published` gate probing the published registry) until
+the first dual-line tag publishes the flavor — the registries it rides
+are the published ones, and this wiring lands before that tag by
+construction.
+
+### 9.4 Local validation (2026-09-10, macOS arm64)
+
+Both lines built + boot-smoked locally with the recipe-pinned tools
+(tebako/tfs/tebako-shim 2.2.0):
+
+| line | gems | natives (all six, source-built) | manifest fill | boot smoke |
+|------|------|--------------------------------|---------------|------------|
+| 3.3 (default) | 260 | `arm64-darwin-23/3.3.0-static` | `1.16.9` / `~> 3.3.0` | BOOT-SMOKE-OK |
+| 4.0 | 261 | `arm64-darwin-23/4.0.0-static` | `1.16.9-ruby4.0` / `~> 4.0.0` | BOOT-SMOKE-OK |
+
+- 3.3 image: `metanorma-1.16.9-macos-arm64.tfs` sha256
+  `3ea7f688698fea0fe90a8f574595dd15ecb5ee7796d7db4ab91710c70b401a64`;
+  smoke through `ruby-3.3.12-0.16.22` → `Metanorma::Cli 1.16.9`.
+- 4.0 image: `metanorma-1.16.9-ruby4.0-macos-arm64.tfs` sha256
+  `4a5627e91737b7c3b7fc1a1e38d14030cb9e80e13cfcab4798ac68f03973522c`;
+  smoke through `ruby-4.0.6-0.16.22` → `Metanorma::Cli 1.16.9`.
+- The declaration-drift guard passed on both lines ("declared commands
+  staged and verified against the closure") — after it caught the two
+  manifest-contract drops that motivated the resolve_closure roots.
+- Skip re-validation: 49 edges onto skipped defaults, 0 unsatisfied
+  (§9.2).
+- Static gates: `bash -n` all touched shell, `ruby -c` pins.rb + both
+  templates, recipe + manifest YAML parse, `actionlint -shellcheck=`
+  clean on both workflows, `bundle exec rspec` 7/7.
+- The linux + windows 4.0 legs are exercised only in CI (local builds
+  are macOS arm64): their closure spellings are `/info`-verified, but
+  the windows manual native staging on 4.0 has no local rehearsal.
+
+### 9.5 Side-by-side coexistence (local, 2026-09-10)
+
+Both locally-built flavors installed into one scratch store via
+content-addressed file refs (`tebako install file://…tfs?sha256=…` —
+the CLI fails closed on a bare file ref, exit 64, demanding the content
+address). The install resolved the inkscape + xml2rfc edges from the
+published registries and pre-staged the spawned java + python runtimes
+through the combined mirror (the §9.3 wiring), identical for both
+flavors. With both ruby runtimes cached (3.3.12 + 4.0.6, both 0.16.22)
+and each flavor dispatched with the OTHER line's payload AND runtime
+physically absent plus `TEBAKO_OFFLINE=1`:
+
+- 4.0 flavor → `Metanorma::Cli 1.16.9`, `Standoc 3.4.10/IsoDoc 3.7.3`,
+  `Jis 1.1.6` — on ruby 4.0.6 by exclusion (no 3.3-line runtime
+  existed in the process's universe; the ABI guard bars cross-pairing).
+- 3.3 flavor → `Metanorma::Cli 1.16.9`, `Standoc 3.4.9/IsoDoc 3.7.0`,
+  `Jis 1.1.5` — on ruby 3.3.12 by the same exclusion.
+
+Observed product behavior worth a product-side look (not this repo's):
+a `file://` install registers the payload under the artifact FILENAME
+rather than the manifest identity, so two same-command flavors collide
+at provider selection ("provided by more than one installed payload",
+exit 65) before the version chain can apply. The published path is
+unaffected — both flavors are versions of the ONE `metanorma` registry
+entry, which is exactly what the dogfood-ruby40 leg exercises.

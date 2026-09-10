@@ -20,6 +20,14 @@ name: build-payload
 #   the pinned runtime — the payload's in-image acceptance (the Homebrew
 #   formula's test translated; manifests/payload.yaml `checks:`). FAIL is
 #   the engine's named exit 79.
+#
+# THE RUBY AXIS (roadmap 77): every build job is a matrix over the recipe's
+# ruby lines (build.runtime.lines — the keys are mirrored by the matrix;
+# every VALUE still flows from recipe.yml via tools/pins.rb --ruby-line).
+# One upstream version, one registry entry per line: the default line
+# publishes 1.16.9, the 4.0 line publishes 1.16.9-ruby4.0 — both from one
+# tag, the publish job upserting the default line FIRST (tebako-cli sets
+# the registry `default:` only when absent).
 on:
   push:
     branches: [main]
@@ -40,13 +48,17 @@ permissions:
 
 jobs:
   build:
-    name: aarch64-macos
+    name: aarch64-macos (ruby ${{ matrix.ruby_line }})
     runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby_line: ["3.3", "4.0"]   # the keys of recipe.yml build.runtime.lines
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Read the toolchain pins (recipe.yml is the SSOT)
-        run: ruby tools/pins.rb macos-arm64 --env >> "$GITHUB_ENV"
+        run: ruby tools/pins.rb macos-arm64 --ruby-line "${{ matrix.ruby_line }}" --env >> "$GITHUB_ENV"
 
       - name: Fetch tebako CLI tools (pinned by recipe.yml, sha256-verified)
         # The packager is the RELEASE BINARY (releases are the
@@ -112,12 +124,16 @@ jobs:
       - name: Stage artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: dist-aarch64-macos
+          name: dist-aarch64-macos-${{ matrix.ruby_line }}
           path: out/aarch64-macos/
 
   build-windows:
-    name: x86_64-windows-ucrt
+    name: x86_64-windows-ucrt (ruby ${{ matrix.ruby_line }})
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby_line: ["3.3", "4.0"]   # the keys of recipe.yml build.runtime.lines
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -152,7 +168,7 @@ jobs:
 
       - name: Read the toolchain pins (recipe.yml is the SSOT)
         shell: msys2 {0}
-        run: ruby tools/pins.rb windows-ucrt64 --env >> "$GITHUB_ENV"
+        run: ruby tools/pins.rb windows-ucrt64 --ruby-line "${{ matrix.ruby_line }}" --env >> "$GITHUB_ENV"
 
       - name: Fetch tebako CLI tools (pinned by recipe.yml, sha256-verified)
         # the matrix context is not available to step-level `shell`, so
@@ -243,17 +259,21 @@ jobs:
       - name: Stage artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: dist-x86_64-windows-ucrt
+          name: dist-x86_64-windows-ucrt-${{ matrix.ruby_line }}
           path: out/x86_64-windows-ucrt/
 
   build-linux:
-    name: x86_64-linux-gnu
+    name: x86_64-linux-gnu (ruby ${{ matrix.ruby_line }})
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby_line: ["3.3", "4.0"]   # the keys of recipe.yml build.runtime.lines
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Read the toolchain pins (recipe.yml is the SSOT)
-        run: ruby tools/pins.rb linux-gnu-x86_64 --env >> "$GITHUB_ENV"
+        run: ruby tools/pins.rb linux-gnu-x86_64 --ruby-line "${{ matrix.ruby_line }}" --env >> "$GITHUB_ENV"
 
       - name: Fetch tebako CLI tools (pinned by recipe.yml, sha256-verified)
         # Same pins discipline as the mac leg (the digests are cross-checked
@@ -310,7 +330,7 @@ jobs:
       - name: Stage artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: dist-x86_64-linux-gnu
+          name: dist-x86_64-linux-gnu-${{ matrix.ruby_line }}
           path: out/x86_64-linux-gnu/
 
   release:
@@ -320,6 +340,9 @@ jobs:
     # proved green on the 0.16.6 line (PR #22, head 37396c0 — the
     # tebako#437 SSL_CERT_FILE workaround), so the wiring (needs +
     # --payload + the registry entry) now includes the windows artifact.
+    # Roadmap 77: each leg is a 2-leg matrix (one per ruby line) — needs
+    # waits for all six; the publish step below upserts one registry
+    # version entry per line into the SAME registry file.
     needs: [build, build-linux, build-windows]
     runs-on: macos-14
     env:
@@ -334,8 +357,9 @@ jobs:
           path: out
           merge-multiple: false
       - name: Restore layout
-        # each dist-<triplet> artifact carries the leg's out/<triplet>/
-        # contents; put them back at out/<triplet>/ for the publish below
+        # each dist-<triplet>-<ruby_line> artifact carries the leg's
+        # out/<triplet>/ contents; put them back at out/<triplet>-<line>/
+        # for the per-line publish below
         run: |
           set -e
           for d in out/dist-*/; do
@@ -402,6 +426,14 @@ jobs:
         # step: the verify never downloads the primary ruby runtime (kind:
         # language resolves at run time), so the one-base-for-all-engines
         # mirror cannot misdirect it here.
+        #
+        # Roadmap 77: ONE invocation per ruby line into the SAME
+        # --registry-out. ORDER IS LOAD-BEARING: RUBY_LINES lists the
+        # default line first and tebako-cli's upsert sets the registry
+        # `default:` only when absent — the default line's entry must be
+        # the first to land. Each line's PAYLOAD_VERSION (1.16.9 /
+        # 1.16.9-ruby4.0) and its per-line artifact names flow from
+        # tools/pins.rb --ruby-line.
         env:
           TEBAKO_RUNTIME_MIRROR: file://${{ github.workspace }}/out/publish-mirror
         run: |
@@ -421,12 +453,16 @@ jobs:
           # (the dir does not exist) and would be invisible to the verify.
           printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n  python:\n    version: "%s"\n    tebako: "%s"\n' \
             "$JAVA_VERSION" "$JAVA_TEBAKO" "$PYTHON_VERSION" "$PYTHON_TEBAKO" >> "$TEBAKO_HOME/config.yaml"
-          "$TEBAKO_CLI" publish --name "$PKG_NAME" \
-            --release "tfs:github:tebako-packages/metanorma:${{ github.ref_name }}" \
-            --payload aarch64-macos="out/aarch64-macos/$PKG_NAME-$PKG_VERSION-macos-arm64.tfs" \
-            --payload x86_64-linux-gnu="out/x86_64-linux-gnu/$PKG_NAME-$PKG_VERSION-linux-gnu-x86_64.tfs" \
-            --payload x86_64-windows-ucrt="out/x86_64-windows-ucrt/$PKG_NAME-$PKG_VERSION-windows-ucrt64.tfs" \
-            --registry-out "$PWD/tpkg-registry.yaml"
+          for ruby_line in $RUBY_LINES; do
+            eval "$(ruby tools/pins.rb macos-arm64 --ruby-line "$ruby_line")"
+            echo "== publish ruby line $ruby_line as version $PAYLOAD_VERSION"
+            "$TEBAKO_CLI" publish --name "$PKG_NAME" \
+              --release "tfs:github:tebako-packages/metanorma:${{ github.ref_name }}" \
+              --payload aarch64-macos="out/aarch64-macos-$ruby_line/$PKG_NAME-$PAYLOAD_VERSION-macos-arm64.tfs" \
+              --payload x86_64-linux-gnu="out/x86_64-linux-gnu-$ruby_line/$PKG_NAME-$PAYLOAD_VERSION-linux-gnu-x86_64.tfs" \
+              --payload x86_64-windows-ucrt="out/x86_64-windows-ucrt-$ruby_line/$PKG_NAME-$PAYLOAD_VERSION-windows-ucrt64.tfs" \
+              --registry-out "$PWD/tpkg-registry.yaml"
+          done
       # main is branch-protected (and the GitHub-Actions bypass is not
       # available on this plan): the registry lands by bot PR + auto-merge,
       # never by direct push. Idempotent across re-runs of the same tag.
@@ -445,7 +481,7 @@ jobs:
           branch="publish/${{ github.ref_name }}-registry"
           git checkout -b "$branch"
           git add tpkg-registry.yaml
-          git commit -m "publish ${{ github.ref_name }}: registry entry (macos-arm64, linux-gnu-x86_64, windows-ucrt64)"
+          git commit -m "publish ${{ github.ref_name }}: registry entries (macos-arm64, linux-gnu-x86_64, windows-ucrt64; ruby lines: $RUBY_LINES)"
           git push origin "$branch"
           if ! gh pr view "$branch" >/dev/null 2>&1; then
             gh pr create --base main --head "$branch" \

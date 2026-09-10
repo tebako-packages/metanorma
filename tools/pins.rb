@@ -5,22 +5,30 @@
 # SSOT) and emit KEY=VALUE lines for $GITHUB_ENV. The workflows carry NO
 # version or digest literals — every value flows from the recipe.
 #
-#   ruby tools/pins.rb <tool-platform> [--env]
-#   ruby tools/pins.rb --release-only
+#   ruby tools/pins.rb <tool-platform> [--ruby-line <line>] [--env]
+#   ruby tools/pins.rb --release-only [--ruby-line <line>]
 #
 # <tool-platform> is the tebako release asset platform (macos-arm64,
 # linux-gnu-x86_64, windows-ucrt64). --release-only skips the per-platform
 # tool asset/digest keys (dogfood's cold-install path) but still emits the
 # java edge's JAVA_* keys — the dogfood install pre-stages the spawned
 # runtime through them.
-# Unknown platform / missing pin is a named error, never a guess
-# (spec 00 §9).
+#
+# --ruby-line selects the ruby line (recipe build.runtime.lines; default:
+# build.runtime.default_line) and drives the RUBY_* / SDK_* /
+# PAYLOAD_VERSION values. RUBY_LINES always lists every line, default
+# first — publish order matters: the CLI's registry upsert sets `default:`
+# only when absent, so the default line's entry must land first.
+# Unknown platform / missing pin / unknown line is a named error, never a
+# guess (spec 00 §9).
 #
 # NEVER emit a bare TEBAKO_VERSION: tools/build uses that name for the
 # RUNTIME release line (recipe build.runtime.tebako) with an env
 # override, so a tools-version export silently clobbers the runtime pin
 # (the 2026-08-27 collision: the press resolved runtime release v0.3.1,
-# exit 124). The tools version lives inside the computed ASSET names.
+# exit 124). The tools version lives inside the computed ASSET names; the
+# runtime release line is emitted as RUNTIME_TEBAKO (a distinct name —
+# the collision lesson applied to the new key).
 
 require "yaml"
 
@@ -36,11 +44,42 @@ release = tools.fetch("release")
 version = release.sub(/\Av/, "")
 die "recipe.yml tools.sha256 missing" unless tools["sha256"].is_a?(Hash)
 
+# --- the ruby line (roadmap 77) ------------------------------------------
+runtime = recipe.fetch("build").fetch("runtime")
+lines = runtime.fetch("lines")
+default_line = runtime.fetch("default_line")
+ruby_line = default_line
+if (i = ARGV.index("--ruby-line"))
+  ruby_line = ARGV[i + 1] or die "usage: pins.rb <tool-platform> [--ruby-line <line>] [--env]"
+  ARGV.delete_at(i + 1)
+  ARGV.delete_at(i)
+end
+line = lines[ruby_line] or
+  die "recipe.yml: no build.runtime.lines.#{ruby_line} (known: #{lines.keys.join(' ')})"
+sdk = line.fetch("sdk")
+pkg_version = recipe.dig("upstream", "version") || die("recipe.yml upstream.version missing")
+# The registry version entry (tebako-resolve treats it as an opaque string;
+# dotted compare orders the suffixed form after the bare one): the default
+# line keeps the bare upstream version, other lines suffix -ruby<line>.
+payload_version = ruby_line == default_line ? pkg_version : "#{pkg_version}-ruby#{ruby_line}"
+
 pairs = {
   "TEBAKO_RELEASE" => release,
   "PKG_NAME" => recipe.fetch("name"),
-  "PKG_VERSION" => recipe.dig("upstream", "version") ||
-                   die("recipe.yml upstream.version missing"),
+  "PKG_VERSION" => pkg_version,
+  # The ruby axis: every line (default first), the selected line, its
+  # runtime version + ABI constraint, its mkmf SDK pin, and the registry
+  # version entry the build publishes under.
+  "RUBY_LINES" => ([default_line] + (lines.keys - [default_line]).sort).join(" "),
+  "RUBY_LINE" => ruby_line,
+  "RUBY_V" => line.fetch("version"),
+  "RUBY_CONSTRAINT" => line.fetch("constraint"),
+  "SDK_URL" => sdk.fetch("url"),
+  "SDK_SHA256" => sdk.fetch("sha256"),
+  "PAYLOAD_VERSION" => payload_version,
+  # The runtime release line (recipe build.runtime.tebako) under a
+  # collision-free name — see the header's TEBAKO_VERSION warning.
+  "RUNTIME_TEBAKO" => runtime.fetch("tebako"),
   # The spawned java runtime's release line (recipe.java — spec 30). The
   # workflows scope this to TEBAKO_RUNTIME_MIRROR at install/publish
   # steps ONLY (never at dispatch — one base for all engines), and write
@@ -67,7 +106,7 @@ pairs = {
 }
 
 unless ARGV.include?("--release-only")
-  platform = ARGV[0] or die "usage: pins.rb <tool-platform> [--env] | pins.rb --release-only"
+  platform = ARGV[0] or die "usage: pins.rb <tool-platform> [--ruby-line <line>] [--env] | pins.rb --release-only [--ruby-line <line>]"
   exe = platform.start_with?("windows") ? ".exe" : ""
   { "tebako" => "TEBAKO", "tebako-shim" => "SHIM", "tfs" => "TFS" }.each do |tool, key|
     sha = tools.dig("sha256", tool, platform) or
@@ -80,5 +119,7 @@ end
 if ARGV.include?("--env") || ARGV.include?("--release-only")
   pairs.each { |k, v| puts "#{k}=#{v}" }
 else
-  pairs.each { |k, v| puts "export #{k}=#{v}" }
+  # the eval-able form: values may carry spaces (RUBY_LINES) or shell
+  # metacharacters (RUBY_CONSTRAINT's "~>") — single-quote, always.
+  pairs.each { |k, v| puts "export #{k}='#{v.to_s.gsub("'", "'\\\\''")}'" }
 end

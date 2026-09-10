@@ -74,7 +74,13 @@ end
 # File.expand_path("..", __dir__) would already re-root "/bin" onto the
 # cwd drive on windows; File.dirname stays lexical.
 root = File.dirname(__dir__)
-gem_dir = File.join(root, "lib/ruby/gems/3.3.0")
+# The ruby-API segment (lib/ruby/gems/<3.3.0|4.0.0|...>) is per ruby line
+# (roadmap 77) — derive it: the payload carries exactly one API dir, so
+# the glob is unambiguous; zero or two is assembly drift, fail closed.
+api_dirs = Dir[File.join(root, "lib/ruby/gems/*")].select { |d| File.directory?(d) }
+abort("metanorma: expected exactly one lib/ruby/gems/<api> dir in the payload, " \
+      "found #{api_dirs.length} — payload assembly drift") unless api_dirs.length == 1
+gem_dir = api_dirs.first
 
 ENV["GEM_HOME"] = gem_dir
 ENV["GEM_PATH"] = [gem_dir, Gem.default_dir].join(File::PATH_SEPARATOR)

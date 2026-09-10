@@ -30,16 +30,27 @@
 #
 # Inputs (env, all with sane defaults):
 #   TRIPLET         aarch64-macos | x86_64-linux-gnu | x86_64-windows-ucrt
+#   RUBY_LINE       the ruby line key (recipe build.runtime.lines; default:
+#                   build.runtime.default_line). Selects the runtime version,
+#                   the ABI constraint, the SDK pin, the closure file, and
+#                   PAYLOAD_VERSION (below).
 #   TEBAKO_CLI      tebako-cli binary (default: tebako on PATH)
 #   TEBAKO_VERSION  runtime release line (default: recipe.yml
 #                   build.runtime.tebako — the feedstock pins the line; the
 #                   CLI's built-in default is older)
 #   TFS_CLI         tfs CLI binary, the in-process imager (default: tfs on PATH)
-#   WORK            build workspace (default: out/work-$TRIPLET)
+#   WORK            build workspace (default: out/work-$TRIPLET — the
+#                   non-default line builds in out/work-$TRIPLET-ruby$RUBY_LINE
+#                   so two lines never share a staging GEM_HOME)
 #   OUT             artifact dir   (default: out/$TRIPLET)
 #
-# Produces: $OUT/metanorma-<version>-<asset-platform>.tfs (+ manifest yaml),
-# the manifest EMBEDDED at /__tpkg__/manifest.yaml (tier 1, authoritative).
+# Produces: $OUT/metanorma-<payload-version>-<asset-platform>.tfs
+# (+ manifest yaml), the manifest EMBEDDED at /__tpkg__/manifest.yaml
+# (tier 1, authoritative). <payload-version> is the registry version entry
+# (roadmap 77): the bare upstream version on the default line (1.16.9),
+# "<upstream>-ruby<line>" on the others (1.16.9-ruby4.0) — one upstream
+# version, one registry entry per line, chosen by the user through the
+# spec 07 §2.1 version chain.
 #
 # Rules honored: no host ruby anywhere (the runtime IS the ruby — every
 # ruby process runs through the deploy-driver shim the CLI's own press
@@ -55,8 +66,25 @@ FEEDSTOCK="$(cd "$(dirname "$0")/.." && pwd)"
 recipe() { ruby -ryaml -e "puts(YAML.load_file('$FEEDSTOCK/recipe.yml').dig(*ARGV) || '')" "$@"; }
 VERSION="${VERSION:-$(recipe upstream version)}"
 TRIPLET="${TRIPLET:-aarch64-macos}"   # the manifest platforms form (vcpkg, spec 03)
-RUBY_V="${RUBY_V:-$(recipe build runtime version)}"
+# The ruby axis (roadmap 77): the line key selects the staging/exec runtime
+# version, the entrypoint ABI constraint, the mkmf SDK pin, and the closure
+# file — everything per-line flows from build.runtime.lines.<line>.
+DEFAULT_LINE="$(recipe build runtime default_line)"
+RUBY_LINE="${RUBY_LINE:-$DEFAULT_LINE}"
+RUBY_V="${RUBY_V:-$(recipe build runtime lines "$RUBY_LINE" version)}"
+RUBY_CONSTRAINT="${RUBY_CONSTRAINT:-$(recipe build runtime lines "$RUBY_LINE" constraint)}"
+[ -n "$RUBY_V" ] && [ -n "$RUBY_CONSTRAINT" ] || {
+  echo "recipe.yml: build.runtime.lines.$RUBY_LINE missing or incomplete (unknown ruby line?)"; exit 64; }
 API_V="$(echo "$RUBY_V" | sed -E 's/^([0-9]+\.[0-9]+)\..*/\1.0/')"
+# The registry version entry: the default line keeps the bare upstream
+# version; every other line suffixes "-ruby<line>" (an opaque
+# RegistryVersion.version string to tebako-resolve; dotted compare orders
+# it after the bare version).
+if [ "$RUBY_LINE" = "$DEFAULT_LINE" ]; then
+  PAYLOAD_VERSION="${PAYLOAD_VERSION:-$VERSION}"
+else
+  PAYLOAD_VERSION="${PAYLOAD_VERSION:-$VERSION-ruby$RUBY_LINE}"
+fi
 
 TEBAKO_CLI="${TEBAKO_CLI:-tebako}"
 TFS_CLI="${TFS_CLI:-tfs}"
@@ -66,13 +94,17 @@ TFS_CLI="${TFS_CLI:-tfs}"
 # 0.3.x new-v1 image format + the #464 read-path work — + the windows
 # support-DLL library_aliases payload, tebako-runtime-ruby#133).
 TEBAKO_VERSION="${TEBAKO_VERSION:-$(recipe build runtime tebako)}"
-WORK="${WORK:-$FEEDSTOCK/out/work-$TRIPLET}"
+if [ "$RUBY_LINE" = "$DEFAULT_LINE" ]; then
+  WORK="${WORK:-$FEEDSTOCK/out/work-$TRIPLET}"
+else
+  WORK="${WORK:-$FEEDSTOCK/out/work-$TRIPLET-ruby$RUBY_LINE}"
+fi
 OUT="${OUT:-$FEEDSTOCK/out/$TRIPLET}"
 export TEBAKO_HOME="${TEBAKO_HOME:-$FEEDSTOCK/out/tebako-home}"
-CLOSURE="$FEEDSTOCK/closure/$VERSION-$TRIPLET.txt"
+CLOSURE="$FEEDSTOCK/closure/$PAYLOAD_VERSION-$TRIPLET.txt"
 
-SDK_URL="${SDK_URL:-$(recipe build sdk url)}"
-SDK_SHA256="${SDK_SHA256:-$(recipe build sdk sha256)}"
+SDK_URL="${SDK_URL:-$(recipe build runtime lines "$RUBY_LINE" sdk url)}"
+SDK_SHA256="${SDK_SHA256:-$(recipe build runtime lines "$RUBY_LINE" sdk sha256)}"
 LIBYAML_URL="${LIBYAML_URL:-$(recipe build libyaml url)}"
 LIBYAML_SHA256="${LIBYAML_SHA256:-$(recipe build libyaml sha256)}"
 
@@ -533,10 +565,18 @@ MAN_EMBED="$PAYLOAD/__tpkg__/manifest.yaml"
 mkdir -p "$PAYLOAD/__tpkg__"
 sed -e "s|created: \"[^\"]*\"|created: \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"|" \
     -e "s|commit: \"0*\"|commit: \"$(git -C "$FEEDSTOCK" rev-parse HEAD)\"|" \
+    -e "s|@@PAYLOAD_VERSION@@|$PAYLOAD_VERSION|" \
+    -e "s|@@CONSTRAINT@@|$RUBY_CONSTRAINT|" \
     -e "s|@@ABI@@|$EXT_PLATFORM|" \
     -e "s|platforms: \[.*\]|platforms: [$TRIPLET]|" \
     "$FEEDSTOCK/manifests/payload.yaml" > "$MAN_EMBED"
-echo "embedded manifest: $MAN_EMBED"
+# Fail closed on template drift: no @@PLACEHOLDER@@ may survive the fill.
+if grep -q '@@[A-Z_]*@@' "$MAN_EMBED"; then
+  echo "unfilled placeholders in the embedded manifest:"
+  grep -n '@@[A-Z_]*@@' "$MAN_EMBED"
+  exit 1
+fi
+echo "embedded manifest: $MAN_EMBED (payload version $PAYLOAD_VERSION, constraint $RUBY_CONSTRAINT, abi $EXT_PLATFORM)"
 
 # --------------------------------------------------------- check fixtures
 # spec 26 §1: the html-xml check's fixtures image at /__tpkg__/check/html-xml/
@@ -549,7 +589,7 @@ cp "$FEEDSTOCK/fixtures/test-iso.adoc" "$PAYLOAD/__tpkg__/check/html-xml/test-is
 
 # ------------------------------------------------------------------ image
 step "tfs mkimage (the in-process dwarfs-t writer — never the mkdwarfs CLI)"
-IMG="$OUT/metanorma-$VERSION-$ASSET_PLATFORM.tfs"
+IMG="$OUT/metanorma-$PAYLOAD_VERSION-$ASSET_PLATFORM.tfs"
 rm -f "$IMG"
 "$TFS_CLI" mkimage --format dwarfs "$PAYLOAD" --output "$IMG"
 sha="$(sha256_file "$IMG")"
@@ -565,7 +605,7 @@ echo "PAYLOAD_IMG=$(winpath "$(cd "$OUT" && pwd)/$(basename "$IMG")")" \
 
 # ------------------------------------------------------ sibling manifest
 step "fill the sibling manifest (release tier: real blob sha)"
-MAN="$OUT/metanorma-$VERSION.manifest.yaml"
+MAN="$OUT/metanorma-$PAYLOAD_VERSION.manifest.yaml"
 sed -e "s|blob_sha256: \"0*\"|blob_sha256: \"$sha\"|" \
     "$MAN_EMBED" > "$MAN"
 echo "manifest: $MAN"

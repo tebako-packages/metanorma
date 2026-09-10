@@ -16,11 +16,14 @@ RUNTIME_IMAGE="${RUNTIME_IMAGE:?set RUNTIME_IMAGE to the runtime env .tfs}"
 
 # The gem identity + the ruby API dir flow from recipe.yml (the SSOT) —
 # this script carries no version literals. Env overrides for experiments.
+# RUBY_LINE selects the line (roadmap 77); the workflows export RUBY_LINE +
+# RUBY_V from tools/pins.rb.
 FEEDSTOCK="$(cd "$(dirname "$0")/.." && pwd)"
 recipe() { ruby -ryaml -e "puts(YAML.load_file('$FEEDSTOCK/recipe.yml').dig(*ARGV) || '')" "$@"; }
 GEM_NAME="${GEM_NAME:-$(recipe upstream gem)}"
 GEM_V="${GEM_V:-$(recipe upstream version)}"
-RUBY_V="${RUBY_V:-$(recipe build runtime version)}"
+RUBY_LINE="${RUBY_LINE:-$(recipe build runtime default_line)}"
+RUBY_V="${RUBY_V:-$(recipe build runtime lines "$RUBY_LINE" version)}"
 API_V="${API_V:-$(echo "$RUBY_V" | sed -E 's/^([0-9]+\.[0-9]+)\..*/\1.0/')}"
 
 # Under MSYS2 every VFS-path argv element ("/bin/metanorma" & co., incl.
