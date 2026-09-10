@@ -6,6 +6,11 @@
 #   - drops the runtime-default gems the recipe's skip_defaults covers
 #     (justified in docs/build-notes.md)
 #   - keeps only <triplet-platform> variants of the precompiled native gems
+#     (with the documented fallbacks: glibc gems often ship plain
+#     `-x86_64-linux` next to `-x86_64-linux-gnu`; a platform the resolving
+#     machine never locked — e.g. x64-mingw-ucrt from a macOS lock — is
+#     SWAPPED IN by name and its sha256 taken from /info, failing closed
+#     when rubygems publishes no such variant)
 #   - sha256 of every .gem from the rubygems compact index (/info/<gem>)
 #
 # Manual maintainer step; the committed closure file is the build input.
@@ -14,35 +19,52 @@ import sys
 import urllib.request
 
 SKIP_DEFAULTS = {
-    # constraint evidence in docs/build-notes.md § skip-defaults
+    # constraint evidence in docs/build-notes.md § skip-defaults; re-validated
+    # edge-by-edge against the ruby 4.0.6 runtime's default+bundled set for
+    # the 4.0 line (docs/build-notes.md §9 — all 49 edges satisfied, no
+    # per-line delta needed: versionian is back via the ukiryu manifest-
+    # contract root, and its singleton ~> 0.2 edge [0.2, 1.0) is satisfied
+    # by the runtime's bundled singleton 0.3.0)
     "json", "bigdecimal", "strscan", "racc", "drb", "uri", "minitest",
     "securerandom", "benchmark", "ostruct", "rexml", "date", "time",
-    # nkf: mechanize unconstrained → runtime default 0.1.3
+    # nkf: mechanize unconstrained → runtime default
     "nkf",
-    # reline: readline (sparql) unconstrained → runtime default 0.5.10;
-    # io-console: constrained (~> 0.5) only by the skipped reline 0.6.3 →
-    # runtime default 0.7.1;
-    # prism: depended on only by the skipped minitest 6.0.6
+    # reline: readline (sparql) unconstrained → runtime-bundled;
+    # io-console: constrained (~> 0.5) only by reline → runtime default;
+    # prism: depended on only by the skipped minitest
     "reline", "io-console", "prism",
     # validated against the runtime's default/bundled set (tools/check_skips
     # logic, evidence in build-notes):
-    "stringio",      # psych unconstrained → 3.1.1
-    "timeout",       # net-protocol unconstrained → 0.4.1
-    "yaml",          # oscal unconstrained → 0.3.0
-    "singleton",     # versionian ~> 0.2 → 0.2.0
-    "ruby2_keywords",# faraday >= 0.0.4 → 0.0.5
+    "stringio",      # psych unconstrained
+    "timeout",       # net-protocol unconstrained
+    "yaml",          # oscal unconstrained
+    "singleton",     # versionian ~> 0.2 (both lines; 4.0.6 bundles 0.3.0 ∈ ~> 0.2)
+    "ruby2_keywords",# faraday >= 0.0.4
     "readline",      # sparql ~> 0.0 → 0.0.4 (runtime default)
-    "net-protocol",  # net-ftp unconstrained → 0.2.2
-    "matrix",        # sxp ~> 0.4 → 0.4.2 (runtime-bundled)
+    "net-protocol",  # net-ftp unconstrained
+    "matrix",        # sxp ~> 0.4 (runtime-bundled)
     # NOT net-ftp: relaton-3gpp pins `~> 0.1.0` (three segments — < 0.2.0),
     # which the runtime-bundled 0.3.4 does NOT satisfy; net-ftp ships.
 }
 PRECOMPILED_NATIVES = {"nokogiri", "ffi", "libpng", "parsanol", "sqlite3"}
 # Resolution overrides, each justified in docs/build-notes.md (recipe.yml pins):
 PINS = {
-    "liquid": "5.6.0",  # >= 5.6.1 demands strscan >= 3.1.1 (source-only native)
+    "liquid": "5.6.0",  # >= 5.6.1 demands strscan >= 3.1.1 (source-only native
+                        # on the 3.3 line; kept on 4.0 for closure parity —
+                        # docs/build-notes.md §9)
     "metanorma": "2.5.4",  # portfolio directive materialisation (metanorma#596)
 }
+
+
+def platform_candidates(platform):
+    # Spellings rubygems may use for one platform, most specific first
+    # (build-notes §8.2: nokogiri/ffi/sqlite3 ship -x86_64-linux-gnu while
+    # libpng/parsanol ship plain -x86_64-linux; both match the runtime
+    # under rubygems' normalized-linux rule).
+    cands = [platform]
+    if platform.endswith("-linux-gnu"):
+        cands.append(platform[: -len("-gnu")])
+    return cands
 
 lock_path, platform = sys.argv[1], sys.argv[2]
 
@@ -65,21 +87,40 @@ for line in open(lock_path):
 
 rows = []
 skipped = sorted(set(specs) & SKIP_DEFAULTS)
+cands = platform_candidates(platform)
 for name in sorted(specs):
     if name in SKIP_DEFAULTS:
+        continue
+    if name in PRECOMPILED_NATIVES:
+        # One row per gem: the locked variant in a candidate spelling, else
+        # a swap-in by name (the lock was resolved on another platform —
+        # its sha256 still comes from /info, so a missing variant fails
+        # closed below).
+        locked_vers = {ver for ver, _ in specs[name]}
+        if len(locked_vers) != 1:
+            sys.exit(f"version skew across platform variants: {name} {sorted(locked_vers)}")
+        ver = locked_vers.pop()
+        if name in PINS and PINS[name] != ver:
+            print(f"# pin: {name} {ver} -> {PINS[name]}", file=sys.stderr)
+            ver = PINS[name]
+        locked_plats = {plat for _, plat in specs[name]}
+        plat = next((c for c in cands if c in locked_plats), None)
+        if plat is None:
+            plat = cands[0]
+            print(f"# native swap: {name}-{ver}-{plat} absent from the lock "
+                  f"(resolved on another platform) — checksum from /info/{name}",
+                  file=sys.stderr)
+        verplat = f"{ver}-{plat}"
+        rows.append((f"{name}-{verplat}", name, verplat))
         continue
     for ver, plat in sorted(specs[name]):
         if name in PINS and PINS[name] != ver:
             print(f"# pin: {name} {ver} -> {PINS[name]}", file=sys.stderr)
             ver = PINS[name]
-        if name in PRECOMPILED_NATIVES:
-            if plat != platform:
-                continue
-        elif plat:
+        if plat:
             # unknown platform variant of a gem not declared native: refuse
             sys.exit(f"unexpected platform variant: {name}-{ver}-{plat}")
-        verplat = ver + (f"-{plat}" if plat else "")
-        rows.append((f"{name}-{verplat}", name, verplat))
+        rows.append((f"{name}-{ver}", name, ver))
 
 info_cache = {}
 def checksum(gem, verplat):

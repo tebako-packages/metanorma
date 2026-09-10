@@ -17,6 +17,16 @@ name: dogfood
 #     the ruby DLL facet + the loader interpose / library_aliases (spec 22
 #     phase W2) and the build-payload windows boot smoke is now ENFORCED
 #     against it (tools/smoke_verdict flipped fail-closed).
+#
+# The ruby axis (roadmap 77): the dogfood-ruby40 job below is the 4.0
+# flavor's slim proof — install metanorma@1.16.9-ruby4.0 fresh, run
+# `metanorma version` through the version chain's env link
+# (TEBAKO_METANORMA_VERSION), and force the ABI guard: the 4.0 flavor
+# pinned onto the 3.3-line runtime must fail with spec 28 §8's named
+# error, never a segfault. The job SKIPS (loudly, via the
+# ruby40-published gate) until the first dual-line tag publishes the
+# flavor — the registries it rides are the PUBLISHED ones, and this
+# wiring lands before that tag by construction.
 on:
   schedule:
     - cron: "17 3 * * *"        # nightly
@@ -70,60 +80,104 @@ jobs:
           done
           tebako --version
 
+      - name: Stage the spawned-runtime mirror (java + python legs)
+        # spec 32: install now resolves TWO spawned runtime edges — the
+        # kind: runtime java edge AND the xml2rfc executable edge's nested
+        # python runtime — and TEBAKO_RUNTIME_MIRROR is one base for ALL
+        # engines, so the bare JAVA_RELEASES_BASE can no longer serve
+        # both. Stage a COMBINED local mirror carrying THIS leg's platform
+        # of each pinned line, every byte cross-checked against the
+        # release's own SHA256SUMS (the same shape as the build-payload
+        # publish job's mirror step).
+        run: |
+          set -euo pipefail
+          mirror="${{ runner.temp }}/dogfood-mirror"
+          mkdir -p "$mirror/v$JAVA_TEBAKO" "$mirror/v$PYTHON_TEBAKO"
+          jexe="tebako-runtime-$JAVA_TEBAKO-$JAVA_VERSION-${{ matrix.plat }}"
+          for f in manifest.json SHA256SUMS.txt "$jexe" "$jexe.tfs"; do
+            curl -sL --fail -o "$mirror/v$JAVA_TEBAKO/$f" "$JAVA_RELEASES_BASE/v$JAVA_TEBAKO/$f"
+          done
+          pexe="tebako-runtime-$PYTHON_TEBAKO-$PYTHON_VERSION-${{ matrix.plat }}"
+          for f in manifest.json SHA256SUMS.txt "$pexe" "$pexe.tfs"; do
+            curl -sL --fail -o "$mirror/v$PYTHON_TEBAKO/$f" "$PYTHON_RELEASES_BASE/v$PYTHON_TEBAKO/$f"
+          done
+          cd "$mirror/v$JAVA_TEBAKO"
+          grep "  $jexe\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+          grep "  $jexe\.tfs\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+          cd "../v$PYTHON_TEBAKO"
+          grep "  $pexe\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+          grep "  $pexe\.tfs\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+
       - name: Add the closure registries and install metanorma
         # The tebako-packages index (registry-of-registries) is not walked
         # by the CLI (still true at v2.1.0: it registers as 0 payloads —
         # the packages[] follow is a filed product gap, TODO.v2-1/22).
-        # Add the feedstock registries directly. The java runtime edge does
-        # NOT ride a payload registry: install pre-stages the spawned
-        # runtime through the runtime release index (spec 30 §3), which the
-        # config preference (recipe.yml's java block) + the step-scoped
-        # TEBAKO_RUNTIME_MIRROR resolve to the pinned openjdk pair. The
-        # mirror NEVER leaves this step — the first dispatch downloads the
-        # primary ruby runtime from the product default base, and the
+        # Add the feedstock registries directly — INCLUDING the xml2rfc
+        # provider registry (spec 32: the executable edge's payload
+        # resolves from the provider feedstock's own registry; without it
+        # install fails by name, exit 65 — the 2026-09 nightly breakage).
+        # The spawned runtime edges do NOT ride a payload registry:
+        # install pre-stages them through the runtime release index
+        # (spec 30 §3), which the config preferences (recipe.yml's java +
+        # python blocks) + the step-scoped TEBAKO_RUNTIME_MIRROR (the
+        # combined local mirror staged above) resolve to the pinned pairs.
+        # The mirror NEVER leaves this step — the first dispatch downloads
+        # the primary ruby runtime from the product default base, and the
         # one-base-for-all-engines mirror would misdirect it.
+        # The ruby pref pins the DISPATCH-time runtime to the recipe pair:
+        # pref-less resolution rides the factory's default index line,
+        # which lags the recipe pin (3.3.12-0.16.18 vs the pinned 0.16.22,
+        # observed 2026-09) — and the lagging driver predates spec 32,
+        # dying on the payload's kind: executable edge ("unknown variant
+        # 'executable'"). The dogfood must ride the runtime line the
+        # payload is built against.
         env:
-          TEBAKO_RUNTIME_MIRROR: ${{ env.JAVA_RELEASES_BASE }}
+          TEBAKO_RUNTIME_MIRROR: file://${{ runner.temp }}/dogfood-mirror
         run: |
           set -euo pipefail
           tebako add-registry tfs:github:tebako-packages/metanorma
           tebako add-registry tfs:github:tebako-packages/inkscape
-          printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n' \
-            "$JAVA_VERSION" "$JAVA_TEBAKO" >> "$HOME/.tebako/config.yaml"
+          tebako add-registry tfs:github:tebako-packages/xml2rfc
+          printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n  python:\n    version: "%s"\n    tebako: "%s"\n  ruby:\n    version: "%s"\n    tebako: "%s"\n' \
+            "$JAVA_VERSION" "$JAVA_TEBAKO" "$PYTHON_VERSION" "$PYTHON_TEBAKO" "$RUBY_V" "$RUNTIME_TEBAKO" >> "$HOME/.tebako/config.yaml"
           tebako install "metanorma@$PKG_VERSION"
 
       - name: Assert the store holds exactly one of each closure payload
         # Structural, not log-scraping: one .tfs per closure payload
-        # (metanorma + inkscape). The java RUNTIME is not a payload — the
-        # install's edge pre-staging lands it under runtimes/ (asserted
-        # below). The primary RUBY runtime is deliberately absent here —
-        # kind: language resolves at run time; the post-first-run step
-        # asserts it.
+        # (metanorma + inkscape + xml2rfc — the spec-32 executable edge's
+        # provider is pre-staged by the install-time transitive spawn
+        # closure). The spawned RUNTIMES are not payloads — they land under
+        # runtimes/ (asserted below). The primary RUBY runtime is
+        # deliberately absent here — kind: language resolves at run time;
+        # the post-first-run step asserts it.
         run: |
           set -euo pipefail
           store="$HOME/.tebako"
-          for payload in metanorma inkscape; do
+          for payload in metanorma inkscape xml2rfc; do
             n=$(ls "$store/payloads/$payload"/*.tfs 2>/dev/null | wc -l | tr -d ' ' || true)
             echo "$payload images in store: $n"
             [ "$n" = "1" ] || { echo "FAIL: $payload has $n images (expected 1)"; exit 1; }
             # the trust anchor rides every payload
             ls "$store/payloads/$payload"/*.tfs.sha256 >/dev/null
           done
-          echo "store OK: 1 image each for metanorma, inkscape"
+          echo "store OK: 1 image each for metanorma, inkscape, xml2rfc"
 
-      - name: Assert the java runtime pre-staged at install
-        # spec 30 §3: install_runtime_edge resolves + downloads the spawned
-        # runtime into runtimes/ BEFORE the first dispatch. Exe + env image
-        # + trust markers, and the image is read-only (0444).
+      - name: Assert the spawned runtimes pre-staged at install
+        # spec 30 §3 + spec 32: install_runtime_edge resolves + downloads
+        # the spawned runtimes into runtimes/ BEFORE the first dispatch —
+        # the java edge AND the xml2rfc provider's nested python runtime.
+        # Exe + env image + trust markers, and the image is read-only (0444).
         run: |
           set -euo pipefail
           store="$HOME/.tebako"
-          n_java=$(ls -d "$store"/runtimes/java-* 2>/dev/null | wc -l | tr -d ' ' || true)
           ls -la "$store/runtimes" || true
-          [ "$n_java" = "1" ] || { echo "FAIL: $n_java java runtime dirs (expected 1)"; exit 1; }
-          ls "$store"/runtimes/java-*/sha256 "$store"/runtimes/java-*/origin >/dev/null
-          ls "$store"/runtimes/java-*/*.tfs "$store"/runtimes/java-*/*.tfs.sha256 >/dev/null
-          echo "java runtime OK: pre-staged with trust markers"
+          for engine in java python; do
+            n=$(ls -d "$store"/runtimes/$engine-* 2>/dev/null | wc -l | tr -d ' ' || true)
+            [ "$n" = "1" ] || { echo "FAIL: $n $engine runtime dirs (expected 1)"; exit 1; }
+            ls "$store"/runtimes/$engine-*/sha256 "$store"/runtimes/$engine-*/origin >/dev/null
+            ls "$store"/runtimes/$engine-*/*.tfs "$store"/runtimes/$engine-*/*.tfs.sha256 >/dev/null
+            echo "$engine runtime OK: pre-staged with trust markers"
+          done
 
       - name: Put the shims on PATH
         run: |
@@ -142,15 +196,16 @@ jobs:
       - name: Assert the runtime downloaded exactly once (on first run)
         # The `new` above was the first shim dispatch: the primary ruby
         # runtime came down through the pref-less index resolution, once,
-        # verified — joining the java runtime pre-staged at install.
+        # verified — joining the java + python runtimes pre-staged at
+        # install.
         run: |
           set -euo pipefail
           store="$HOME/.tebako"
           n_rt=$(ls "$store/runtimes" | wc -l | tr -d ' ')
           ls -la "$store/runtimes"
-          [ "$n_rt" = "2" ] || { echo "FAIL: $n_rt runtime dirs (expected 2: ruby + java)"; exit 1; }
+          [ "$n_rt" = "3" ] || { echo "FAIL: $n_rt runtime dirs (expected 3: ruby + java + python)"; exit 1; }
           ls "$store"/runtimes/ruby-*/sha256 "$store"/runtimes/ruby-*/origin >/dev/null
-          echo "runtime OK: exactly one ruby + the pre-staged java, trust markers present"
+          echo "runtime OK: exactly one ruby + the pre-staged java + python, trust markers present"
 
       - name: Drop the fixture doc with the figure
         run: |
@@ -213,16 +268,46 @@ jobs:
         run: |
           ruby tools/pins.rb --release-only >> "$GITHUB_ENV"
 
+      - name: Stage the spawned-runtime mirror (java + python legs)
+        # spec 32: the install resolves BOTH spawned runtime edges (java +
+        # the xml2rfc provider's nested python); TEBAKO_RUNTIME_MIRROR is
+        # one base for ALL engines, so stage a combined local mirror (same
+        # shape as the full leg / the publish job), every byte
+        # SHA256SUMS-verified.
+        run: |
+          set -euo pipefail
+          mirror="${{ runner.temp }}/dogfood-mirror"
+          mkdir -p "$mirror/v$JAVA_TEBAKO" "$mirror/v$PYTHON_TEBAKO"
+          jexe="tebako-runtime-$JAVA_TEBAKO-$JAVA_VERSION-${{ matrix.plat }}"
+          for f in manifest.json SHA256SUMS.txt "$jexe" "$jexe.tfs"; do
+            curl -sL --fail -o "$mirror/v$JAVA_TEBAKO/$f" "$JAVA_RELEASES_BASE/v$JAVA_TEBAKO/$f"
+          done
+          pexe="tebako-runtime-$PYTHON_TEBAKO-$PYTHON_VERSION-${{ matrix.plat }}"
+          for f in manifest.json SHA256SUMS.txt "$pexe" "$pexe.tfs"; do
+            curl -sL --fail -o "$mirror/v$PYTHON_TEBAKO/$f" "$PYTHON_RELEASES_BASE/v$PYTHON_TEBAKO/$f"
+          done
+          cd "$mirror/v$JAVA_TEBAKO"
+          grep "  $jexe\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+          grep "  $jexe\.tfs\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+          cd "../v$PYTHON_TEBAKO"
+          grep "  $pexe\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+          grep "  $pexe\.tfs\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+
       - name: Install CLI, add registry, install metanorma, exec version
-        # Same runtime-edge wiring as the full leg: the java edge resolves
-        # through the config pref + the mirror at INSTALL time
-        # (install_runtime_edge pre-stages the spawned runtime) — the slim
-        # leg never dispatches java, but install fails without the pref.
-        # The mirror is an INLINE env on the install command only: it must
+        # Same runtime-edge wiring as the full leg: the spawned edges
+        # resolve through the config prefs + the combined mirror at INSTALL
+        # time (install_runtime_edge pre-stages them) — the slim leg never
+        # dispatches java, but install fails without the prefs, and without
+        # the xml2rfc provider registry it fails by name (exit 65). The
+        # mirror is an INLINE env on the install command only: it must
         # NEVER reach a dispatch — `metanorma version` below downloads the
         # primary RUBY runtime, whose index lives on the product default
         # base, and a one-base-for-all-engines mirror misdirects that read
-        # ("the default-line release index did not read").
+        # ("the default-line release index did not read"). The ruby pref
+        # pins that dispatch to the recipe's runtime pair — the factory's
+        # default index line lags the pin (0.16.18 vs 0.16.22, 2026-09)
+        # and its driver predates spec 32, dying on the payload's
+        # kind: executable edge.
         run: |
           set -euo pipefail
           base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
@@ -237,8 +322,148 @@ jobs:
           done
           tebako add-registry tfs:github:tebako-packages/metanorma
           tebako add-registry tfs:github:tebako-packages/inkscape
-          printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n' \
-            "$JAVA_VERSION" "$JAVA_TEBAKO" >> "$HOME/.tebako/config.yaml"
-          TEBAKO_RUNTIME_MIRROR="$JAVA_RELEASES_BASE" tebako install "metanorma@$PKG_VERSION"
+          tebako add-registry tfs:github:tebako-packages/xml2rfc
+          printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n  python:\n    version: "%s"\n    tebako: "%s"\n  ruby:\n    version: "%s"\n    tebako: "%s"\n' \
+            "$JAVA_VERSION" "$JAVA_TEBAKO" "$PYTHON_VERSION" "$PYTHON_TEBAKO" "$RUBY_V" "$RUNTIME_TEBAKO" >> "$HOME/.tebako/config.yaml"
+          TEBAKO_RUNTIME_MIRROR="file://${{ runner.temp }}/dogfood-mirror" tebako install "metanorma@$PKG_VERSION"
           export PATH="$HOME/.tebako/shims:$PATH"
           metanorma version | grep -E "Metanorma::Cli $PKG_VERSION"
+
+  ruby40-published:
+    name: ruby 4.0 flavor published?
+    # Gate for the dogfood-ruby40 leg: the flavor exists only after the
+    # first dual-line tag's publish lands the registry entry. A SKIP (the
+    # dependent job stays skipped) is the honest pre-publish state — never
+    # a red leg for an artifact nobody could have published yet.
+    runs-on: ubuntu-24.04
+    outputs:
+      published: ${{ steps.probe.outputs.published }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: probe
+        run: |
+          set -euo pipefail
+          eval "$(ruby tools/pins.rb macos-arm64 --ruby-line 4.0 | grep -E '^export (PAYLOAD_VERSION|PKG_NAME)=')"
+          url="https://raw.githubusercontent.com/tebako-packages/metanorma/main/tpkg-registry.yaml"
+          if curl -sfL "$url" | grep -q "version: '$PAYLOAD_VERSION'\|version: \"$PAYLOAD_VERSION\"\|version: $PAYLOAD_VERSION"; then
+            echo "$PKG_NAME@$PAYLOAD_VERSION is in the published registry — the 4.0 leg runs"
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$PKG_NAME@$PAYLOAD_VERSION not in the published registry yet — the first dual-line tag publishes it; skipping the 4.0 dogfood leg loudly"
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  dogfood-ruby40:
+    name: ruby4.0 flavor (${{ matrix.plat }})
+    needs: ruby40-published
+    if: needs.ruby40-published.outputs.published == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-14, plat: macos-arm64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Every version flows from recipe.yml (tools.release +
+      # upstream.version + build.runtime.lines."4.0") — the workflow
+      # carries no literals. PAYLOAD_VERSION here is the 4.0 flavor's
+      # registry entry (1.16.9-ruby4.0).
+      - name: Read the pins (recipe.yml is the SSOT — ruby line 4.0)
+        run: |
+          ruby tools/pins.rb --release-only --ruby-line 4.0 >> "$GITHUB_ENV"
+
+      - name: Stage the spawned-runtime mirror (java + python legs)
+        # Same combined-mirror shape as the other legs (spec 32: install
+        # resolves the java edge AND the xml2rfc provider's nested python
+        # runtime; the mirror is one base for ALL engines).
+        run: |
+          set -euo pipefail
+          mirror="${{ runner.temp }}/dogfood-mirror"
+          mkdir -p "$mirror/v$JAVA_TEBAKO" "$mirror/v$PYTHON_TEBAKO"
+          jexe="tebako-runtime-$JAVA_TEBAKO-$JAVA_VERSION-${{ matrix.plat }}"
+          for f in manifest.json SHA256SUMS.txt "$jexe" "$jexe.tfs"; do
+            curl -sL --fail -o "$mirror/v$JAVA_TEBAKO/$f" "$JAVA_RELEASES_BASE/v$JAVA_TEBAKO/$f"
+          done
+          pexe="tebako-runtime-$PYTHON_TEBAKO-$PYTHON_VERSION-${{ matrix.plat }}"
+          for f in manifest.json SHA256SUMS.txt "$pexe" "$pexe.tfs"; do
+            curl -sL --fail -o "$mirror/v$PYTHON_TEBAKO/$f" "$PYTHON_RELEASES_BASE/v$PYTHON_TEBAKO/$f"
+          done
+          cd "$mirror/v$JAVA_TEBAKO"
+          grep "  $jexe\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+          grep "  $jexe\.tfs\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+          cd "../v$PYTHON_TEBAKO"
+          grep "  $pexe\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+          grep "  $pexe\.tfs\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+
+      - name: Install CLI, add registries, install the 4.0 flavor
+        # Same wiring as the slim leg (the spawned-edge prefs + the
+        # combined mirror + the xml2rfc provider registry at INSTALL time
+        # only — the mirror is one base for ALL engines and must never
+        # reach a dispatch). The install pre-stages the spawned runtimes;
+        # the primary RUBY runtime (4.0.x per the flavor's ~> 4.0.0
+        # constraint) downloads at first dispatch from the product default
+        # base.
+        run: |
+          set -euo pipefail
+          base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
+          mkdir -p "$RUNNER_TEMP/tebako-bin" && cd "$RUNNER_TEMP/tebako-bin"
+          curl -sSfLO "$base/SHA256SUMS"
+          for tool in tebako tebako-shim; do
+            curl -sSfLO "$base/$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}"
+            grep "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" SHA256SUMS | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+            mv "$tool-${TEBAKO_RELEASE#v}-${{ matrix.plat }}" "$tool"
+            chmod 755 "$tool"
+            sudo ln -s "$PWD/$tool" "/usr/local/bin/$tool"
+          done
+          tebako add-registry tfs:github:tebako-packages/metanorma
+          tebako add-registry tfs:github:tebako-packages/inkscape
+          tebako add-registry tfs:github:tebako-packages/xml2rfc
+          printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n  python:\n    version: "%s"\n    tebako: "%s"\n' \
+            "$JAVA_VERSION" "$JAVA_TEBAKO" "$PYTHON_VERSION" "$PYTHON_TEBAKO" >> "$HOME/.tebako/config.yaml"
+          TEBAKO_RUNTIME_MIRROR="file://${{ runner.temp }}/dogfood-mirror" tebako install "metanorma@$PAYLOAD_VERSION"
+
+      - name: ABI guard — the 4.0 flavor refuses a 3.3-line runtime (spec 28 §8)
+        # Force the wrong ABI line BEFORE any 4.0 runtime is cached (the
+        # install pre-stages only the spawned java/python runtimes): pin
+        # the ruby runtime preference to the default (3.3) line —
+        # recipe-sourced via pins.rb — and dispatch the 4.0 flavor with
+        # TEBAKO_OFFLINE=1 so no download can rescue the resolution. The
+        # pref-vs-constraint conflict must produce the spec 28 §8 named
+        # error ("a native-extension payload locks to its ABI line"),
+        # never a segfault and never a silent cross-pairing. (A cached
+        # compatible runtime wins over the preference — observed locally —
+        # which is why this step must precede the version step.) The config
+        # rides a save/restore so the version step runs pref-less.
+        run: |
+          set -euo pipefail
+          eval "$(ruby tools/pins.rb macos-arm64 --ruby-line 3.3 | grep -E '^export (RUBY_V|RUNTIME_TEBAKO)=')"
+          cfg="$HOME/.tebako/config.yaml"
+          cp "$cfg" "$RUNNER_TEMP/config.yaml.bak"
+          printf '  ruby:\n    version: "%s"\n    tebako: "%s"\n' "$RUBY_V" "$RUNTIME_TEBAKO" >> "$cfg"
+          export PATH="$HOME/.tebako/shims:$PATH"
+          set +e
+          TEBAKO_OFFLINE=1 TEBAKO_METANORMA_VERSION="$PAYLOAD_VERSION" metanorma version > "$RUNNER_TEMP/abi-guard.log" 2>&1
+          rc=$?
+          set -e
+          cp "$RUNNER_TEMP/config.yaml.bak" "$cfg"
+          cat "$RUNNER_TEMP/abi-guard.log"
+          [ "$rc" -ne 0 ] || { echo "FAIL: the 4.0 flavor RAN with a 3.3-line runtime preference — the ABI guard is broken"; exit 1; }
+          grep -q "locks to its ABI line" "$RUNNER_TEMP/abi-guard.log" \
+            || { echo "FAIL: refused, but not with spec 28 §8's named error (rc=$rc)"; exit 1; }
+          echo "ABI guard OK (rc=$rc): the 4.0 flavor refused the 3.3-line preference with spec 28 §8's named error"
+
+      - name: metanorma version through the 4.0 flavor
+        # The version chain's env link (spec 07 §2.1, first hit wins)
+        # selects the flavor; its ~> 4.0.0 constraint resolves a 4.0-line
+        # runtime (newest compatible cached → else download), never the
+        # 3.3 line — the two flavors coexist in one store, each bound to
+        # its own ABI line.
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.tebako/shims:$PATH"
+          TEBAKO_METANORMA_VERSION="$PAYLOAD_VERSION" metanorma version | grep -E "Metanorma::Cli $PKG_VERSION"
+          # the resolved runtime must be the 4.0 line
+          ls -d "$HOME"/.tebako/runtimes/ruby-4.0.* >/dev/null
+          echo "4.0 flavor OK on a 4.0-line runtime"
