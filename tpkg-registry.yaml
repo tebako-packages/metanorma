@@ -7,18 +7,102 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: metanorma-1.16.9-macos-arm64.tfs
-        sha256: a36e9733944fe5d82d1542c30d587ccaeb2129b927c9bdeee6d6549068701787
+        sha256: f91740eecf451e1ee2b96403369b6885dacf7446fc09489abd767d358e8045fe
       x86_64-linux-gnu:
         artifact: metanorma-1.16.9-linux-gnu-x86_64.tfs
-        sha256: a091af9e4e4b21537f25dff9c3dc4210f06733b568b7f917f741734f3abc9622
+        sha256: a24a4fdd7bd2a89f4a00014ad5867580d30bf40776cc9970322c7b4e706f7ac9
       x86_64-windows-ucrt:
         artifact: metanorma-1.16.9-windows-ucrt64.tfs
-        sha256: '23abaf44a071251579e4b0488636397e77366425e805220393775639723bf7eb'
+        sha256: af7f9427a41f3d9f206fce2d9e3298a8ef0643cb926482193596665f3a7d2200
     release:
-      ref: tfs:github:tebako-packages/metanorma:1.16.9-9
+      ref: tfs:github:tebako-packages/metanorma:1.16.9-10
     runtime_requirement:
       engine: ruby
       constraint: ~> 3.3.0
+      abi: arm64-darwin-23
+    entrypoints:
+    - metanorma
+    - metanorma-manifest
+    - asciidoctor
+    - canon
+    - coradoc
+    - expressir
+    - fontist
+    - fontisan
+    - glossarist
+    - lutaml
+    - lutaml-model
+    - lutaml-sysml
+    - lutaml-wsd2uml
+    - lutaml-xsd
+    - lutaml-yaml2uml
+    - omnizip
+    - plurimath
+    - png_conform
+    - relaton
+    - reverse_adoc
+    - suma
+    - svg_conform
+    - unitsdb
+    - vectory
+    - w2a
+    - w2m
+    - cabriolet
+    - console
+    - convert2oscalyaml.rb
+    - dot2ruby
+    - ea
+    - ebnf
+    - emf
+    - emfsvg
+    - excavate
+    - fractor
+    - fuzzy_match
+    - gem2gv
+    - git2gv
+    - japanese_calendar
+    - jsonld
+    - ldiff
+    - loc-mods
+    - nokogiri
+    - premailer
+    - pubid-nist
+    - rdf
+    - reverse_markdown
+    - rng
+    - rougify
+    - ruby-ll
+    - ruby2gv
+    - setup
+    - socksify_ruby
+    - sparql
+    - sxp2json
+    - sxp2rdf
+    - sxp2xml
+    - sxp2yaml
+    - thor
+    - tokenize
+    - ukiryu
+    - unibuf
+    - w3c_api
+    - xml2gv
+    - xsdvi
+  - version: '1.16.9-ruby4.0'
+    platforms:
+      aarch64-macos:
+        artifact: metanorma-1.16.9-ruby4.0-macos-arm64.tfs
+        sha256: eda792a64aa611eef8049e47a5fe6ed531d2c80212dd4f4efe3e4107a925433e
+      x86_64-linux-gnu:
+        artifact: metanorma-1.16.9-ruby4.0-linux-gnu-x86_64.tfs
+        sha256: '11027e294e4e73cbea205305b63d5611e66ed8f7c4b4d9b79bcf412dac2001a6'
+      x86_64-windows-ucrt:
+        artifact: metanorma-1.16.9-ruby4.0-windows-ucrt64.tfs
+        sha256: ba7f7add812b9efc9b9d250c395066849254a2e20be50d81d5e895e2fe702af4
+    release:
+      ref: tfs:github:tebako-packages/metanorma:1.16.9-10
+    runtime_requirement:
+      engine: ruby
+      constraint: ~> 4.0.0
       abi: arm64-darwin-23
     entrypoints:
     - metanorma
