@@ -424,15 +424,18 @@ jobs:
             "$JAVA_VERSION" "$JAVA_TEBAKO" "$PYTHON_VERSION" "$PYTHON_TEBAKO" >> "$HOME/.tebako/config.yaml"
           TEBAKO_RUNTIME_MIRROR="file://${{ runner.temp }}/dogfood-mirror" tebako install "metanorma@$PAYLOAD_VERSION"
 
-      - name: ABI guard — the 4.0 flavor refuses a 3.3-line runtime (spec 28 §8)
+      - name: ABI guard — the 4.0 flavor refuses a 3.3-line runtime (spec 05 §5 / spec 28)
         # Force the wrong ABI line BEFORE any 4.0 runtime is cached (the
         # install pre-stages only the spawned java/python runtimes): pin
         # the ruby runtime preference to the default (3.3) line —
         # recipe-sourced via pins.rb — and dispatch the 4.0 flavor with
         # TEBAKO_OFFLINE=1 so no download can rescue the resolution. The
-        # pref-vs-constraint conflict must produce the spec 28 §8 named
-        # error ("a native-extension payload locks to its ABI line"),
-        # never a segfault and never a silent cross-pairing. (A cached
+        # pref-vs-constraint conflict must produce the shim's named ABI
+        # refusal (spec 05 §5 + spec 28: a named error, never a segfault).
+        # The prose is the PRODUCT's — tebako-shim exits 69 with
+        #   runtime preference ruby@<pin> does not satisfy "<constraint>": …
+        #     re-pin the preference … or rebuild the payload against a newer ABI line
+        # so assert that wording, not a spec paraphrase. (A cached
         # compatible runtime wins over the preference — observed locally —
         # which is why this step must precede the version step.) The config
         # rides a save/restore so the version step runs pref-less.
@@ -450,9 +453,10 @@ jobs:
           cp "$RUNNER_TEMP/config.yaml.bak" "$cfg"
           cat "$RUNNER_TEMP/abi-guard.log"
           [ "$rc" -ne 0 ] || { echo "FAIL: the 4.0 flavor RAN with a 3.3-line runtime preference — the ABI guard is broken"; exit 1; }
-          grep -q "locks to its ABI line" "$RUNNER_TEMP/abi-guard.log" \
-            || { echo "FAIL: refused, but not with spec 28 §8's named error (rc=$rc)"; exit 1; }
-          echo "ABI guard OK (rc=$rc): the 4.0 flavor refused the 3.3-line preference with spec 28 §8's named error"
+          grep -qF "runtime preference ruby@$RUBY_V does not satisfy" "$RUNNER_TEMP/abi-guard.log" \
+            && grep -qF "rebuild the payload against a newer ABI line" "$RUNNER_TEMP/abi-guard.log" \
+            || { echo "FAIL: refused, but not with the shim's named ABI refusal (rc=$rc)"; exit 1; }
+          echo "ABI guard OK (rc=$rc): the 4.0 flavor refused the 3.3-line preference with the named ABI refusal"
 
       - name: metanorma version through the 4.0 flavor
         # The version chain's env link (spec 07 §2.1, first hit wins)
