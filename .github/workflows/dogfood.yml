@@ -401,10 +401,13 @@ jobs:
         # Same wiring as the slim leg (the spawned-edge prefs + the
         # combined mirror + the xml2rfc provider registry at INSTALL time
         # only — the mirror is one base for ALL engines and must never
-        # reach a dispatch). The install pre-stages the spawned runtimes;
-        # the primary RUBY runtime (4.0.x per the flavor's ~> 4.0.0
-        # constraint) downloads at first dispatch from the product default
-        # base.
+        # reach a dispatch). The install pre-stages the spawned runtimes.
+        # The ruby pref pins the DISPATCH-time runtime to the recipe pair,
+        # same as the other legs: pref-less resolution rides the CLI's
+        # BAKED default line, and the pinned CLI (v2.2.0) bakes a
+        # pre-spec-32 one — its driver dies on this payload's
+        # kind: executable edge ("unknown variant 'executable'"),
+        # observed in the run that first enabled this leg.
         run: |
           set -euo pipefail
           base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
@@ -420,8 +423,8 @@ jobs:
           tebako add-registry tfs:github:tebako-packages/metanorma
           tebako add-registry tfs:github:tebako-packages/inkscape
           tebako add-registry tfs:github:tebako-packages/xml2rfc
-          printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n  python:\n    version: "%s"\n    tebako: "%s"\n' \
-            "$JAVA_VERSION" "$JAVA_TEBAKO" "$PYTHON_VERSION" "$PYTHON_TEBAKO" >> "$HOME/.tebako/config.yaml"
+          printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n  python:\n    version: "%s"\n    tebako: "%s"\n  ruby:\n    version: "%s"\n    tebako: "%s"\n' \
+            "$JAVA_VERSION" "$JAVA_TEBAKO" "$PYTHON_VERSION" "$PYTHON_TEBAKO" "$RUBY_V" "$RUNTIME_TEBAKO" >> "$HOME/.tebako/config.yaml"
           TEBAKO_RUNTIME_MIRROR="file://${{ runner.temp }}/dogfood-mirror" tebako install "metanorma@$PAYLOAD_VERSION"
 
       - name: ABI guard — the 4.0 flavor refuses a 3.3-line runtime (spec 05 §5 / spec 28)
@@ -438,12 +441,16 @@ jobs:
         # so assert that wording, not a spec paraphrase. (A cached
         # compatible runtime wins over the preference — observed locally —
         # which is why this step must precede the version step.) The config
-        # rides a save/restore so the version step runs pref-less.
+        # rides a save/restore so the version step runs with the
+        # recipe-pinned 4.0-line pref.
         run: |
           set -euo pipefail
           eval "$(ruby tools/pins.rb macos-arm64 --ruby-line 3.3 | grep -E '^export (RUBY_V|RUNTIME_TEBAKO)=')"
           cfg="$HOME/.tebako/config.yaml"
           cp "$cfg" "$RUNNER_TEMP/config.yaml.bak"
+          # swap the install-time 4.0-line pref for the 3.3 pin — appending
+          # a second `ruby:` key is a YAML duplicate (fail-closed parse)
+          awk '/^  ruby:$/{skip=3} skip>0{skip--; next} {print}' "$cfg" > "$cfg.swap" && mv "$cfg.swap" "$cfg"
           printf '  ruby:\n    version: "%s"\n    tebako: "%s"\n' "$RUBY_V" "$RUNTIME_TEBAKO" >> "$cfg"
           export PATH="$HOME/.tebako/shims:$PATH"
           set +e
@@ -460,10 +467,11 @@ jobs:
 
       - name: metanorma version through the 4.0 flavor
         # The version chain's env link (spec 07 §2.1, first hit wins)
-        # selects the flavor; its ~> 4.0.0 constraint resolves a 4.0-line
-        # runtime (newest compatible cached → else download), never the
-        # 3.3 line — the two flavors coexist in one store, each bound to
-        # its own ABI line.
+        # selects the flavor; the recipe-pinned 4.0-line pref — validated
+        # against the flavor's ~> 4.0.0 constraint (the ABI step above
+        # proved the gate) — resolves the 4.0-line runtime, never the 3.3
+        # line: the two flavors coexist in one store, each bound to its
+        # own ABI line.
         run: |
           set -euo pipefail
           export PATH="$HOME/.tebako/shims:$PATH"
