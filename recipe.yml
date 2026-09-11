@@ -16,8 +16,11 @@ build:
   system: gemstage         # stage a GEM_HOME closure with a tebako runtime's own ruby
   runtime:
     engine: ruby
-    tebako: "0.16.22"      # runtime release line (image-era; the pinned CLI
+    tebako: "0.16.23"      # runtime release line (image-era; the pinned CLI
                            # refuses pre-era releases by contract, exit 75).
+                           # 0.16.23 is the SIGNED re-cut of the 0.16.22
+                           # line (spec 09 §9 publish signing + spec 34
+                           # OS-plane signing — same sources, new assets).
                            # 0.16.22 is the factory re-cut on the tebako
                            # v2.2.0 link unit (the spec-32 driver plan +
                            # schema_minor-5 parse) — it UNBLOCKS the
@@ -171,23 +174,24 @@ tools:
 # a per-engine source key in config.yaml is the filed product follow-up).
 java:
   # The pinned java runtime pair (tamatebako/tebako-runtime-openjdk
-  # release v2.4.0 — the runtime feedstock's canonical home per the
+  # release v2.5.1 — the runtime feedstock's canonical home per the
   # 2026-09-10 org split; tebako-packages/openjdk redirects there —
   # kind: runtime, the spec 30 spawn edge in manifests/payload.yaml).
   # v2.4.0 is the oldest line whose launcher parses spec 32: the spawned
   # JVM co-mounts THIS payload (mn2pdf's jar lives in its image) and its
   # launcher parses the payload manifest — v2.1.5 predates spec 32 and
   # dies "unknown variant 'executable'" (the 2026-09-10 full-dogfood
-  # failure). 2.4.0 is also the LAST temurin-only line: v2.4.1+ adds a
-  # graalvm sibling flavor to manifest.json, and the v2.2.0 resolver
-  # (tools.release) takes the first platform match — graalvm 25.0.4.1 —
-  # ignoring the version pref; the pin stays on 2.4.0 until the CLI
-  # pin advances past that (rehearsed locally, build-notes §9.3).
+  # failure). v2.5.1 is the first SIGNED line (spec 09 §9 .asc sidecars
+  # + Authenticode on the windows exe) — the pin advances to it for the
+  # REQUIRE_SIGNED=1 acceptance. v2.4.1+ lists a graalvm sibling flavor
+  # in manifest.json (25.0.4.1 outranks 21.0.12 by version), so the
+  # payload's java edge names `implementation: temurin` (spec 28 §8):
+  # the validated flavor matches, graalvm never silently picked.
   # The preference flows into ~/.tebako/config.yaml `runtimes:` at
   # install/publish time so the edge's download resolves to THIS exact
   # pair (a pref-less pick would query the wrong release line).
   version: "21.0.12"       # Temurin JRE 21.0.12+8 repack
-  tebako: "2.4.0"          # the release line = the wrapper's tebako build
+  tebako: "2.5.1"          # the release line = the wrapper's tebako build
   releases_base: "https://github.com/tamatebako/tebako-runtime-openjdk/releases/download"
 
 # The nested python runtime behind payload.yaml's spec-32 kind: executable
@@ -203,7 +207,9 @@ java:
 # no python).
 python:
   version: "3.13.15"       # the xml2rfc provider's staging + exec line
-  tebako: "0.1.0"          # tebako-runtime-python's first published line
+  tebako: "0.1.3"          # tebako-runtime-python's first SIGNED line
+                           # (v0.1.3 — the spec 09 §9 re-cut; 0.1.x before
+                           # it published unsigned)
   releases_base: "https://github.com/tamatebako/tebako-runtime-python/releases/download"
 
 # Signing (spec 09 §9 — opt-in per feedstock): on tag pushes the publish

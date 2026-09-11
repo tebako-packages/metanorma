@@ -148,9 +148,14 @@ requires:
   # The constraint is a RANGE, not a pin: jing and FOP are Java-8+
   # consumers, so any current LTS satisfies; the upper bound is the
   # honesty line — a future major we have not validated is a named
-  # resolution miss, never a silent pick.
+  # resolution miss, never a silent pick. `implementation: temurin`
+  # (spec 28 §8) narrows the engine axis to the validated flavor:
+  # the v2.5.1 openjdk manifest lists a graalvm sibling (25.0.4.1)
+  # whose version outranks 21.0.12 — without the axis the newest
+  # pick would silently land the unvalidated flavor.
   - kind: runtime
     engine: java
+    implementation: temurin
     constraint: ">= 21, < 26"
     expose: [java]
   # the ietf output chain (spec 32 — the FIRST kind: executable spawn
