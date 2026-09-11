@@ -103,6 +103,11 @@ pairs = {
                    die("recipe.yml python.version missing"),
   "PYTHON_TEBAKO" => recipe.dig("python", "tebako") ||
                    die("recipe.yml python.tebako missing"),
+  # Signing (spec 09 §9 — opt-in via the recipe's signing: block; the
+  # hello pattern): the tamatebako root's PRIMARY keyid (low 64). The
+  # publish step passes it to `tebako publish --sign=`; empty when the
+  # recipe declares no signing (unsigned stays first-class, loudly).
+  "SIGNING_KEYID" => recipe.dig("signing", "keyid").to_s,
 }
 
 unless ARGV.include?("--release-only")
