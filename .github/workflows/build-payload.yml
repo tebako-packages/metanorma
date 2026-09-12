@@ -405,6 +405,17 @@ jobs:
           for f in manifest.json SHA256SUMS.txt "$jexe" "$jexe.tfs"; do
             curl -sL --fail -o "$mirror/v$JAVA_TEBAKO/$f" "$JAVA_RELEASES_BASE/v$JAVA_TEBAKO/$f"
           done
+          # A partial mirror must not advertise bytes it does not carry:
+          # the factory index lists EVERY flavor, and the graalvm sibling's
+          # version (25.x) outranks the temurin pin (21.x) on the payload's
+          # wide constraint — the resolver's newest-satisfying pick would
+          # name files this mirror never staged (the 2.7.0 dogfood 404).
+          # Trim the staged index to the pinned version's entries.
+          jq --arg v "$JAVA_VERSION" '[.[] | select(.java_version == $v)]' \
+            "$mirror/v$JAVA_TEBAKO/manifest.json" > "$mirror/v$JAVA_TEBAKO/.manifest.trim"
+          [ "$(jq length "$mirror/v$JAVA_TEBAKO/.manifest.trim")" -gt 0 ] \
+            || { echo "::error::java mirror trim empty — pin $JAVA_VERSION absent from the factory manifest"; exit 1; }
+          mv "$mirror/v$JAVA_TEBAKO/.manifest.trim" "$mirror/v$JAVA_TEBAKO/manifest.json"
           # The python line ships BUILD VARIANTS as suffixed version
           # strings (3.13.15 and 3.13.15-jit — variant-in-version, the
           # factory's grammar). The resolver's newest-satisfying pick on
@@ -415,6 +426,15 @@ jobs:
           # factory's own manifest.json, never a composed guess.
           curl -sL --fail -o "$mirror/v$PYTHON_TEBAKO/manifest.json" "$PYTHON_RELEASES_BASE/v$PYTHON_TEBAKO/manifest.json"
           curl -sL --fail -o "$mirror/v$PYTHON_TEBAKO/SHA256SUMS.txt" "$PYTHON_RELEASES_BASE/v$PYTHON_TEBAKO/SHA256SUMS.txt"
+          # Same partial-mirror invariant as the java leg above: the staged
+          # index advertises only what the stagelist below stages — the
+          # pin's exact version and its variant suffixes.
+          jq --arg p "$PYTHON_VERSION" \
+            '[.[] | select(.python_version == $p or (.python_version | startswith($p + "-")))]' \
+            "$mirror/v$PYTHON_TEBAKO/manifest.json" > "$mirror/v$PYTHON_TEBAKO/.manifest.trim"
+          [ "$(jq length "$mirror/v$PYTHON_TEBAKO/.manifest.trim")" -gt 0 ] \
+            || { echo "::error::python mirror trim empty — pin $PYTHON_VERSION absent from the factory manifest"; exit 1; }
+          mv "$mirror/v$PYTHON_TEBAKO/.manifest.trim" "$mirror/v$PYTHON_TEBAKO/manifest.json"
           awk '
             /"platform":/       { gsub(/[",]/, "", $2); plat = $2 }
             /"python_version":/ { gsub(/[",]/, "", $2); ver = $2 }
