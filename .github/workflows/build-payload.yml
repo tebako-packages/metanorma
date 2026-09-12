@@ -526,6 +526,47 @@ jobs:
               --payload x86_64-windows-ucrt="out/x86_64-windows-ucrt-$ruby_line/$PKG_NAME-$PAYLOAD_VERSION-windows-ucrt64.tfs" \
               --registry-out "$PWD/tpkg-registry.yaml"
           done
+          # The spawned-runtime registry entries (spec 04 §2's kind:
+          # runtime, schema MINOR 1 — the resolver's channel 3): without
+          # them a real-world `tebako install metanorma` (no mirror, no
+          # config source pin) cannot source the java/python runtimes —
+          # the wave-5 acceptance failed exactly so. The entries FLOW
+          # from recipe.yml's pins (JAVA_*/PYTHON_* above — never
+          # hand-duplicated), upserted by entry name with versions
+          # accumulated by key (older pinned lines keep serving older
+          # payload versions). tebako publish's upsert round-trips the
+          # engine/implementation keys, so later publishes preserve them.
+          # The release refs carry the v-prefixed tag verbatim — the
+          # resolver composes {base}/{tag} from it.
+          ruby -ryaml -e '
+            path = "tpkg-registry.yaml"
+            reg = YAML.load_file(path)
+            entries = [
+              { "name" => "tebako-runtime-java-temurin", "kind" => "runtime",
+                "engine" => "java", "implementation" => "temurin",
+                "versions" => [ { "version" => "#{ENV.fetch("JAVA_VERSION")}-#{ENV.fetch("JAVA_TEBAKO")}",
+                                  "platforms" => "universal",
+                                  "release" => { "ref" => "tfs:github:tamatebako/tebako-runtime-openjdk:v#{ENV.fetch("JAVA_TEBAKO")}" } } ] },
+              { "name" => "tebako-runtime-python", "kind" => "runtime",
+                "engine" => "python",
+                "versions" => [ { "version" => "#{ENV.fetch("PYTHON_VERSION")}-#{ENV.fetch("PYTHON_TEBAKO")}",
+                                  "platforms" => "universal",
+                                  "release" => { "ref" => "tfs:github:tamatebako/tebako-runtime-python:v#{ENV.fetch("PYTHON_TEBAKO")}" } } ] },
+            ]
+            entries.each do |entry|
+              existing = reg["payloads"].find { |p| p["name"] == entry["name"] }
+              if existing.nil?
+                reg["payloads"] << entry
+              else
+                entry["versions"].each do |v|
+                  slot = existing["versions"].find { |ev| ev["version"] == v["version"] }
+                  slot ? existing["versions"][existing["versions"].index(slot)] = v : existing["versions"] << v
+                end
+                %w[kind engine implementation].each { |k| entry.key?(k) ? existing[k] = entry[k] : existing.delete(k) }
+              end
+            end
+            File.write(path, reg.to_yaml)
+          '
       # main is branch-protected (and the GitHub-Actions bypass is not
       # available on this plan): the registry lands by bot PR + auto-merge,
       # never by direct push. Idempotent across re-runs of the same tag.
