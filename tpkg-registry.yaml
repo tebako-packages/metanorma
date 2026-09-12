@@ -7,18 +7,22 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: metanorma-1.16.9-macos-arm64.tfs
-        sha256: f91740eecf451e1ee2b96403369b6885dacf7446fc09489abd767d358e8045fe
+        sha256: d6b17457bea4bb8ec96703535da7d36a575d27749c1a6a509db1bc2ecf2d2b42
       x86_64-linux-gnu:
         artifact: metanorma-1.16.9-linux-gnu-x86_64.tfs
-        sha256: a24a4fdd7bd2a89f4a00014ad5867580d30bf40776cc9970322c7b4e706f7ac9
+        sha256: '7a0d752dff6b0f0c9a5a8119d2165f9b3741259cdfb2ce5b7a700f70fd026c8a'
       x86_64-windows-ucrt:
         artifact: metanorma-1.16.9-windows-ucrt64.tfs
-        sha256: af7f9427a41f3d9f206fce2d9e3298a8ef0643cb926482193596665f3a7d2200
+        sha256: e82f9fd71d90cbd77ca60e96a676cc887931da112ef64ffff7e7590c5d2ec64b
     release:
-      ref: tfs:github:tebako-packages/metanorma:1.16.9-10
+      ref: tfs:github:tebako-packages/metanorma:1.16.9-11
+    signature:
+      keyid: efc3c250f7862a48
+      asc: metanorma-1.16.9-macos-arm64.tfs.asc
     runtime_requirement:
       engine: ruby
       constraint: ~> 3.3.0
+      implementation: mri
       abi: arm64-darwin-23
     entrypoints:
     - metanorma
@@ -91,18 +95,22 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: metanorma-1.16.9-ruby4.0-macos-arm64.tfs
-        sha256: eda792a64aa611eef8049e47a5fe6ed531d2c80212dd4f4efe3e4107a925433e
+        sha256: '0e1f8e147e44aea37513ae577671438eabc28b5a6ba393f3b5eed4ef7ba21d59'
       x86_64-linux-gnu:
         artifact: metanorma-1.16.9-ruby4.0-linux-gnu-x86_64.tfs
-        sha256: '11027e294e4e73cbea205305b63d5611e66ed8f7c4b4d9b79bcf412dac2001a6'
+        sha256: '6747546610188a33f3fb22dd54e753d58d927117e66e42faa1fcbe29db2dbbb7'
       x86_64-windows-ucrt:
         artifact: metanorma-1.16.9-ruby4.0-windows-ucrt64.tfs
-        sha256: ba7f7add812b9efc9b9d250c395066849254a2e20be50d81d5e895e2fe702af4
+        sha256: '353f4fc1a64e91dcb78b31a0a6fc667f1e549ad9afb6c1025c43a261d87ec171'
     release:
-      ref: tfs:github:tebako-packages/metanorma:1.16.9-10
+      ref: tfs:github:tebako-packages/metanorma:1.16.9-11
+    signature:
+      keyid: efc3c250f7862a48
+      asc: metanorma-1.16.9-ruby4.0-macos-arm64.tfs.asc
     runtime_requirement:
       engine: ruby
       constraint: ~> 4.0.0
+      implementation: mri
       abi: arm64-darwin-23
     entrypoints:
     - metanorma
