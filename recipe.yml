@@ -174,24 +174,28 @@ tools:
 # a per-engine source key in config.yaml is the filed product follow-up).
 java:
   # The pinned java runtime pair (tamatebako/tebako-runtime-openjdk
-  # release v2.5.1 — the runtime feedstock's canonical home per the
+  # release v2.7.0 — the runtime feedstock's canonical home per the
   # 2026-09-10 org split; tebako-packages/openjdk redirects there —
   # kind: runtime, the spec 30 spawn edge in manifests/payload.yaml).
   # v2.4.0 is the oldest line whose launcher parses spec 32: the spawned
   # JVM co-mounts THIS payload (mn2pdf's jar lives in its image) and its
   # launcher parses the payload manifest — v2.1.5 predates spec 32 and
   # dies "unknown variant 'executable'" (the 2026-09-10 full-dogfood
-  # failure). v2.5.1 is the first SIGNED line (spec 09 §9 .asc sidecars
-  # + Authenticode on the windows exe) — the pin advances to it for the
-  # REQUIRE_SIGNED=1 acceptance. v2.4.1+ lists a graalvm sibling flavor
-  # in manifest.json (25.0.4.1 outranks 21.0.12 by version), so the
-  # payload's java edge names `implementation: temurin` (spec 28 §8):
-  # the validated flavor matches, graalvm never silently picked.
+  # failure). v2.7.0 is the first line that is BOTH signed (spec 09 §9
+  # .asc sidecars + Authenticode on the windows exe) AND tag==line
+  # consumable: v2.5.1 signed the 2.5.0 line under a mismatched tag, so
+  # this recipe's composed-name fetch 404'd (the 1.16.9-11 publish, run
+  # 34683540428); v2.7.0 relines the pair onto the v2.7.0 product and
+  # the feedstock guards the invariant at publish. The pin advances for
+  # the REQUIRE_SIGNED=1 acceptance. v2.4.1+ lists a graalvm sibling
+  # flavor in manifest.json (25.0.4.1 outranks 21.0.12 by version), so
+  # the payload's java edge names `implementation: temurin` (spec 28
+  # §8): the validated flavor matches, graalvm never silently picked.
   # The preference flows into ~/.tebako/config.yaml `runtimes:` at
   # install/publish time so the edge's download resolves to THIS exact
   # pair (a pref-less pick would query the wrong release line).
   version: "21.0.12"       # Temurin JRE 21.0.12+8 repack
-  tebako: "2.5.1"          # the release line = the wrapper's tebako build
+  tebako: "2.7.0"          # the release line = the wrapper's tebako build
   releases_base: "https://github.com/tamatebako/tebako-runtime-openjdk/releases/download"
 
 # The nested python runtime behind payload.yaml's spec-32 kind: executable
