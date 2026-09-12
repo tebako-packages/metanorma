@@ -537,7 +537,11 @@ jobs:
           # payload versions). tebako publish's upsert round-trips the
           # engine/implementation keys, so later publishes preserve them.
           # The release refs carry the v-prefixed tag verbatim — the
-          # resolver composes {base}/{tag} from it.
+          # resolver composes {base}/{tag} from it. The implementation
+          # key is load-bearing, not decoration: spec 28 §8 narrows the
+          # resolver's entry scan to entries carrying the edge's named
+          # implementation (the xml2rfc python edge names cpython) — an
+          # entry without it is invisible to that edge (exit 69).
           ruby -ryaml -e '
             path = "tpkg-registry.yaml"
             reg = YAML.load_file(path)
@@ -548,7 +552,7 @@ jobs:
                                   "platforms" => "universal",
                                   "release" => { "ref" => "tfs:github:tamatebako/tebako-runtime-openjdk:v#{ENV.fetch("JAVA_TEBAKO")}" } } ] },
               { "name" => "tebako-runtime-python", "kind" => "runtime",
-                "engine" => "python",
+                "engine" => "python", "implementation" => "cpython",
                 "versions" => [ { "version" => "#{ENV.fetch("PYTHON_VERSION")}-#{ENV.fetch("PYTHON_TEBAKO")}",
                                   "platforms" => "universal",
                                   "release" => { "ref" => "tfs:github:tamatebako/tebako-runtime-python:v#{ENV.fetch("PYTHON_TEBAKO")}" } } ] },

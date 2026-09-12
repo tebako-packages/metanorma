@@ -193,6 +193,7 @@ payloads:
 - name: tebako-runtime-python
   kind: runtime
   engine: python
+  implementation: cpython
   versions:
   - version: 3.13.15-0.1.3
     platforms: universal
