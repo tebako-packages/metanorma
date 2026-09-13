@@ -31,7 +31,7 @@ on:
   schedule:
     - cron: "17 3 * * *"        # nightly
   pull_request:
-    paths: [".github/workflows/dogfood.yml", "fixtures/**", "tpkg-registry.yaml"]
+    paths: [".github/workflows/dogfood.yml", "fixtures/**", "tpkg-registry.yaml", "tools/stage_spawned_mirror"]
   workflow_dispatch:
 
 permissions:
@@ -81,6 +81,8 @@ jobs:
           tebako --version
 
       - name: Stage the spawned-runtime mirror (java + python legs)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # spec 32: install now resolves TWO spawned runtime edges — the
         # kind: runtime java edge AND the xml2rfc executable edge's nested
         # python runtime — and TEBAKO_RUNTIME_MIRROR is one base for ALL
@@ -108,42 +110,17 @@ jobs:
           [ "$(jq length "$mirror/v$JAVA_TEBAKO/.manifest.trim")" -gt 0 ] \
             || { echo "::error::java mirror trim empty — pin $JAVA_VERSION absent from the factory manifest"; exit 1; }
           mv "$mirror/v$JAVA_TEBAKO/.manifest.trim" "$mirror/v$JAVA_TEBAKO/manifest.json"
-          # The python line ships BUILD VARIANTS as suffixed version
-          # strings (3.13.15 and 3.13.15-jit — variant-in-version, the
-          # factory's grammar). The resolver's newest-satisfying pick on
-          # the edge's constraint names the variant whenever the
-          # constraint spans both (the plain-wins comparator rule lands
-          # with roadmap 88), so stage EVERY manifest entry on the pin's
-          # exact version or its variant suffixes — names from the
-          # factory's own manifest.json, never a composed guess.
-          curl -sL --fail -o "$mirror/v$PYTHON_TEBAKO/manifest.json" "$PYTHON_RELEASES_BASE/v$PYTHON_TEBAKO/manifest.json"
-          curl -sL --fail -o "$mirror/v$PYTHON_TEBAKO/SHA256SUMS.txt" "$PYTHON_RELEASES_BASE/v$PYTHON_TEBAKO/SHA256SUMS.txt"
-          # Same partial-mirror invariant as the java leg above: the staged
-          # index advertises only what the stagelist below stages — the
-          # pin's exact version and its variant suffixes.
-          jq --arg p "$PYTHON_VERSION" \
-            '[.[] | select(.python_version == $p or (.python_version | startswith($p + "-")))]' \
-            "$mirror/v$PYTHON_TEBAKO/manifest.json" > "$mirror/v$PYTHON_TEBAKO/.manifest.trim"
-          [ "$(jq length "$mirror/v$PYTHON_TEBAKO/.manifest.trim")" -gt 0 ] \
-            || { echo "::error::python mirror trim empty — pin $PYTHON_VERSION absent from the factory manifest"; exit 1; }
-          mv "$mirror/v$PYTHON_TEBAKO/.manifest.trim" "$mirror/v$PYTHON_TEBAKO/manifest.json"
-          awk '
-            /"platform":/       { gsub(/[",]/, "", $2); plat = $2 }
-            /"python_version":/ { gsub(/[",]/, "", $2); ver = $2 }
-            /"filename":/       { gsub(/[",]/, "", $2)
-                                  if (plat == P && (ver == PIN || index(ver, PIN "-") == 1)) print $2 }
-          ' P="${{ matrix.plat }}" PIN="$PYTHON_VERSION" \
-            "$mirror/v$PYTHON_TEBAKO/manifest.json" > "$mirror/v$PYTHON_TEBAKO/.stagelist"
-          [ -s "$mirror/v$PYTHON_TEBAKO/.stagelist" ] || { echo "::error::python mirror stagelist empty — pin $PYTHON_VERSION absent from the factory manifest"; exit 1; }
+          # The python factory's release serves per-package manifest
+          # shards + sidecars, no monoliths (the per-leg concurrent
+          # publish): stage + verify + derive the trimmed index via the
+          # shared tool — same selection grammar as the monolith-era trim
+          # (the pin's exact version plus its variant suffixes on THIS
+          # leg's platform).
+          tools/stage_spawned_mirror "$mirror/v$PYTHON_TEBAKO" \
+            "$PYTHON_RELEASES_BASE" "$PYTHON_TEBAKO" "$PYTHON_VERSION" "${{ matrix.plat }}"
           cd "$mirror/v$JAVA_TEBAKO"
           grep "  $jexe\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
           grep "  $jexe\.tfs\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
-          cd "../v$PYTHON_TEBAKO"
-          while IFS= read -r f; do
-            curl -sL --fail -o "$f" "$PYTHON_RELEASES_BASE/v$PYTHON_TEBAKO/$f"
-            grep "  $f\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
-          done < .stagelist
-          rm .stagelist
 
       - name: Add the closure registries and install metanorma
         # The tebako-packages index (registry-of-registries) is not walked
@@ -306,6 +283,8 @@ jobs:
           ruby tools/pins.rb --release-only >> "$GITHUB_ENV"
 
       - name: Stage the spawned-runtime mirror (java + python legs)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # spec 32: the install resolves BOTH spawned runtime edges (java +
         # the xml2rfc provider's nested python); TEBAKO_RUNTIME_MIRROR is
         # one base for ALL engines, so stage a combined local mirror (same
@@ -330,42 +309,17 @@ jobs:
           [ "$(jq length "$mirror/v$JAVA_TEBAKO/.manifest.trim")" -gt 0 ] \
             || { echo "::error::java mirror trim empty — pin $JAVA_VERSION absent from the factory manifest"; exit 1; }
           mv "$mirror/v$JAVA_TEBAKO/.manifest.trim" "$mirror/v$JAVA_TEBAKO/manifest.json"
-          # The python line ships BUILD VARIANTS as suffixed version
-          # strings (3.13.15 and 3.13.15-jit — variant-in-version, the
-          # factory's grammar). The resolver's newest-satisfying pick on
-          # the edge's constraint names the variant whenever the
-          # constraint spans both (the plain-wins comparator rule lands
-          # with roadmap 88), so stage EVERY manifest entry on the pin's
-          # exact version or its variant suffixes — names from the
-          # factory's own manifest.json, never a composed guess.
-          curl -sL --fail -o "$mirror/v$PYTHON_TEBAKO/manifest.json" "$PYTHON_RELEASES_BASE/v$PYTHON_TEBAKO/manifest.json"
-          curl -sL --fail -o "$mirror/v$PYTHON_TEBAKO/SHA256SUMS.txt" "$PYTHON_RELEASES_BASE/v$PYTHON_TEBAKO/SHA256SUMS.txt"
-          # Same partial-mirror invariant as the java leg above: the staged
-          # index advertises only what the stagelist below stages — the
-          # pin's exact version and its variant suffixes.
-          jq --arg p "$PYTHON_VERSION" \
-            '[.[] | select(.python_version == $p or (.python_version | startswith($p + "-")))]' \
-            "$mirror/v$PYTHON_TEBAKO/manifest.json" > "$mirror/v$PYTHON_TEBAKO/.manifest.trim"
-          [ "$(jq length "$mirror/v$PYTHON_TEBAKO/.manifest.trim")" -gt 0 ] \
-            || { echo "::error::python mirror trim empty — pin $PYTHON_VERSION absent from the factory manifest"; exit 1; }
-          mv "$mirror/v$PYTHON_TEBAKO/.manifest.trim" "$mirror/v$PYTHON_TEBAKO/manifest.json"
-          awk '
-            /"platform":/       { gsub(/[",]/, "", $2); plat = $2 }
-            /"python_version":/ { gsub(/[",]/, "", $2); ver = $2 }
-            /"filename":/       { gsub(/[",]/, "", $2)
-                                  if (plat == P && (ver == PIN || index(ver, PIN "-") == 1)) print $2 }
-          ' P="${{ matrix.plat }}" PIN="$PYTHON_VERSION" \
-            "$mirror/v$PYTHON_TEBAKO/manifest.json" > "$mirror/v$PYTHON_TEBAKO/.stagelist"
-          [ -s "$mirror/v$PYTHON_TEBAKO/.stagelist" ] || { echo "::error::python mirror stagelist empty — pin $PYTHON_VERSION absent from the factory manifest"; exit 1; }
+          # The python factory's release serves per-package manifest
+          # shards + sidecars, no monoliths (the per-leg concurrent
+          # publish): stage + verify + derive the trimmed index via the
+          # shared tool — same selection grammar as the monolith-era trim
+          # (the pin's exact version plus its variant suffixes on THIS
+          # leg's platform).
+          tools/stage_spawned_mirror "$mirror/v$PYTHON_TEBAKO" \
+            "$PYTHON_RELEASES_BASE" "$PYTHON_TEBAKO" "$PYTHON_VERSION" "${{ matrix.plat }}"
           cd "$mirror/v$JAVA_TEBAKO"
           grep "  $jexe\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
           grep "  $jexe\.tfs\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
-          cd "../v$PYTHON_TEBAKO"
-          while IFS= read -r f; do
-            curl -sL --fail -o "$f" "$PYTHON_RELEASES_BASE/v$PYTHON_TEBAKO/$f"
-            grep "  $f\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
-          done < .stagelist
-          rm .stagelist
 
       - name: Install CLI, add registry, install metanorma, exec version
         # Same runtime-edge wiring as the full leg: the spawned edges
@@ -451,6 +405,8 @@ jobs:
           ruby tools/pins.rb --release-only --ruby-line 4.0 >> "$GITHUB_ENV"
 
       - name: Stage the spawned-runtime mirror (java + python legs)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # Same combined-mirror shape as the other legs (spec 32: install
         # resolves the java edge AND the xml2rfc provider's nested python
         # runtime; the mirror is one base for ALL engines).
@@ -473,42 +429,17 @@ jobs:
           [ "$(jq length "$mirror/v$JAVA_TEBAKO/.manifest.trim")" -gt 0 ] \
             || { echo "::error::java mirror trim empty — pin $JAVA_VERSION absent from the factory manifest"; exit 1; }
           mv "$mirror/v$JAVA_TEBAKO/.manifest.trim" "$mirror/v$JAVA_TEBAKO/manifest.json"
-          # The python line ships BUILD VARIANTS as suffixed version
-          # strings (3.13.15 and 3.13.15-jit — variant-in-version, the
-          # factory's grammar). The resolver's newest-satisfying pick on
-          # the edge's constraint names the variant whenever the
-          # constraint spans both (the plain-wins comparator rule lands
-          # with roadmap 88), so stage EVERY manifest entry on the pin's
-          # exact version or its variant suffixes — names from the
-          # factory's own manifest.json, never a composed guess.
-          curl -sL --fail -o "$mirror/v$PYTHON_TEBAKO/manifest.json" "$PYTHON_RELEASES_BASE/v$PYTHON_TEBAKO/manifest.json"
-          curl -sL --fail -o "$mirror/v$PYTHON_TEBAKO/SHA256SUMS.txt" "$PYTHON_RELEASES_BASE/v$PYTHON_TEBAKO/SHA256SUMS.txt"
-          # Same partial-mirror invariant as the java leg above: the staged
-          # index advertises only what the stagelist below stages — the
-          # pin's exact version and its variant suffixes.
-          jq --arg p "$PYTHON_VERSION" \
-            '[.[] | select(.python_version == $p or (.python_version | startswith($p + "-")))]' \
-            "$mirror/v$PYTHON_TEBAKO/manifest.json" > "$mirror/v$PYTHON_TEBAKO/.manifest.trim"
-          [ "$(jq length "$mirror/v$PYTHON_TEBAKO/.manifest.trim")" -gt 0 ] \
-            || { echo "::error::python mirror trim empty — pin $PYTHON_VERSION absent from the factory manifest"; exit 1; }
-          mv "$mirror/v$PYTHON_TEBAKO/.manifest.trim" "$mirror/v$PYTHON_TEBAKO/manifest.json"
-          awk '
-            /"platform":/       { gsub(/[",]/, "", $2); plat = $2 }
-            /"python_version":/ { gsub(/[",]/, "", $2); ver = $2 }
-            /"filename":/       { gsub(/[",]/, "", $2)
-                                  if (plat == P && (ver == PIN || index(ver, PIN "-") == 1)) print $2 }
-          ' P="${{ matrix.plat }}" PIN="$PYTHON_VERSION" \
-            "$mirror/v$PYTHON_TEBAKO/manifest.json" > "$mirror/v$PYTHON_TEBAKO/.stagelist"
-          [ -s "$mirror/v$PYTHON_TEBAKO/.stagelist" ] || { echo "::error::python mirror stagelist empty — pin $PYTHON_VERSION absent from the factory manifest"; exit 1; }
+          # The python factory's release serves per-package manifest
+          # shards + sidecars, no monoliths (the per-leg concurrent
+          # publish): stage + verify + derive the trimmed index via the
+          # shared tool — same selection grammar as the monolith-era trim
+          # (the pin's exact version plus its variant suffixes on THIS
+          # leg's platform).
+          tools/stage_spawned_mirror "$mirror/v$PYTHON_TEBAKO" \
+            "$PYTHON_RELEASES_BASE" "$PYTHON_TEBAKO" "$PYTHON_VERSION" "${{ matrix.plat }}"
           cd "$mirror/v$JAVA_TEBAKO"
           grep "  $jexe\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
           grep "  $jexe\.tfs\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
-          cd "../v$PYTHON_TEBAKO"
-          while IFS= read -r f; do
-            curl -sL --fail -o "$f" "$PYTHON_RELEASES_BASE/v$PYTHON_TEBAKO/$f"
-            grep "  $f\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
-          done < .stagelist
-          rm .stagelist
 
       - name: Install CLI, add registries, install the 4.0 flavor
         # Same wiring as the slim leg (the spawned-edge prefs + the
