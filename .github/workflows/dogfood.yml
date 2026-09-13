@@ -260,7 +260,7 @@ jobs:
         run: |
           set -euo pipefail
           cd site
-          metanorma compile site.adoc --agree-to-terms
+          TEBAKO_METANORMA_VERSION="$PKG_VERSION" metanorma compile site.adoc --agree-to-terms
           ls -la
 
       - name: Assert PDF magic bytes
@@ -283,7 +283,7 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/mn-jail && cp fixtures/site.adoc fixtures/figure.svg /tmp/mn-jail/
           cd /tmp/mn-jail
-          TEBAKO_JAIL="deny;$(pwd):$(pwd):rw" metanorma version
+          TEBAKO_JAIL="deny;$(pwd):$(pwd):rw" TEBAKO_METANORMA_VERSION="$PKG_VERSION" metanorma version
           echo "jail boot OK (deny + cwd:rw)"
 
   dogfood-slim:
@@ -401,7 +401,9 @@ jobs:
             "$JAVA_VERSION" "$JAVA_TEBAKO" "$PYTHON_VERSION" "$PYTHON_TEBAKO" "$RUBY_V" "$RUNTIME_TEBAKO" >> "$HOME/.tebako/config.yaml"
           TEBAKO_RUNTIME_MIRROR="file://${{ runner.temp }}/dogfood-mirror" tebako install "metanorma@$PKG_VERSION"
           export PATH="$HOME/.tebako/shims:$PATH"
-          metanorma version | grep -E "Metanorma::Cli $PKG_VERSION"
+          # Pin the exec to the installed version: the registry default is
+          # a moving line (the resolver's last resort), the install is not.
+          TEBAKO_METANORMA_VERSION="$PKG_VERSION" metanorma version | grep -E "Metanorma::Cli $PKG_VERSION"
 
   ruby40-published:
     name: ruby 4.0 flavor published?
