@@ -227,7 +227,7 @@ jobs:
         # runner has network; the payload itself is offline).
         run: |
           set -euo pipefail
-          metanorma new site -t iso -d international-standard
+          TEBAKO_METANORMA_VERSION="$PKG_VERSION" metanorma new site -t iso -d international-standard
           test -d site
 
       - name: Assert the runtime downloaded exactly once (on first run)
