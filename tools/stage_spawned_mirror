@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# stage_spawned_mirror — stage one spawned-runtime engine's pinned factory
+# release into the combined local TEBAKO_RUNTIME_MIRROR (shard model).
+#
+# The runtime factories publish per-leg and concurrently: a release serves
+# per-package manifest shards (<stem>.manifest.json), per-asset .sha256
+# sidecars and OpenPGP .asc signatures; the monolithic manifest.json /
+# SHA256SUMS.txt are no longer release assets. The resolver's primary
+# release-index form is the shard, but the mirror still advertises a
+# derived, TRIMMED manifest.json — a partial mirror must never advertise
+# bytes it does not carry (the factory index spans every flavor/arch;
+# variant discovery rides the index), and SHA256SUMS.txt comes along as
+# the derived sums-form convenience.
+#
+# Selection grammar: the pin's EXACT version plus its variant suffixes on
+# this platform (3.13.15 and 3.13.15-jit — variant-in-version, the
+# factory grammar) — the monolith-era trim `version == pin or
+# startswith(pin + "-")`, expressed on shard names, never a composed
+# guess.
+#
+# Usage:
+#   stage_spawned_mirror <dest> <releases-base> <tebako-version> <version-pin> <platform>
+# e.g. tools/stage_spawned_mirror "$mirror/v$PYTHON_TEBAKO" \
+#          "$PYTHON_RELEASES_BASE" "$PYTHON_TEBAKO" "$PYTHON_VERSION" macos-arm64
+#
+# Every staged byte is verified three ways: sidecar ↔ bytes ↔ the shard's
+# own digest (the trust-anchor role the monolith cross-check played).
+# gh (preinstalled on every GitHub-hosted runner) does the one asset
+# enumeration; GH_TOKEN authenticates it when the caller exports one
+# (anonymous works for public releases but shares the runner NAT's
+# 60/h API budget — the 403 flake class).
+set -euo pipefail
+
+fail() { echo "::error::$1"; exit 1; }
+
+[ $# -eq 5 ] || fail "usage: stage_spawned_mirror <dest> <releases-base> <tebako-version> <version-pin> <platform>"
+dest=$1 base=$2 tbver=$3 pin=$4 plat=$5
+command -v gh >/dev/null || fail "gh is required for the release-asset enumeration"
+command -v jq >/dev/null || fail "jq is required for shard derivation"
+
+re_escape() { printf '%s' "$1" | sed 's/[].[\*^$]/\\&/g'; }
+re="^tebako-runtime-$(re_escape "$tbver")-$(re_escape "$pin")(-[a-z0-9]+)?-$(re_escape "$plat")\.manifest\.json\$"
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+repo=$(sed -E 's|.*/github\.com/([^/]+/[^/]+)/releases/download|\1|' <<< "$base")
+[ -n "$repo" ] || fail "cannot derive the owner/repo from releases base: $base"
+
+mkdir -p "$dest"
+gh release view "v$tbver" --repo "$repo" --json assets --jq '.assets[].name' > "$work/listing" \
+  || fail "cannot enumerate $repo release v$tbver"
+grep -E "$re" "$work/listing" > "$work/shards" || true
+[ -s "$work/shards" ] || fail "no shard on $repo v$tbver matches pin $pin (+ variants) on $plat"
+
+sums() { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+
+: > "$work/SHA256SUMS.txt"
+while IFS= read -r shard; do
+  stem=${shard%.manifest.json}
+  for f in "$stem" "$stem.tfs" "$stem.sha256" "$stem.tfs.sha256" "$shard"; do
+    curl -sL --fail -o "$dest/$f" "$base/v$tbver/$f" || fail "fetch failed: $base/v$tbver/$f"
+  done
+  (
+    cd "$dest"
+    sums < "$stem.sha256"
+    sums < "$stem.tfs.sha256"
+    # sidecar ↔ shard digest parity (a renamed/mismatched shard is a
+    # named failure, never a silent skew)
+    [ "$(jq -r '.sha256' "$shard")" = "$(cut -d' ' -f1 "$stem.sha256")" ] \
+      || { echo "::error::$shard: exe digest disagrees with the sidecar"; exit 1; }
+    [ "$(jq -r '.image.sha256' "$shard")" = "$(cut -d' ' -f1 "$stem.tfs.sha256")" ] \
+      || { echo "::error::$shard: image digest disagrees with the sidecar"; exit 1; }
+    [ "$(jq -r '.filename' "$shard")" = "$stem" ] \
+      || { echo "::error::$shard: filename field disagrees with the shard name"; exit 1; }
+  )
+  cat "$dest/$stem.sha256" "$dest/$stem.tfs.sha256" >> "$work/SHA256SUMS.txt"
+done < "$work/shards"
+
+# The trimmed monoliths, derived consumer-side: each shard IS its
+# manifest entry; deterministic order by filename.
+manifest_inputs=()
+while IFS= read -r s; do manifest_inputs+=("$dest/$s"); done < "$work/shards"
+jq -s 'sort_by(.filename)' "${manifest_inputs[@]}" > "$work/manifest.json"
+[ "$(jq length "$work/manifest.json")" -gt 0 ] || fail "derived manifest is empty for pin $pin on $plat"
+mv "$work/manifest.json" "$dest/manifest.json"
+mv "$work/SHA256SUMS.txt" "$dest/SHA256SUMS.txt"
+echo "staged $(jq length "$dest/manifest.json") package(s) for pin $pin on $plat from $repo v$tbver (shard model)"
