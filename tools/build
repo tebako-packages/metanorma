@@ -47,7 +47,7 @@
 # Produces: $OUT/metanorma-<payload-version>-<asset-platform>.tfs
 # (+ manifest yaml), the manifest EMBEDDED at /__tpkg__/manifest.yaml
 # (tier 1, authoritative). <payload-version> is the registry version entry
-# (roadmap 77): the bare upstream version on the default line (1.16.9),
+#: the bare upstream version on the default line (1.16.9),
 # "<upstream>-ruby<line>" on the others (1.16.9-ruby4.0) — one upstream
 # version, one registry entry per line, chosen by the user through the
 # spec 07 §2.1 version chain.
@@ -66,7 +66,7 @@ FEEDSTOCK="$(cd "$(dirname "$0")/.." && pwd)"
 recipe() { ruby -ryaml -e "puts(YAML.load_file('$FEEDSTOCK/recipe.yml').dig(*ARGV) || '')" "$@"; }
 VERSION="${VERSION:-$(recipe upstream version)}"
 TRIPLET="${TRIPLET:-aarch64-macos}"   # the manifest platforms form (vcpkg, spec 03)
-# The ruby axis (roadmap 77): the line key selects the staging/exec runtime
+# The ruby axis: the line key selects the staging/exec runtime
 # version, the entrypoint ABI constraint, the mkmf SDK pin, and the closure
 # file — everything per-line flows from build.runtime.lines.<line>.
 DEFAULT_LINE="$(recipe build runtime default_line)"

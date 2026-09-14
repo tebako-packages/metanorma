@@ -1,5 +1,5 @@
 name: dogfood
-# THE dogfood (roadmap 32): a bare runner installs the tebako CLI from the
+# THE dogfood: a bare runner installs the tebako CLI from the
 # published tamatebako/tebako release, adds the tebako-packages registries,
 # installs the published metanorma payload, and runs a real compile whose
 # figure goes through the inkscape toolkit payload and whose PDF leg spawns
@@ -18,7 +18,7 @@ name: dogfood
 #     phase W2) and the build-payload windows boot smoke is now ENFORCED
 #     against it (tools/smoke_verdict flipped fail-closed).
 #
-# The ruby axis (roadmap 77): the dogfood-ruby40 job below is the 4.0
+# The ruby axis: the dogfood-ruby40 job below is the 4.0
 # flavor's slim proof — install metanorma@1.16.9-ruby4.0 fresh, run
 # `metanorma version` through the version chain's env link
 # (TEBAKO_METANORMA_VERSION), and force the ABI guard: the 4.0 flavor
@@ -125,7 +125,7 @@ jobs:
       - name: Add the closure registries and install metanorma
         # The tebako-packages index (registry-of-registries) is not walked
         # by the CLI (still true at v2.1.0: it registers as 0 payloads —
-        # the packages[] follow is a filed product gap, TODO.v2-1/22).
+        # the packages[] follow is a filed product gap).
         # Add the feedstock registries directly — INCLUDING the xml2rfc
         # provider registry (spec 32: the executable edge's payload
         # resolves from the provider feedstock's own registry; without it

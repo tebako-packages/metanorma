@@ -44,7 +44,7 @@ release = tools.fetch("release")
 version = release.sub(/\Av/, "")
 die "recipe.yml tools.sha256 missing" unless tools["sha256"].is_a?(Hash)
 
-# --- the ruby line (roadmap 77) ------------------------------------------
+# --- the ruby line ------------------------------------------
 runtime = recipe.fetch("build").fetch("runtime")
 lines = runtime.fetch("lines")
 default_line = runtime.fetch("default_line")

@@ -21,7 +21,7 @@ name: build-payload
 #   formula's test translated; manifests/payload.yaml `checks:`). FAIL is
 #   the engine's named exit 79.
 #
-# THE RUBY AXIS (roadmap 77): every build job is a matrix over the recipe's
+# THE RUBY AXIS: every build job is a matrix over the recipe's
 # ruby lines (build.runtime.lines — the keys are mirrored by the matrix;
 # every VALUE still flows from recipe.yml via tools/pins.rb --ruby-line).
 # One upstream version, one registry entry per line: the default line
