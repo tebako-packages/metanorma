@@ -340,7 +340,7 @@ jobs:
     # proved green on the 0.16.6 line (PR #22, head 37396c0 — the
     # tebako#437 SSL_CERT_FILE workaround), so the wiring (needs +
     # --payload + the registry entry) now includes the windows artifact.
-    # Roadmap 77: each leg is a 2-leg matrix (one per ruby line) — needs
+    # Each leg is a 2-leg matrix (one per ruby line) — needs
     # waits for all six; the publish step below upserts one registry
     # version entry per line into the SAME registry file.
     needs: [build, build-linux, build-windows]
@@ -442,7 +442,7 @@ jobs:
         # language resolves at run time), so the one-base-for-all-engines
         # mirror cannot misdirect it here.
         #
-        # Roadmap 77: ONE invocation per ruby line into the SAME
+        # ONE invocation per ruby line into the SAME
         # --registry-out. ORDER IS LOAD-BEARING: RUBY_LINES lists the
         # default line first and tebako-cli's upsert sets the registry
         # `default:` only when absent — the default line's entry must be
