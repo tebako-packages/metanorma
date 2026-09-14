@@ -210,7 +210,9 @@ java:
 # THIS exact pair (a pref-less pick queries the default line, which hosts
 # no python).
 python:
-  version: "3.13.15"       # the xml2rfc provider's staging + exec line
+  version: "3.14.7"        # the xml2rfc provider's staging + exec line
+                           # (follows the provider: xml2rfc 3.34.1 stages
+                           # on 3.14.7 with the ABI edge ~> 3.14.0)
   tebako: "0.2.0"          # tebako-runtime-python's current line (v0.2.0
                            # — the shard-model, per-leg-signed release;
                            # v0.1.3 before it was the first signed line)

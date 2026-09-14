@@ -195,6 +195,10 @@ payloads:
   engine: python
   implementation: cpython
   versions:
+  - version: 3.14.7-0.2.0
+    platforms: universal
+    release:
+      ref: tfs:github:tamatebako/tebako-runtime-python:v0.2.0
   - version: 3.13.15-0.2.0
     platforms: universal
     release:
