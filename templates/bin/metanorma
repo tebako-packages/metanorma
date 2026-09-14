@@ -66,7 +66,7 @@ end
 # cwd drive on windows; File.dirname stays lexical.
 root = File.dirname(__dir__)
 # The ruby-API segment (lib/ruby/gems/<3.3.0|4.0.0|...>) is per ruby line
-# (roadmap 77) — derive it: the payload carries exactly one API dir, so
+# — derive it: the payload carries exactly one API dir, so
 # the glob is unambiguous; zero or two is assembly drift, fail closed.
 api_dirs = Dir[File.join(root, "lib/ruby/gems/*")].select { |d| File.directory?(d) }
 abort("metanorma: expected exactly one lib/ruby/gems/<api> dir in the payload, " \
