@@ -211,9 +211,9 @@ java:
 # no python).
 python:
   version: "3.13.15"       # the xml2rfc provider's staging + exec line
-  tebako: "0.1.3"          # tebako-runtime-python's first SIGNED line
-                           # (v0.1.3 — the spec 09 §9 re-cut; 0.1.x before
-                           # it published unsigned)
+  tebako: "0.2.0"          # tebako-runtime-python's current line (v0.2.0
+                           # — the shard-model, per-leg-signed release;
+                           # v0.1.3 before it was the first signed line)
   releases_base: "https://github.com/tamatebako/tebako-runtime-python/releases/download"
 
 # Signing (spec 09 §9 — opt-in per feedstock): on tag pushes the publish
