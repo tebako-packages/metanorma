@@ -86,6 +86,20 @@ ENV["GEM_HOME"] = gem_dir
 ENV["GEM_PATH"] = [gem_dir, Gem.default_dir].join(File::PATH_SEPARATOR)
 Gem.clear_paths
 
+# Extension slices (the manifest's declared extension point, spec 03 §2.8):
+# put each mounted slice's mini GEM_HOME on the search path so slice gems
+# stay VISIBLE to any command that reaches them — but require nothing here:
+# flavor registration is the primary entrypoint's job (templates/bin/
+# metanorma), and a broken slice must not take down unrelated commands
+# (fontist, canon, …). Zero slices mounted = the guard skips.
+flavors = "/flavors.d"
+if File.directory?(flavors)
+  Dir[File.join(flavors, "*")].sort.each do |home|
+    next unless File.directory?(home)
+    Gem.paths = { "GEM_PATH" => Gem.path + [home] }
+  end
+end
+
 name = File.basename(__FILE__)
 spec = Gem::Specification.find { |s| s.executables.include?(name) }
 abort("#{name}: no gem in the payload declares this executable — " \

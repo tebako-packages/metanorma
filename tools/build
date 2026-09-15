@@ -563,6 +563,31 @@ if [ "$TRIPLET" = "x86_64-windows-ucrt" ]; then
 fi
 
 # --------------------------------------------------------------- manifest
+step "generate the gem inventory (provides.gems + the closure asset)"
+# The staged specifications set IS the inventory — generated, never
+# hand-maintained (spec 03 §2.8). One scan, two consumers: the manifest
+# splice below feeds the dispatcher's slice-overlap journal; the
+# closure.json release asset is the flavor feedstocks' dedup subtraction
+# source (its sha256 is the slice manifest's
+# augments[].built_against.closure_sha256).
+GEMS_YAML="$WORK/provides-gems.yaml"
+CLOSURE_JSON="$WORK/closure-$PAYLOAD_VERSION-$ASSET_PLATFORM.json"
+"$MANIFEST_RUBY" -rjson -e '
+  specs = Dir[File.join(ARGV[0], "specifications", "*.gemspec")].sort.map do |gs|
+    s = Gem::Specification.load(gs)
+    abort("unparseable gemspec: #{gs}") unless s
+    { name: s.name, version: s.version.to_s }
+  end
+  File.open(ARGV[1], "w") do |f|
+    f.puts "  gems:"
+    specs.each { |g| f.puts "    - {name: #{g[:name]}, version: \"#{g[:version]}\"}" }
+  end
+  File.write(ARGV[2], JSON.pretty_generate(
+    { payload: "metanorma", version: ARGV[3], platform: ARGV[4], gems: specs }
+  ) + "\n")
+' "$G" "$GEMS_YAML" "$CLOSURE_JSON" "$PAYLOAD_VERSION" "$ASSET_PLATFORM"
+echo "inventory: $(grep -c '^    - {name:' "$GEMS_YAML") gems"
+
 step "fill the manifest (embedded at /__tpkg__/manifest.yaml — tier 1)"
 # The embedded manifest is the AUTHORITATIVE record the install mirrors
 # (spec 03 §4): identity + provides + requires travel INSIDE the image.
@@ -577,6 +602,8 @@ sed -e "s|created: \"[^\"]*\"|created: \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"|" \
     -e "s|@@CONSTRAINT@@|$RUBY_CONSTRAINT|" \
     -e "s|@@ABI@@|$EXT_PLATFORM|" \
     -e "s|platforms: \[.*\]|platforms: [$TRIPLET]|" \
+    -e "/^  gems: \"@@GEMS@@\"\$/r $GEMS_YAML" \
+    -e "/^  gems: \"@@GEMS@@\"\$/d" \
     "$FEEDSTOCK/manifests/payload.yaml" > "$MAN_EMBED"
 # Fail closed on template drift: no @@PLACEHOLDER@@ may survive the fill.
 if grep -q '@@[A-Z_]*@@' "$MAN_EMBED"; then
@@ -617,3 +644,10 @@ MAN="$OUT/metanorma-$PAYLOAD_VERSION.manifest.yaml"
 sed -e "s|blob_sha256: \"0*\"|blob_sha256: \"$sha\"|" \
     "$MAN_EMBED" > "$MAN"
 echo "manifest: $MAN"
+
+# The closure asset rides the same dist artifact as the image (the
+# workflow uploads out/<triplet>/ verbatim) and ships on the release as
+# closure-<version>-<platform>.json — the flavor feedstocks' dedup
+# subtraction source (spec 03 §2.8).
+cp "$CLOSURE_JSON" "$OUT/"
+echo "closure: $OUT/$(basename "$CLOSURE_JSON")"
