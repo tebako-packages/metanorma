@@ -58,7 +58,17 @@ sums() { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
 : > "$work/SHA256SUMS.txt"
 while IFS= read -r shard; do
   stem=${shard%.manifest.json}
-  for f in "$stem" "$stem.tfs" "$stem.sha256" "$stem.tfs.sha256" "$shard"; do
+  # The served set: payload bytes + sidecars + the shard + the
+  # signatures the release carries. A shard-model release DECLARES
+  # per-artifact signatures (spec 13 §2a), and a declared signature
+  # that does not fetch is a hard refusal (spec 09 §4, exit 71) — a
+  # mirror that carries the shard but not its .asc siblings makes the
+  # pinned runtime uninstallable, exactly the gap the monolith-era
+  # staging list had here. The .asc names are listed-driven, never
+  # assumed: an unsigned release (no .asc assets at all) stages its
+  # bytes exactly as before.
+  for f in "$stem" "$stem.tfs" "$stem.sha256" "$stem.tfs.sha256" "$shard" "$stem.asc" "$stem.tfs.asc" "$shard.asc"; do
+    grep -qx "$f" "$work/listing" || continue
     curl -sL --fail -o "$dest/$f" "$base/v$tbver/$f" || fail "fetch failed: $base/v$tbver/$f"
   done
   (
@@ -73,6 +83,12 @@ while IFS= read -r shard; do
       || { echo "::error::$shard: image digest disagrees with the sidecar"; exit 1; }
     [ "$(jq -r '.filename' "$shard")" = "$stem" ] \
       || { echo "::error::$shard: filename field disagrees with the shard name"; exit 1; }
+    # declared ↔ staged (spec 09 §4's refusal, caught at stage time):
+    # a signature the shard DECLARES must have landed in the mirror.
+    for declared in $(jq -r '.signature.asc // empty, .image.signature.asc // empty' "$shard"); do
+      [ -f "$declared" ] \
+        || { echo "::error::$shard declares signature $declared but the mirror does not carry it"; exit 1; }
+    done
   )
   cat "$dest/$stem.sha256" "$dest/$stem.tfs.sha256" >> "$work/SHA256SUMS.txt"
 done < "$work/shards"
