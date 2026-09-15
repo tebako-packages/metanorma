@@ -121,6 +121,25 @@ jobs:
           tebako check "$PAYLOAD_IMG" \
             --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
 
+      - name: Manifest shape (extension slices, spec 03 §2.8)
+        # Structural proof the build generated what the reverse edge
+        # consumes: the declared extension point, the generated gem
+        # inventory in the sibling manifest, and the closure asset whose
+        # gem count must match the manifest's.
+        run: |
+          ruby -ryaml -rjson -e '
+            man = Dir["out/*/metanorma-*.manifest.yaml"].first or abort("no sibling manifest")
+            m = YAML.load_file(man)
+            ep = m.dig("provides", "extension_points") or abort("provides.extension_points missing")
+            ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("extension_points drift: #{ep.inspect}")
+            gems = m.dig("provides", "gems") or abort("provides.gems missing")
+            gems.length > 200 or abort("gem inventory suspiciously small: #{gems.length} (1.16.9 carries ~260)")
+            clo = Dir["out/*/closure-*.json"].first or abort("no closure asset")
+            c = JSON.parse(File.read(clo))
+            c["gems"].length == gems.length or abort("closure/manifest count skew: #{c["gems"].length} vs #{gems.length}")
+            puts "manifest shape OK: #{gems.length} gems, extension point #{ep.first["mount"]}, closure #{File.basename(clo)}"
+          '
+
       - name: Stage artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -256,6 +275,26 @@ jobs:
           "$TEBAKO_TOOLS/tebako.exe" check "$PAYLOAD_IMG" \
             --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
 
+      - name: Manifest shape (extension slices, spec 03 §2.8)
+        # Structural proof the build generated what the reverse edge
+        # consumes: the declared extension point, the generated gem
+        # inventory in the sibling manifest, and the closure asset whose
+        # gem count must match the manifest's.
+        shell: msys2 {0}
+        run: |
+          ruby -ryaml -rjson -e '
+            man = Dir["out/*/metanorma-*.manifest.yaml"].first or abort("no sibling manifest")
+            m = YAML.load_file(man)
+            ep = m.dig("provides", "extension_points") or abort("provides.extension_points missing")
+            ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("extension_points drift: #{ep.inspect}")
+            gems = m.dig("provides", "gems") or abort("provides.gems missing")
+            gems.length > 200 or abort("gem inventory suspiciously small: #{gems.length} (1.16.9 carries ~260)")
+            clo = Dir["out/*/closure-*.json"].first or abort("no closure asset")
+            c = JSON.parse(File.read(clo))
+            c["gems"].length == gems.length or abort("closure/manifest count skew: #{c["gems"].length} vs #{gems.length}")
+            puts "manifest shape OK: #{gems.length} gems, extension point #{ep.first["mount"]}, closure #{File.basename(clo)}"
+          '
+
       - name: Stage artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -326,6 +365,25 @@ jobs:
           . out/x86_64-linux-gnu/runtime.env
           tebako check "$PAYLOAD_IMG" \
             --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
+
+      - name: Manifest shape (extension slices, spec 03 §2.8)
+        # Structural proof the build generated what the reverse edge
+        # consumes: the declared extension point, the generated gem
+        # inventory in the sibling manifest, and the closure asset whose
+        # gem count must match the manifest's.
+        run: |
+          ruby -ryaml -rjson -e '
+            man = Dir["out/*/metanorma-*.manifest.yaml"].first or abort("no sibling manifest")
+            m = YAML.load_file(man)
+            ep = m.dig("provides", "extension_points") or abort("provides.extension_points missing")
+            ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("extension_points drift: #{ep.inspect}")
+            gems = m.dig("provides", "gems") or abort("provides.gems missing")
+            gems.length > 200 or abort("gem inventory suspiciously small: #{gems.length} (1.16.9 carries ~260)")
+            clo = Dir["out/*/closure-*.json"].first or abort("no closure asset")
+            c = JSON.parse(File.read(clo))
+            c["gems"].length == gems.length or abort("closure/manifest count skew: #{c["gems"].length} vs #{gems.length}")
+            puts "manifest shape OK: #{gems.length} gems, extension point #{ep.first["mount"]}, closure #{File.basename(clo)}"
+          '
 
       - name: Stage artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -549,6 +607,18 @@ jobs:
             end
             File.write(path, reg.to_yaml)
           '
+      # The extension-slice dedup source (spec 03 §2.8): each leg's build
+      # generated closure-<version>-<platform>.json (the staged gem
+      # inventory) into its dist artifact; flavor feedstocks fetch the
+      # pinned base release's asset and subtract it at slice press, and
+      # the slice manifest records its sha256 as
+      # augments[].built_against.closure_sha256.
+      - name: Attach the closure inventories
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload "${{ github.ref_name }}" out/*/closure-*.json --clobber
       # main is branch-protected (and the GitHub-Actions bypass is not
       # available on this plan): the registry lands by bot PR + auto-merge,
       # never by direct push. Idempotent across re-runs of the same tag.
