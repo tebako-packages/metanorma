@@ -611,6 +611,20 @@ jobs:
           # resolver's entry scan to entries carrying the edge's named
           # implementation (the xml2rfc python edge names cpython) — an
           # entry without it is invisible to that edge (exit 69).
+          # The requires-closure PAYLOAD mirrors (the toolkit inkscape
+          # and the spec-32 executable xml2rfc): a wild `tebako install
+          # metanorma` registers only THIS registry, so every non-runtime
+          # requires edge must resolve here too — the same channel-3
+          # argument as the spawned runtimes above (the macOS pkg seed's
+          # install failed exit 65 on exactly this gap). The entries are
+          # copied WHOLESALE (platforms + digests + signature +
+          # release.ref) from the provider registries at publish time —
+          # the provider registry is the SSOT, this is the L3 mirror by
+          # value, replaced by entry name on every publish.
+          curl -fsSL -o "$RUNNER_TEMP/registry-inkscape.yaml" \
+            https://raw.githubusercontent.com/tebako-packages/inkscape/main/tpkg-registry.yaml
+          curl -fsSL -o "$RUNNER_TEMP/registry-xml2rfc.yaml" \
+            https://raw.githubusercontent.com/tebako-packages/xml2rfc/main/tpkg-registry.yaml
           ruby -ryaml -e '
             path = "tpkg-registry.yaml"
             reg = YAML.load_file(path)
@@ -637,6 +651,20 @@ jobs:
                 end
                 %w[kind engine implementation].each { |k| entry.key?(k) ? existing[k] = entry[k] : existing.delete(k) }
               end
+            end
+            # The requires-closure payload mirrors — wholesale copies from
+            # the provider registries fetched above, replaced by entry
+            # name (the provider's entry IS the current truth; version
+            # accumulation belongs to the providers, not the mirror).
+            {
+              "inkscape" => "#{ENV.fetch("RUNNER_TEMP")}/registry-inkscape.yaml",
+              "xml2rfc" => "#{ENV.fetch("RUNNER_TEMP")}/registry-xml2rfc.yaml",
+            }.each do |name, mirror_path|
+              provider = YAML.load_file(mirror_path)
+              entry = provider["payloads"].find { |p| p["name"] == name } or
+                abort "NAMED FAILURE: provider registry #{mirror_path} carries no #{name} entry"
+              existing = reg["payloads"].find { |p| p["name"] == name }
+              existing ? reg["payloads"][reg["payloads"].index(existing)] = entry : reg["payloads"] << entry
             end
             File.write(path, reg.to_yaml)
           '
