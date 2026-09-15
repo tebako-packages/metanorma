@@ -123,21 +123,31 @@ jobs:
 
       - name: Manifest shape (extension slices, spec 03 §2.8)
         # Structural proof the build generated what the reverse edge
-        # consumes: the declared extension point, the generated gem
-        # inventory in the sibling manifest, and the closure asset whose
-        # gem count must match the manifest's.
+        # consumes — in BOTH spellings: the SIBLING manifest proves the
+        # builder generated the keys; the EMBEDDED /__tpkg__/manifest.yaml
+        # (read straight out of the image) proves the press round-tripped
+        # the slice model — the dispatcher reads only the embedded copy,
+        # via the store mirror (spec 05 §3.0a). The closure asset's gem
+        # count must match the manifest's.
         run: |
+          . out/aarch64-macos/runtime.env
+          tfs cat "$PAYLOAD_IMG" /__tpkg__/manifest.yaml > embedded-manifest.yaml
           ruby -ryaml -rjson -e '
             man = Dir["out/*/metanorma-*.manifest.yaml"].first or abort("no sibling manifest")
-            m = YAML.load_file(man)
-            ep = m.dig("provides", "extension_points") or abort("provides.extension_points missing")
-            ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("extension_points drift: #{ep.inspect}")
-            gems = m.dig("provides", "gems") or abort("provides.gems missing")
-            gems.length > 200 or abort("gem inventory suspiciously small: #{gems.length} (1.16.9 carries ~260)")
+            sibling = YAML.load_file(man)
+            embedded = YAML.load_file("embedded-manifest.yaml")
+            { "sibling" => sibling, "embedded" => embedded }.each do |label, m|
+              ep = m.dig("provides", "extension_points") or abort("#{label}: provides.extension_points missing")
+              ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("#{label}: extension_points drift: #{ep.inspect}")
+              gems = m.dig("provides", "gems") or abort("#{label}: provides.gems missing")
+              gems.length > 200 or abort("#{label}: gem inventory suspiciously small: #{gems.length} (1.16.9 carries ~260)")
+            end
+            gems = sibling.dig("provides", "gems")
+            embedded.dig("provides", "gems") == gems or abort("sibling/embedded gem inventory skew")
             clo = Dir["out/*/closure-*.json"].first or abort("no closure asset")
             c = JSON.parse(File.read(clo))
             c["gems"].length == gems.length or abort("closure/manifest count skew: #{c["gems"].length} vs #{gems.length}")
-            puts "manifest shape OK: #{gems.length} gems, extension point #{ep.first["mount"]}, closure #{File.basename(clo)}"
+            puts "manifest shape OK (sibling+embedded): #{gems.length} gems, extension point /flavors.d, closure #{File.basename(clo)}"
           '
 
       - name: Stage artifact
@@ -277,22 +287,35 @@ jobs:
 
       - name: Manifest shape (extension slices, spec 03 §2.8)
         # Structural proof the build generated what the reverse edge
-        # consumes: the declared extension point, the generated gem
-        # inventory in the sibling manifest, and the closure asset whose
-        # gem count must match the manifest's.
+        # consumes — in BOTH spellings: the SIBLING manifest proves the
+        # builder generated the keys; the EMBEDDED /__tpkg__/manifest.yaml
+        # (read straight out of the image) proves the press round-tripped
+        # the slice model — the dispatcher reads only the embedded copy,
+        # via the store mirror (spec 05 §3.0a). The closure asset's gem
+        # count must match the manifest's.
         shell: msys2 {0}
         run: |
+          . out/x86_64-windows-ucrt/runtime.env
+          # Slash-less in-image path: a leading slash is path-converted by
+          # msys2 into a host path for the native tfs.exe (the #437 step
+          # above documents the trap).
+          "$TEBAKO_TOOLS/tfs.exe" cat "$PAYLOAD_IMG" __tpkg__/manifest.yaml > embedded-manifest.yaml
           ruby -ryaml -rjson -e '
             man = Dir["out/*/metanorma-*.manifest.yaml"].first or abort("no sibling manifest")
-            m = YAML.load_file(man)
-            ep = m.dig("provides", "extension_points") or abort("provides.extension_points missing")
-            ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("extension_points drift: #{ep.inspect}")
-            gems = m.dig("provides", "gems") or abort("provides.gems missing")
-            gems.length > 200 or abort("gem inventory suspiciously small: #{gems.length} (1.16.9 carries ~260)")
+            sibling = YAML.load_file(man)
+            embedded = YAML.load_file("embedded-manifest.yaml")
+            { "sibling" => sibling, "embedded" => embedded }.each do |label, m|
+              ep = m.dig("provides", "extension_points") or abort("#{label}: provides.extension_points missing")
+              ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("#{label}: extension_points drift: #{ep.inspect}")
+              gems = m.dig("provides", "gems") or abort("#{label}: provides.gems missing")
+              gems.length > 200 or abort("#{label}: gem inventory suspiciously small: #{gems.length} (1.16.9 carries ~260)")
+            end
+            gems = sibling.dig("provides", "gems")
+            embedded.dig("provides", "gems") == gems or abort("sibling/embedded gem inventory skew")
             clo = Dir["out/*/closure-*.json"].first or abort("no closure asset")
             c = JSON.parse(File.read(clo))
             c["gems"].length == gems.length or abort("closure/manifest count skew: #{c["gems"].length} vs #{gems.length}")
-            puts "manifest shape OK: #{gems.length} gems, extension point #{ep.first["mount"]}, closure #{File.basename(clo)}"
+            puts "manifest shape OK (sibling+embedded): #{gems.length} gems, extension point /flavors.d, closure #{File.basename(clo)}"
           '
 
       - name: Stage artifact
@@ -368,21 +391,31 @@ jobs:
 
       - name: Manifest shape (extension slices, spec 03 §2.8)
         # Structural proof the build generated what the reverse edge
-        # consumes: the declared extension point, the generated gem
-        # inventory in the sibling manifest, and the closure asset whose
-        # gem count must match the manifest's.
+        # consumes — in BOTH spellings: the SIBLING manifest proves the
+        # builder generated the keys; the EMBEDDED /__tpkg__/manifest.yaml
+        # (read straight out of the image) proves the press round-tripped
+        # the slice model — the dispatcher reads only the embedded copy,
+        # via the store mirror (spec 05 §3.0a). The closure asset's gem
+        # count must match the manifest's.
         run: |
+          . out/x86_64-linux-gnu/runtime.env
+          tfs cat "$PAYLOAD_IMG" /__tpkg__/manifest.yaml > embedded-manifest.yaml
           ruby -ryaml -rjson -e '
             man = Dir["out/*/metanorma-*.manifest.yaml"].first or abort("no sibling manifest")
-            m = YAML.load_file(man)
-            ep = m.dig("provides", "extension_points") or abort("provides.extension_points missing")
-            ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("extension_points drift: #{ep.inspect}")
-            gems = m.dig("provides", "gems") or abort("provides.gems missing")
-            gems.length > 200 or abort("gem inventory suspiciously small: #{gems.length} (1.16.9 carries ~260)")
+            sibling = YAML.load_file(man)
+            embedded = YAML.load_file("embedded-manifest.yaml")
+            { "sibling" => sibling, "embedded" => embedded }.each do |label, m|
+              ep = m.dig("provides", "extension_points") or abort("#{label}: provides.extension_points missing")
+              ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("#{label}: extension_points drift: #{ep.inspect}")
+              gems = m.dig("provides", "gems") or abort("#{label}: provides.gems missing")
+              gems.length > 200 or abort("#{label}: gem inventory suspiciously small: #{gems.length} (1.16.9 carries ~260)")
+            end
+            gems = sibling.dig("provides", "gems")
+            embedded.dig("provides", "gems") == gems or abort("sibling/embedded gem inventory skew")
             clo = Dir["out/*/closure-*.json"].first or abort("no closure asset")
             c = JSON.parse(File.read(clo))
             c["gems"].length == gems.length or abort("closure/manifest count skew: #{c["gems"].length} vs #{gems.length}")
-            puts "manifest shape OK: #{gems.length} gems, extension point #{ep.first["mount"]}, closure #{File.basename(clo)}"
+            puts "manifest shape OK (sibling+embedded): #{gems.length} gems, extension point /flavors.d, closure #{File.basename(clo)}"
           '
 
       - name: Stage artifact
