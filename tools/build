@@ -35,7 +35,7 @@
 #                   the ABI constraint, the SDK pin, the closure file, and
 #                   PAYLOAD_VERSION (below).
 #   TEBAKO_CLI      tebako-cli binary (default: tebako on PATH)
-#   TEBAKO_VERSION  runtime release line (default: recipe.yml
+#   TEBAKO_VERSION  runtime release line (default: Tebakofile
 #                   build.runtime.tebako — the feedstock pins the line; the
 #                   CLI's built-in default is older)
 #   TFS_CLI         tfs CLI binary, the in-process imager (default: tfs on PATH)
@@ -61,9 +61,9 @@
 set -euo pipefail
 
 FEEDSTOCK="$(cd "$(dirname "$0")/.." && pwd)"
-# Every version/digest flows from recipe.yml (the repo SSOT) — this script
+# Every version/digest flows from Tebakofile (the repo SSOT) — this script
 # carries no literals. Env overrides stay for one-off experiments.
-recipe() { ruby -ryaml -e "puts(YAML.load_file('$FEEDSTOCK/recipe.yml').dig(*ARGV) || '')" "$@"; }
+recipe() { ruby -ryaml -e "puts(YAML.load_file('$FEEDSTOCK/Tebakofile').dig(*ARGV) || '')" "$@"; }
 VERSION="${VERSION:-$(recipe upstream version)}"
 TRIPLET="${TRIPLET:-aarch64-macos}"   # the manifest platforms form (vcpkg, spec 03)
 # The ruby axis: the line key selects the staging/exec runtime
@@ -74,7 +74,7 @@ RUBY_LINE="${RUBY_LINE:-$DEFAULT_LINE}"
 RUBY_V="${RUBY_V:-$(recipe build runtime lines "$RUBY_LINE" version)}"
 RUBY_CONSTRAINT="${RUBY_CONSTRAINT:-$(recipe build runtime lines "$RUBY_LINE" constraint)}"
 [ -n "$RUBY_V" ] && [ -n "$RUBY_CONSTRAINT" ] || {
-  echo "recipe.yml: build.runtime.lines.$RUBY_LINE missing or incomplete (unknown ruby line?)"; exit 64; }
+  echo "Tebakofile: build.runtime.lines.$RUBY_LINE missing or incomplete (unknown ruby line?)"; exit 64; }
 API_V="$(echo "$RUBY_V" | sed -E 's/^([0-9]+\.[0-9]+)\..*/\1.0/')"
 # The registry version entry: the default line keeps the bare upstream
 # version; every other line suffixes "-ruby<line>" (an opaque
@@ -89,7 +89,7 @@ fi
 TEBAKO_CLI="${TEBAKO_CLI:-tebako}"
 TFS_CLI="${TFS_CLI:-tfs}"
 # The staging (and target) runtime's tebako version — the press resolves
-# exactly this (0.16.x = the v2 contract-2 runtime). Owned by recipe.yml
+# exactly this (0.16.x = the v2 contract-2 runtime). Owned by Tebakofile
 # build.runtime.tebako (0.16.11: the tebako v0.3.x link unit — limnifs
 # 0.3.x new-v1 image format + the #464 read-path work — + the windows
 # support-DLL library_aliases payload, tebako-runtime-ruby#133).

@@ -23,7 +23,7 @@ name: build-payload
 #
 # THE RUBY AXIS: every build job is a matrix over the recipe's
 # ruby lines (build.runtime.lines — the keys are mirrored by the matrix;
-# every VALUE still flows from recipe.yml via tools/pins.rb --ruby-line).
+# every VALUE still flows from Tebakofile via tools/pins.rb --ruby-line).
 # One upstream version, one registry entry per line: the default line
 # publishes 1.16.9, the 4.0 line publishes 1.16.9-ruby4.0 — both from one
 # tag, the publish job upserting the default line FIRST (tebako-cli sets
@@ -53,16 +53,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby_line: ["3.3", "4.0"]   # the keys of recipe.yml build.runtime.lines
+        ruby_line: ["3.3", "4.0"]   # the keys of Tebakofile build.runtime.lines
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Read the toolchain pins (recipe.yml is the SSOT)
+      - name: Read the toolchain pins (Tebakofile is the SSOT)
         run: ruby tools/pins.rb macos-arm64 --ruby-line "${{ matrix.ruby_line }}" --env >> "$GITHUB_ENV"
 
-      - name: Fetch tebako CLI tools (pinned by recipe.yml, sha256-verified)
+      - name: Fetch tebako CLI tools (pinned by Tebakofile, sha256-verified)
         # The packager is the RELEASE BINARY (releases are the
-        # interface); every version/digest flows from recipe.yml's tools
+        # interface); every version/digest flows from Tebakofile's tools
         # block via tools/pins.rb — this workflow carries NO literals —
         # and the pins are cross-checked against the release's SHA256SUMS
         # (provenance: docs/build-notes.md). The v0.1.9 floor stays true:
@@ -83,7 +83,7 @@ jobs:
           for pair in "$TEBAKO_ASSET:$TEBAKO_SHA256" "$TFS_ASSET:$TFS_SHA256"; do
             asset="${pair%%:*}"; want="${pair##*:}"
             got=$(awk -v a="$asset" '$2 == a {print $1}' SHA256SUMS)
-            [ "$got" = "$want" ] || { echo "::error::pin mismatch for $asset: recipe.yml=$want release=${got:-ABSENT}"; exit 1; }
+            [ "$got" = "$want" ] || { echo "::error::pin mismatch for $asset: Tebakofile=$want release=${got:-ABSENT}"; exit 1; }
           done
           chmod 755 "$TEBAKO_ASSET" "$TFS_ASSET"
           mv "$TEBAKO_ASSET" tebako
@@ -162,7 +162,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby_line: ["3.3", "4.0"]   # the keys of recipe.yml build.runtime.lines
+        ruby_line: ["3.3", "4.0"]   # the keys of Tebakofile build.runtime.lines
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -195,11 +195,11 @@ jobs:
             mingw-w64-ucrt-x86_64-gcc-libs
             mingw-w64-ucrt-x86_64-zlib
 
-      - name: Read the toolchain pins (recipe.yml is the SSOT)
+      - name: Read the toolchain pins (Tebakofile is the SSOT)
         shell: msys2 {0}
         run: ruby tools/pins.rb windows-ucrt64 --ruby-line "${{ matrix.ruby_line }}" --env >> "$GITHUB_ENV"
 
-      - name: Fetch tebako CLI tools (pinned by recipe.yml, sha256-verified)
+      - name: Fetch tebako CLI tools (pinned by Tebakofile, sha256-verified)
         # the matrix context is not available to step-level `shell`, so
         # the windows leg gets its own steps with the literal msys2 keyword
         shell: msys2 {0}
@@ -217,7 +217,7 @@ jobs:
           for pair in "$TEBAKO_ASSET:$TEBAKO_SHA256" "$TFS_ASSET:$TFS_SHA256"; do
             asset="${pair%%:*}"; want="${pair##*:}"
             got=$(awk -v a="$asset" '$2 == a {print $1}' SHA256SUMS)
-            [ "$got" = "$want" ] || { echo "::error::pin mismatch for $asset: recipe.yml=$want release=${got:-ABSENT}"; exit 1; }
+            [ "$got" = "$want" ] || { echo "::error::pin mismatch for $asset: Tebakofile=$want release=${got:-ABSENT}"; exit 1; }
           done
           cp "$TEBAKO_ASSET" tebako.exe
           cp "$TFS_ASSET" tfs.exe
@@ -330,14 +330,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby_line: ["3.3", "4.0"]   # the keys of recipe.yml build.runtime.lines
+        ruby_line: ["3.3", "4.0"]   # the keys of Tebakofile build.runtime.lines
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Read the toolchain pins (recipe.yml is the SSOT)
+      - name: Read the toolchain pins (Tebakofile is the SSOT)
         run: ruby tools/pins.rb linux-gnu-x86_64 --ruby-line "${{ matrix.ruby_line }}" --env >> "$GITHUB_ENV"
 
-      - name: Fetch tebako CLI tools (pinned by recipe.yml, sha256-verified)
+      - name: Fetch tebako CLI tools (pinned by Tebakofile, sha256-verified)
         # Same pins discipline as the mac leg (the digests are cross-checked
         # against the release's SHA256SUMS); ubuntu has sha256sum, not shasum.
         run: |
@@ -354,7 +354,7 @@ jobs:
           for pair in "$TEBAKO_ASSET:$TEBAKO_SHA256" "$TFS_ASSET:$TFS_SHA256"; do
             asset="${pair%%:*}"; want="${pair##*:}"
             got=$(awk -v a="$asset" '$2 == a {print $1}' SHA256SUMS)
-            [ "$got" = "$want" ] || { echo "::error::pin mismatch for $asset: recipe.yml=$want release=${got:-ABSENT}"; exit 1; }
+            [ "$got" = "$want" ] || { echo "::error::pin mismatch for $asset: Tebakofile=$want release=${got:-ABSENT}"; exit 1; }
           done
           chmod 755 "$TEBAKO_ASSET" "$TFS_ASSET"
           mv "$TEBAKO_ASSET" tebako
@@ -460,11 +460,11 @@ jobs:
             rmdir "$d"
           done
       # The publisher is the product repo's published CLI (releases are
-      # the interface), pinned by recipe.yml's tools block — never a
+      # the interface), pinned by Tebakofile's tools block — never a
       # from-source build, no literals in this workflow.
-      - name: Read the toolchain pins (recipe.yml is the SSOT)
+      - name: Read the toolchain pins (Tebakofile is the SSOT)
         run: ruby tools/pins.rb macos-arm64 --env >> "$GITHUB_ENV"
-      - name: Fetch the publisher (pinned by recipe.yml, sha256-verified)
+      - name: Fetch the publisher (pinned by Tebakofile, sha256-verified)
         run: |
           set -euo pipefail
           mkdir -p .packager
@@ -526,7 +526,7 @@ jobs:
         # tebako publish: artifacts + registry upsert + clean-cache verify
         # (the publisher home carries the dep registries for the closure proof).
         # TEBAKO_RUNTIME_MIRROR (the combined local mirror staged above —
-        # recipe.yml's java + python blocks via pins.rb) lets the verify's
+        # Tebakofile's java + python blocks via pins.rb) lets the verify's
         # clean-cache install resolve BOTH spawned runtime edges — neither
         # release line is the product default runtime base. Scoped to THIS
         # step: the verify never downloads the primary ruby runtime (kind:
@@ -541,7 +541,7 @@ jobs:
         # 1.16.9-ruby4.0) and its per-line artifact names flow from
         # tools/pins.rb --ruby-line.
         #
-        # Signing (recipe.yml's signing: block; spec 09 §9): SIGNING_KEYID
+        # Signing (Tebakofile's signing: block; spec 09 §9): SIGNING_KEYID
         # flows from the pins step's GITHUB_ENV export; the CI signing
         # subkey arrives as org secret TEBAKO_CI_SIGNING_KEY and is staged
         # into the publisher home's keys/ below. Declared-signing + absent
@@ -571,7 +571,7 @@ jobs:
           # The xml2rfc provider registry (spec 32): the executable edge's
           # payload resolves from the provider feedstock's own registry.
           "$TEBAKO_CLI" add-registry tfs:github:tebako-packages/xml2rfc
-          # The java + python runtime preferences (recipe.yml's java and
+          # The java + python runtime preferences (Tebakofile's java and
           # python blocks) — the verify's clean-cache install inherits the
           # publisher home's runtimes: prefs (tebako >= the verify-pref
           # join), and the pref-less pick would query the factory's default
@@ -600,7 +600,7 @@ jobs:
           # them a real-world `tebako install metanorma` (no mirror, no
           # config source pin) cannot source the java/python runtimes —
           # the wave-5 acceptance failed exactly so. The entries FLOW
-          # from recipe.yml's pins (JAVA_*/PYTHON_* above — never
+          # from Tebakofile's pins (JAVA_*/PYTHON_* above — never
           # hand-duplicated), upserted by entry name with versions
           # accumulated by key (older pinned lines keep serving older
           # payload versions). tebako publish's upsert round-trips the

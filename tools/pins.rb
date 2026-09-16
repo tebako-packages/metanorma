@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# pins.rb — read recipe.yml's `tools:` block (the repo's toolchain pin
+# pins.rb — read Tebakofile's `tools:` block (the repo's toolchain pin
 # SSOT) and emit KEY=VALUE lines for $GITHUB_ENV. The workflows carry NO
 # version or digest literals — every value flows from the recipe.
 #
@@ -38,11 +38,11 @@ def die(msg)
 end
 
 root = File.expand_path("..", __dir__)
-recipe = YAML.load_file(File.join(root, "recipe.yml"))
+recipe = YAML.load_file(File.join(root, "Tebakofile"))
 tools = recipe.fetch("tools")
 release = tools.fetch("release")
 version = release.sub(/\Av/, "")
-die "recipe.yml tools.sha256 missing" unless tools["sha256"].is_a?(Hash)
+die "Tebakofile tools.sha256 missing" unless tools["sha256"].is_a?(Hash)
 
 # --- the ruby line ------------------------------------------
 runtime = recipe.fetch("build").fetch("runtime")
@@ -55,9 +55,9 @@ if (i = ARGV.index("--ruby-line"))
   ARGV.delete_at(i)
 end
 line = lines[ruby_line] or
-  die "recipe.yml: no build.runtime.lines.#{ruby_line} (known: #{lines.keys.join(' ')})"
+  die "Tebakofile: no build.runtime.lines.#{ruby_line} (known: #{lines.keys.join(' ')})"
 sdk = line.fetch("sdk")
-pkg_version = recipe.dig("upstream", "version") || die("recipe.yml upstream.version missing")
+pkg_version = recipe.dig("upstream", "version") || die("Tebakofile upstream.version missing")
 # The registry version entry (tebako-resolve treats it as an opaque string;
 # dotted compare orders the suffixed form after the bare one): the default
 # line keeps the bare upstream version, other lines suffix -ruby<line>.
@@ -87,22 +87,22 @@ pairs = {
   # download resolves to the exact pinned pair (a pref-less pick queries
   # the factory's default line, which hosts no java).
   "JAVA_RELEASES_BASE" => recipe.dig("java", "releases_base") ||
-                   die("recipe.yml java.releases_base missing"),
+                   die("Tebakofile java.releases_base missing"),
   "JAVA_VERSION" => recipe.dig("java", "version") ||
-                   die("recipe.yml java.version missing"),
+                   die("Tebakofile java.version missing"),
   "JAVA_TEBAKO" => recipe.dig("java", "tebako") ||
-                   die("recipe.yml java.tebako missing"),
+                   die("Tebakofile java.tebako missing"),
   # The nested python runtime behind the spec-32 xml2rfc executable edge
   # (recipe.python — the java block's analogue). Same scoping rules: the
   # base feeds TEBAKO_RUNTIME_MIRROR at install/publish steps ONLY, and
   # the PYTHON_VERSION/PYTHON_TEBAKO preference lands in the config so the
   # provider's nested edge resolves to the exact pinned pair.
   "PYTHON_RELEASES_BASE" => recipe.dig("python", "releases_base") ||
-                   die("recipe.yml python.releases_base missing"),
+                   die("Tebakofile python.releases_base missing"),
   "PYTHON_VERSION" => recipe.dig("python", "version") ||
-                   die("recipe.yml python.version missing"),
+                   die("Tebakofile python.version missing"),
   "PYTHON_TEBAKO" => recipe.dig("python", "tebako") ||
-                   die("recipe.yml python.tebako missing"),
+                   die("Tebakofile python.tebako missing"),
   # Signing (spec 09 §9 — opt-in via the recipe's signing: block; the
   # hello pattern): the tamatebako root's PRIMARY keyid (low 64). The
   # publish step passes it to `tebako publish --sign=`; empty when the
@@ -115,7 +115,7 @@ unless ARGV.include?("--release-only")
   exe = platform.start_with?("windows") ? ".exe" : ""
   { "tebako" => "TEBAKO", "tebako-shim" => "SHIM", "tfs" => "TFS" }.each do |tool, key|
     sha = tools.dig("sha256", tool, platform) or
-      die "recipe.yml: no tools.sha256.#{tool}.#{platform} pin"
+      die "Tebakofile: no tools.sha256.#{tool}.#{platform} pin"
     pairs["#{key}_ASSET"] = "#{tool}-#{version}-#{platform}#{exe}"
     pairs["#{key}_SHA256"] = sha
   end

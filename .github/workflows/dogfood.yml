@@ -11,7 +11,7 @@ name: dogfood
 # Legs:
 #   aarch64-macos — ACTIVE (payload published: metanorma 1.16.9 macos-arm64).
 #   x86_64-linux-gnu — joins when the recipe's linux leg publishes
-#     (recipe.yml platforms; the build-notes expect no new machinery).
+#     (Tebakofile platforms; the build-notes expect no new machinery).
 #   x86_64-windows-ucrt — joins when the windows payload publishes. The
 #     native-extension question is ANSWERED: the 0.16.4 runtime line ships
 #     the ruby DLL facet + the loader interpose / library_aliases (spec 22
@@ -51,9 +51,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Every version flows from recipe.yml (tools.release +
+      # Every version flows from Tebakofile (tools.release +
       # upstream.version) — the workflow carries no literals.
-      - name: Read the pins (recipe.yml is the SSOT)
+      - name: Read the pins (Tebakofile is the SSOT)
         run: |
           ruby tools/pins.rb --release-only >> "$GITHUB_ENV"
 
@@ -126,13 +126,15 @@ jobs:
         # The tebako-packages index (registry-of-registries) is not walked
         # by the CLI (still true at v2.1.0: it registers as 0 payloads —
         # the packages[] follow is a filed product gap).
-        # Add the feedstock registries directly — INCLUDING the xml2rfc
-        # provider registry (spec 32: the executable edge's payload
-        # resolves from the provider feedstock's own registry; without it
-        # install fails by name, exit 65 — the 2026-09 nightly breakage).
+        # Add the feedstock registry directly. It is the ONE-STOP
+        # registry: its mirror carries the closure payloads too
+        # (inkscape, xml2rfc, the spawned runtimes' indices) — adding the
+        # standalone inkscape/xml2rfc registries as well double-lists
+        # those payloads and install fails with AmbiguousRegistries
+        # (exit 65, the resolver's named ambiguity guard).
         # The spawned runtime edges do NOT ride a payload registry:
         # install pre-stages them through the runtime release index
-        # (spec 30 §3), which the config preferences (recipe.yml's java +
+        # (spec 30 §3), which the config preferences (Tebakofile's java +
         # python blocks) + the step-scoped TEBAKO_RUNTIME_MIRROR (the
         # combined local mirror staged above) resolve to the pinned pairs.
         # The mirror NEVER leaves this step — the first dispatch downloads
@@ -150,8 +152,6 @@ jobs:
         run: |
           set -euo pipefail
           tebako add-registry tfs:github:tebako-packages/metanorma
-          tebako add-registry tfs:github:tebako-packages/inkscape
-          tebako add-registry tfs:github:tebako-packages/xml2rfc
           printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n  python:\n    version: "%s"\n    tebako: "%s"\n  ruby:\n    version: "%s"\n    tebako: "%s"\n' \
             "$JAVA_VERSION" "$JAVA_TEBAKO" "$PYTHON_VERSION" "$PYTHON_TEBAKO" "$RUBY_V" "$RUNTIME_TEBAKO" >> "$HOME/.tebako/config.yaml"
           tebako install "metanorma@$PKG_VERSION"
@@ -276,9 +276,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Every version flows from recipe.yml (tools.release +
+      # Every version flows from Tebakofile (tools.release +
       # upstream.version) — the workflow carries no literals.
-      - name: Read the pins (recipe.yml is the SSOT)
+      - name: Read the pins (Tebakofile is the SSOT)
         run: |
           ruby tools/pins.rb --release-only >> "$GITHUB_ENV"
 
@@ -325,9 +325,10 @@ jobs:
         # Same runtime-edge wiring as the full leg: the spawned edges
         # resolve through the config prefs + the combined mirror at INSTALL
         # time (install_runtime_edge pre-stages them) — the slim leg never
-        # dispatches java, but install fails without the prefs, and without
-        # the xml2rfc provider registry it fails by name (exit 65). The
-        # mirror is an INLINE env on the install command only: it must
+        # dispatches java, but install fails without the prefs. The
+        # one-stop registry mirrors the xml2rfc provider edge — its
+        # standalone registry is NOT added alongside (AmbiguousRegistries).
+        # The mirror is an INLINE env on the install command only: it must
         # NEVER reach a dispatch — `metanorma version` below downloads the
         # primary RUBY runtime, whose index lives on the product default
         # base, and a one-base-for-all-engines mirror misdirects that read
@@ -349,8 +350,6 @@ jobs:
             sudo ln -s "$PWD/$tool" "/usr/local/bin/$tool"
           done
           tebako add-registry tfs:github:tebako-packages/metanorma
-          tebako add-registry tfs:github:tebako-packages/inkscape
-          tebako add-registry tfs:github:tebako-packages/xml2rfc
           printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n  python:\n    version: "%s"\n    tebako: "%s"\n  ruby:\n    version: "%s"\n    tebako: "%s"\n' \
             "$JAVA_VERSION" "$JAVA_TEBAKO" "$PYTHON_VERSION" "$PYTHON_TEBAKO" "$RUBY_V" "$RUNTIME_TEBAKO" >> "$HOME/.tebako/config.yaml"
           TEBAKO_RUNTIME_MIRROR="file://${{ runner.temp }}/dogfood-mirror" tebako install "metanorma@$PKG_VERSION"
@@ -396,11 +395,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Every version flows from recipe.yml (tools.release +
+      # Every version flows from Tebakofile (tools.release +
       # upstream.version + build.runtime.lines."4.0") — the workflow
       # carries no literals. PAYLOAD_VERSION here is the 4.0 flavor's
       # registry entry (1.16.9-ruby4.0).
-      - name: Read the pins (recipe.yml is the SSOT — ruby line 4.0)
+      - name: Read the pins (Tebakofile is the SSOT — ruby line 4.0)
         run: |
           ruby tools/pins.rb --release-only --ruby-line 4.0 >> "$GITHUB_ENV"
 
@@ -441,11 +440,12 @@ jobs:
           grep "  $jexe\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
           grep "  $jexe\.tfs\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
 
-      - name: Install CLI, add registries, install the 4.0 flavor
+      - name: Install CLI, add registry, install the 4.0 flavor
         # Same wiring as the slim leg (the spawned-edge prefs + the
-        # combined mirror + the xml2rfc provider registry at INSTALL time
-        # only — the mirror is one base for ALL engines and must never
-        # reach a dispatch). The install pre-stages the spawned runtimes.
+        # combined mirror at INSTALL time only — the mirror is one base
+        # for ALL engines and must never reach a dispatch; the one-stop
+        # registry mirrors the closure payloads). The install pre-stages
+        # the spawned runtimes.
         # The ruby pref pins the DISPATCH-time runtime to the recipe pair,
         # same as the other legs: pref-less resolution rides the CLI's
         # BAKED default line, and the pinned CLI (v2.2.0) bakes a
@@ -465,8 +465,6 @@ jobs:
             sudo ln -s "$PWD/$tool" "/usr/local/bin/$tool"
           done
           tebako add-registry tfs:github:tebako-packages/metanorma
-          tebako add-registry tfs:github:tebako-packages/inkscape
-          tebako add-registry tfs:github:tebako-packages/xml2rfc
           printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n  python:\n    version: "%s"\n    tebako: "%s"\n  ruby:\n    version: "%s"\n    tebako: "%s"\n' \
             "$JAVA_VERSION" "$JAVA_TEBAKO" "$PYTHON_VERSION" "$PYTHON_TEBAKO" "$RUBY_V" "$RUNTIME_TEBAKO" >> "$HOME/.tebako/config.yaml"
           TEBAKO_RUNTIME_MIRROR="file://${{ runner.temp }}/dogfood-mirror" tebako install "metanorma@$PAYLOAD_VERSION"
