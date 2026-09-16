@@ -96,7 +96,7 @@ flavors = "/flavors.d"
 if File.directory?(flavors)
   Dir[File.join(flavors, "*")].sort.each do |home|
     next unless File.directory?(home)
-    Gem.paths = { "GEM_PATH" => Gem.path + [home] }
+    Gem.paths = { "GEM_PATH" => (Gem.path + [home]).join(File::PATH_SEPARATOR) }
   end
 end
 
