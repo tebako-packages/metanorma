@@ -654,7 +654,7 @@ jobs:
             end
             # The requires-closure payload mirrors — wholesale copies from
             # the provider registries fetched above, replaced by entry
-            # name (the provider's entry IS the current truth; version
+            # name (the provider entry IS the current truth; version
             # accumulation belongs to the providers, not the mirror).
             {
               "inkscape" => "#{ENV.fetch("RUNNER_TEMP")}/registry-inkscape.yaml",
