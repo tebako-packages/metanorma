@@ -567,10 +567,10 @@ jobs:
           else
             echo "::notice::recipe declares no signing — publishing unsigned (unsigned is first-class; the registry carries no signature pins)"
           fi
-          "$TEBAKO_CLI" add-registry tfs:github:tebako-packages/inkscape
-          # The xml2rfc provider registry (spec 32): the executable edge's
-          # payload resolves from the provider feedstock's own registry.
-          "$TEBAKO_CLI" add-registry tfs:github:tebako-packages/xml2rfc
+          # inkscape + xml2rfc resolve from THIS repo's own registry (the
+          # one-stop mirror — #66): no add-registry of the provider
+          # feedstocks, or the requires closure sees two listings and the
+          # resolver names AmbiguousRegistries (exit 65).
           # The java + python runtime preferences (Tebakofile's java and
           # python blocks) — the verify's clean-cache install inherits the
           # publisher home's runtimes: prefs (tebako >= the verify-pref
