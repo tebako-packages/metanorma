@@ -16,8 +16,12 @@ build:
   system: gemstage         # stage a GEM_HOME closure with a tebako runtime's own ruby
   runtime:
     engine: ruby
-    tebako: "0.16.23"      # runtime release line (image-era; the pinned CLI
+    tebako: "0.16.24"      # runtime release line (image-era; the pinned CLI
                            # refuses pre-era releases by contract, exit 75).
+                           # 0.16.24 re-cuts the signed line on the tebako
+                           # v2.8.7 link unit (the windows 0xC0000139
+                           # mount-boundary repair) — the first line whose
+                           # shards declare OpenPGP signature facets.
                            # 0.16.23 is the SIGNED re-cut of the 0.16.22
                            # line (spec 09 §9 publish signing + spec 34
                            # OS-plane signing — same sources, new assets).
