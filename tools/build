@@ -192,29 +192,36 @@ case "$TRIPLET" in
     RT_RELEASE_URL="https://github.com/tamatebako/tebako-runtime-ruby/releases/download/v$TEBAKO_VERSION"
     RT_ASSET="tebako-runtime-$TEBAKO_VERSION-$RUBY_V-$RT_PLATFORM"
     mkdir -p "$RT_DIR"
-    curl -sL -o "$WORK/SHA256SUMS.txt" "$RT_RELEASE_URL/SHA256SUMS.txt"
-    curl -sL -o "$WORK/manifest.json" "$RT_RELEASE_URL/manifest.json"
+    # The shard model: the per-stem <stem>.manifest.json is the SSOT for
+    # the facet's install name; per-asset .sha256 sidecars are the trust
+    # anchor. (The monolithic manifest.json / SHA256SUMS.txt stopped being
+    # release assets on the 0.16.24 line.)
+    curl -sL -o "$WORK/shard.json" "$RT_RELEASE_URL/$RT_ASSET.manifest.json"
+    grep -q '"dll"' "$WORK/shard.json" \
+      || { echo "no dll facet in shard $RT_ASSET.manifest.json (or the shard 404'd)"; exit 1; }
     # The facet's install name follows the factory's rubyinstaller-style
     # ABI rule (3.3.12 -> x64-ucrt-ruby330.dll) — derived, then asserted
-    # against the release manifest (the SSOT) so a convention change
-    # fails loudly. (No ruby on this step's PATH — awk only.)
+    # against the shard's dll.install_as (the SSOT) so a convention change
+    # fails loudly. (No ruby on this step's PATH — awk/sed only.)
     DLL_INSTALL_AS="x64-ucrt-ruby$(echo "$RUBY_V" | awk -F. '{print $1 $2}')0.dll"
-    grep -q "\"$DLL_INSTALL_AS\"" "$WORK/manifest.json" \
-      || { echo "derived facet name $DLL_INSTALL_AS absent from the release manifest"; exit 1; }
+    SHARD_INSTALL_AS="$(sed -n 's/.*"install_as": *"\([^"]*\)".*/\1/p' "$WORK/shard.json")"
+    [ -n "$SHARD_INSTALL_AS" ] || { echo "the shard carries no dll.install_as"; exit 1; }
+    [ "$SHARD_INSTALL_AS" = "$DLL_INSTALL_AS" ] \
+      || { echo "dll facet drift: shard install_as=$SHARD_INSTALL_AS, derived $DLL_INSTALL_AS"; exit 1; }
     for f in "$RT_ASSET" "$RT_ASSET.tfs" "$RT_ASSET.dll"; do
       dst="$f"; [ "$f" = "$RT_ASSET" ] && dst="$f.exe"   # resolver cache naming
       [ "$f" = "$RT_ASSET.dll" ] && dst="$DLL_INSTALL_AS"
-      grep -E "  $(echo "$f" | sed 's/\./\\./g')\$" "$WORK/SHA256SUMS.txt" > "$WORK/expected.sha" \
-        || { echo "no SHA256SUMS entry for $f"; exit 1; }
       if [ ! -f "$RT_DIR/$dst" ]; then
         curl -sL -o "$RT_DIR/$dst.part" "$RT_RELEASE_URL/$f"
+        curl -sL -o "$WORK/expected.sha" "$RT_RELEASE_URL/$f.sha256"
         want="$(cut -d' ' -f1 < "$WORK/expected.sha")"
+        [ ${#want} -eq 64 ] || { rm -f "$RT_DIR/$dst.part"; echo "no .sha256 sidecar for $f"; exit 1; }
         got="$(sha256_file "$RT_DIR/$dst.part")"
         [ "$got" = "$want" ] || { rm -f "$RT_DIR/$dst.part"; echo "SHA256 MISMATCH $f"; exit 1; }
         mv "$RT_DIR/$dst.part" "$RT_DIR/$dst"
       fi
     done
-    echo "runtime verified against tebako-runtime-ruby v$TEBAKO_VERSION SHA256SUMS (exe + image + $DLL_INSTALL_AS)"
+    echo "runtime verified against tebako-runtime-ruby v$TEBAKO_VERSION shard sidecars (exe + image + $DLL_INSTALL_AS)"
     RT_EXE="$RT_EXE.exe"
     MANIFEST_RUBY="ruby"
     ;;
