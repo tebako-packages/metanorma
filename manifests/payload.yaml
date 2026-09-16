@@ -189,13 +189,23 @@ requires:
   # python313/1603 saga): an undeclared `xml2rfc` on the host PATH is
   # never a fallback. critical: the ietf document class cannot render
   # without the edge, so a schema_minor < 5 reader must refuse, not
-  # skip (the evolution law).
+  # skip (the evolution law). triplets (schema_minor 9): the provider
+  # publishes no x86_64-windows-ucrt payload (the python runtime ships
+  # no windows line — tamatebako/tebako-runtime-python#23), so windows
+  # hosts SKIP the edge loudly (journal + stderr, spec 03 §2.3) and an
+  # ietf render there keeps its named error; a windows closure — the
+  # airgap bundle above all — resolves again. Pre-minor-9 readers
+  # ignore the key and resolve the edge universally (the safe
+  # direction: an extra dependency resolved). When the provider ships
+  # ucrt, the list gains the triplet (or the conditioning drops).
   - kind: executable
     name: xml2rfc
     payload: xml2rfc
     constraint: ">= 3.34"
     expose: [xml2rfc]
     critical: true
+    triplets: [x86_64-linux-gnu, aarch64-linux-gnu, x86_64-linux-musl,
+               aarch64-linux-musl, x86_64-macos, aarch64-macos]
 # The payload's in-image acceptance (spec 26 §1) — the Homebrew formula's
 # test block translated. Press-time moment (§3): build-payload.yml runs
 # `tebako check` against the just-imaged slice per leg; the engine reads

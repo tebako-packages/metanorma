@@ -123,13 +123,18 @@ depends:
   # Resolution at install/publish-verify rides the xml2rfc feedstock's
   # registry + the python runtime mirror — the permanent wiring (the
   # python: block below + the publish/dogfood steps) landed with the
-  # python factory's first published line (v0.1.0).
+  # python factory's first published line (v0.1.0). The triplets:
+  # conditioning (documentary shadow of manifests/payload.yaml, the
+  # operative copy) skips the edge on windows hosts — no ucrt provider
+  # payload exists (tebako-runtime-python#23).
   - kind: executable
     name: xml2rfc
     payload: xml2rfc
     constraint: ">= 3.34"
     expose: [xml2rfc]
     critical: true
+    triplets: [x86_64-linux-gnu, aarch64-linux-gnu, x86_64-linux-musl,
+               aarch64-linux-musl, x86_64-macos, aarch64-macos]
 
 # Factory tools used by tools/build (image creation + the packager): the
 # tebako/tfs CLIs from the tamatebako/tebako release (the tfs CLI's
