@@ -87,21 +87,23 @@ gem "metanorma-cli", "= 1.16.9"
 require "metanorma"
 
 # Extension slices (the manifest's declared extension point, spec 03 §2.8):
-# each installed flavor slice mounts a mini GEM_HOME at /flavors.d/<name>.
-# Put every mounted home on the search path, then require the slice-named
-# gem — flavors self-register on require (Metanorma::Registry), exactly
-# like metanorma-cli's own flavor loader; a slice whose gems are only on
-# GEM_PATH but never required stays inert. A failing require is a broken
-# slice — the LoadError surfaces as-is (loud, never swallowed). The paths
-# are VFS-rooted literals and ride the windows lexical discipline above.
-# Zero slices mounted = the guard skips (the stock payload is unchanged).
-flavors = "/flavors.d"
-if File.directory?(flavors)
-  Dir[File.join(flavors, "*")].sort.each do |home|
-    next unless File.directory?(home)
-    Gem.paths = { "GEM_PATH" => (Gem.path + [home]).join(File::PATH_SEPARATOR) }
-    require File.basename(home)
-  end
+# each installed flavor slice mounts a mini GEM_HOME below the declared
+# point (/flavors.d/<name>). The mount POINTS come from the driver's
+# discovery surface (spec 22 §6): one TEBAKO_MOUNT_<SLUG> variable per
+# mounted payload, valued with the EFFECTIVE mount — drive-qualified on
+# windows (A:/flavors.d/<name>), where a "/flavors.d" literal would
+# re-root onto the cwd drive under ruby's C-level path expansion and the
+# homes would escape the VFS (tebako-packages/metanorma#74). One code
+# path on every platform. Put every mounted home on the search path, then
+# require the slice-named gem — flavors self-register on require
+# (Metanorma::Registry), exactly like metanorma-cli's own flavor loader;
+# a slice whose gems are only on GEM_PATH but never required stays inert.
+# A failing require is a broken slice — the LoadError surfaces as-is
+# (loud, never swallowed). Zero slices mounted = zero variables = the
+# loop skips (the stock payload is unchanged).
+ENV.filter_map { |k, v| v if k.start_with?("TEBAKO_MOUNT_FLAVORS_D_") }.sort.each do |home|
+  Gem.paths = { "GEM_PATH" => (Gem.path + [home]).join(File::PATH_SEPARATOR) }
+  require File.basename(home)
 end
 
 load Gem.bin_path("metanorma-cli", "metanorma", "1.16.9")
