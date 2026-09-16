@@ -91,13 +91,13 @@ Gem.clear_paths
 # stay VISIBLE to any command that reaches them — but require nothing here:
 # flavor registration is the primary entrypoint's job (templates/bin/
 # metanorma), and a broken slice must not take down unrelated commands
-# (fontist, canon, …). Zero slices mounted = the guard skips.
-flavors = "/flavors.d"
-if File.directory?(flavors)
-  Dir[File.join(flavors, "*")].sort.each do |home|
-    next unless File.directory?(home)
-    Gem.paths = { "GEM_PATH" => (Gem.path + [home]).join(File::PATH_SEPARATOR) }
-  end
+# (fontist, canon, …). The mount POINTS come from the driver's discovery
+# surface (spec 22 §6, TEBAKO_MOUNT_<SLUG> — the EFFECTIVE mount,
+# drive-qualified on windows; a "/flavors.d" literal would re-root onto
+# the cwd drive and escape the VFS, tebako-packages/metanorma#74). Zero
+# slices mounted = zero variables = the loop skips.
+ENV.filter_map { |k, v| v if k.start_with?("TEBAKO_MOUNT_FLAVORS_D_") }.sort.each do |home|
+  Gem.paths = { "GEM_PATH" => (Gem.path + [home]).join(File::PATH_SEPARATOR) }
 end
 
 name = File.basename(__FILE__)
