@@ -47,7 +47,7 @@ SKIP_DEFAULTS = {
     # which the runtime-bundled 0.3.4 does NOT satisfy; net-ftp ships.
 }
 PRECOMPILED_NATIVES = {"nokogiri", "ffi", "libpng", "parsanol", "sqlite3"}
-# Resolution overrides, each justified in docs/build-notes.md (recipe.yml pins):
+# Resolution overrides, each justified in docs/build-notes.md (Tebakofile pins):
 PINS = {
     "liquid": "5.6.0",  # >= 5.6.1 demands strscan >= 3.1.1 (source-only native
                         # on the 3.3 line; kept on 4.0 for closure parity —

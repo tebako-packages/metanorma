@@ -18,7 +18,7 @@ lookup), so installing it exercises the full dispatch chain.
 
 ## Layout
 
-- `recipe.yml` — upstream, runtime, resolution pins, feedstock deps, platforms
+- `Tebakofile` — upstream, runtime, resolution pins, feedstock deps, platforms
 - `manifests/payload.yaml` — the spec 03 payload manifest (filled at build)
 - `tpkg-registry.yaml` — this feedstock's registry (pinned at release)
 - `closure/1.16.9-<triplet>.txt` — the pinned, sha256-verified gem set

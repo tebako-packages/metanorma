@@ -11,7 +11,7 @@ name: dogfood
 # Legs:
 #   aarch64-macos — ACTIVE (payload published: metanorma 1.16.9 macos-arm64).
 #   x86_64-linux-gnu — joins when the recipe's linux leg publishes
-#     (recipe.yml platforms; the build-notes expect no new machinery).
+#     (Tebakofile platforms; the build-notes expect no new machinery).
 #   x86_64-windows-ucrt — joins when the windows payload publishes. The
 #     native-extension question is ANSWERED: the 0.16.4 runtime line ships
 #     the ruby DLL facet + the loader interpose / library_aliases (spec 22
@@ -51,9 +51,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Every version flows from recipe.yml (tools.release +
+      # Every version flows from Tebakofile (tools.release +
       # upstream.version) — the workflow carries no literals.
-      - name: Read the pins (recipe.yml is the SSOT)
+      - name: Read the pins (Tebakofile is the SSOT)
         run: |
           ruby tools/pins.rb --release-only >> "$GITHUB_ENV"
 
@@ -132,7 +132,7 @@ jobs:
         # install fails by name, exit 65 — the 2026-09 nightly breakage).
         # The spawned runtime edges do NOT ride a payload registry:
         # install pre-stages them through the runtime release index
-        # (spec 30 §3), which the config preferences (recipe.yml's java +
+        # (spec 30 §3), which the config preferences (Tebakofile's java +
         # python blocks) + the step-scoped TEBAKO_RUNTIME_MIRROR (the
         # combined local mirror staged above) resolve to the pinned pairs.
         # The mirror NEVER leaves this step — the first dispatch downloads
@@ -276,9 +276,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Every version flows from recipe.yml (tools.release +
+      # Every version flows from Tebakofile (tools.release +
       # upstream.version) — the workflow carries no literals.
-      - name: Read the pins (recipe.yml is the SSOT)
+      - name: Read the pins (Tebakofile is the SSOT)
         run: |
           ruby tools/pins.rb --release-only >> "$GITHUB_ENV"
 
@@ -396,11 +396,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Every version flows from recipe.yml (tools.release +
+      # Every version flows from Tebakofile (tools.release +
       # upstream.version + build.runtime.lines."4.0") — the workflow
       # carries no literals. PAYLOAD_VERSION here is the 4.0 flavor's
       # registry entry (1.16.9-ruby4.0).
-      - name: Read the pins (recipe.yml is the SSOT — ruby line 4.0)
+      - name: Read the pins (Tebakofile is the SSOT — ruby line 4.0)
         run: |
           ruby tools/pins.rb --release-only --ruby-line 4.0 >> "$GITHUB_ENV"
 

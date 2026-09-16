@@ -654,7 +654,7 @@ the 4.0.6 runtime bundles `singleton 0.3.0`, which satisfies it (the
 same reading as the 3.3 line's long-standing skip). No per-line
 `pins:`/`skip_defaults:` override is needed today; the escape hatch
 shape (per-line blocks under `build.runtime.lines.<line>` merged over
-the top-level set) is documented in recipe.yml for future drift —
+the top-level set) is documented in Tebakofile for future drift —
 derive any delta from the line runtime's own `gem list --default`,
 never by guess.
 
@@ -694,7 +694,7 @@ jar lives in its image) and parses its manifest — and the pinned
 openjdk line (2.1.5) predates spec 32, dying on the same
 `kind: executable` edge (`Jing failed with error: … unknown variant
 'executable'`). Masked since 09-06 because install was already failing
-(the registry gap above). Fix: `recipe.yml java.tebako` 2.1.5 → **2.4.0**
+(the registry gap above). Fix: `Tebakofile java.tebako` 2.1.5 → **2.4.0**
 — the oldest spec-32-era openjdk line, and the LAST temurin-only one:
 v2.4.1/v2.5.0 turn manifest.json into a two-flavor list (graalvm
 25.0.4.1 first), and the v2.2.0 resolver takes the first platform match
