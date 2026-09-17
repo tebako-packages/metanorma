@@ -106,7 +106,7 @@ jobs:
           TFS="$TFS" RUNTIME="$RUNTIME" RUNTIME_IMAGE="$RUNTIME_IMAGE" \
             tools/boot_smoke "$PAYLOAD_IMG"
 
-      - name: Payload checks (spec 26 — the press-time moment)
+      - name: Payload checks (the press-time moment)
         # The payload's in-image acceptance, the Homebrew formula's test
         # translated (manifests/payload.yaml `checks:` block, imaged at
         # /__tpkg__/manifest.yaml): the engine materializes the fixtures
@@ -121,7 +121,7 @@ jobs:
           tebako check "$PAYLOAD_IMG" \
             --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
 
-      - name: Manifest shape (extension slices, spec 03 §2.8)
+      - name: Manifest shape (extension slices)
         # Structural proof the build generated what the reverse edge
         # consumes — in BOTH spellings: the SIBLING manifest proves the
         # builder generated the keys; the EMBEDDED /__tpkg__/manifest.yaml
@@ -248,7 +248,7 @@ jobs:
           set -e
           tools/smoke_verdict "$rc" "$RUNNER_TEMP/smoke.log"
 
-      - name: Payload checks (spec 26 — the press-time moment)
+      - name: Payload checks (the press-time moment)
         # Same gate as the POSIX legs (see the mac step's comment); FAIL
         # is the engine's named exit 79. PAYLOAD_IMG rides runtime.env
         # (windows-form absolute) — the check driver's cwd is the scratch
@@ -285,7 +285,7 @@ jobs:
           "$TEBAKO_TOOLS/tebako.exe" check "$PAYLOAD_IMG" \
             --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
 
-      - name: Manifest shape (extension slices, spec 03 §2.8)
+      - name: Manifest shape (extension slices)
         # Structural proof the build generated what the reverse edge
         # consumes — in BOTH spellings: the SIBLING manifest proves the
         # builder generated the keys; the EMBEDDED /__tpkg__/manifest.yaml
@@ -380,7 +380,7 @@ jobs:
           TFS="$TFS" RUNTIME="$RUNTIME" RUNTIME_IMAGE="$RUNTIME_IMAGE" \
             tools/boot_smoke "$PAYLOAD_IMG"
 
-      - name: Payload checks (spec 26 — the press-time moment)
+      - name: Payload checks (the press-time moment)
         # Same gate as the mac leg (see its comment for the contract);
         # PAYLOAD_IMG rides runtime.env (absolute — the check driver's
         # cwd is the scratch dir).
@@ -389,7 +389,7 @@ jobs:
           tebako check "$PAYLOAD_IMG" \
             --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
 
-      - name: Manifest shape (extension slices, spec 03 §2.8)
+      - name: Manifest shape (extension slices)
         # Structural proof the build generated what the reverse edge
         # consumes — in BOTH spellings: the SIBLING manifest proves the
         # builder generated the keys; the EMBEDDED /__tpkg__/manifest.yaml
