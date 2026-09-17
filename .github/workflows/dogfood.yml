@@ -469,7 +469,7 @@ jobs:
             "$JAVA_VERSION" "$JAVA_TEBAKO" "$PYTHON_VERSION" "$PYTHON_TEBAKO" "$RUBY_V" "$RUNTIME_TEBAKO" >> "$HOME/.tebako/config.yaml"
           TEBAKO_RUNTIME_MIRROR="file://${{ runner.temp }}/dogfood-mirror" tebako install "metanorma@$PAYLOAD_VERSION"
 
-      - name: ABI guard — the 4.0 flavor refuses a 3.3-line runtime (spec 05 §5 / spec 28)
+      - name: ABI guard — the 4.0 flavor refuses a 3.3-line runtime
         # Force the wrong ABI line BEFORE any 4.0 runtime is cached (the
         # install pre-stages only the spawned java/python runtimes): pin
         # the ruby runtime preference to the default (3.3) line —
