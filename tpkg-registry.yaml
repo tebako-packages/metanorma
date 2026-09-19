@@ -8,15 +8,15 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: metanorma-1.16.9-macos-arm64.tfs
-        sha256: 77c36b4dc07895e67756cd4078dff6b2acbaabcbd63b45e87915002b15bfa81a
+        sha256: d81b6c9d51dc4781a8333d017859ff04afd1696465e030e79eff0b20a6870a52
       x86_64-linux-gnu:
         artifact: metanorma-1.16.9-linux-gnu-x86_64.tfs
-        sha256: '08dbd9c88e4ac450376f32f99a372d246befed0a0ff9fcde902c04633ad3979e'
+        sha256: 43e449885327b48f14d2153697b0f361c7be9f063f02b7eb5a386dd8adf7f299
       x86_64-windows-ucrt:
         artifact: metanorma-1.16.9-windows-ucrt64.tfs
-        sha256: ce32f6747ed7e8381d2bc9cb17e479b7d2fbd6a7a6cd028d0a708fbaed987c3f
+        sha256: c526a0df2d3929761ab545bf9baa82b5863fd0face2c6c209b4a8aea1ced3d91
     release:
-      ref: tfs:github:tebako-packages/metanorma:1.16.9-16
+      ref: tfs:github:tebako-packages/metanorma:1.16.9-17
     signature:
       keyid: efc3c250f7862a48
       asc: metanorma-1.16.9-macos-arm64.tfs.asc
@@ -96,15 +96,15 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: metanorma-1.16.9-ruby4.0-macos-arm64.tfs
-        sha256: 736b85bb2b9467258768d4b79f6f8f18f11bf4da75be52830502453faf454eda
+        sha256: 7934afcaeab49bd416bf6c19bc563a62163a11dbb22ae4946037a89b4f1641cf
       x86_64-linux-gnu:
         artifact: metanorma-1.16.9-ruby4.0-linux-gnu-x86_64.tfs
-        sha256: 9453b251b81ba6b205d962ed2ac5a4ac9ff41271e89afa963cb2110bb4156653
+        sha256: 041467d1396d079d1661c05d121ce97e820702b30d6293c63365b8bea184c138
       x86_64-windows-ucrt:
         artifact: metanorma-1.16.9-ruby4.0-windows-ucrt64.tfs
-        sha256: f75101d03225076aa8608874d2fbe93317883549844da20eecc0b89a342b1937
+        sha256: 5ce1cb738a80dde424d1aff34acd7e643873816e94e996d32a0fc8c09a66fb90
     release:
-      ref: tfs:github:tebako-packages/metanorma:1.16.9-16
+      ref: tfs:github:tebako-packages/metanorma:1.16.9-17
     signature:
       keyid: efc3c250f7862a48
       asc: metanorma-1.16.9-ruby4.0-macos-arm64.tfs.asc
@@ -268,24 +268,27 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: xml2rfc-3.34.1-macos-arm64.tfs
-        sha256: 18dc9a01bfc1cf38988b60e4116d5b8ea7e4db5ad03584444b377e82837daf6e
+        sha256: b1b3b2b52f7473b5b5984f6a04d6a2283a0921139fb53aaf5d18c02a733198de
       x86_64-macos:
         artifact: xml2rfc-3.34.1-macos-x86_64.tfs
-        sha256: f2b868fe184e6dbcb001045c13ca99c5e0a8f12cd57fa2c8da75a430d0bce775
+        sha256: 70c71f7253e505c7be1b1fc17c26b628ef9c11708b3c285ff356acc67b995106
       x86_64-linux-gnu:
         artifact: xml2rfc-3.34.1-linux-gnu-x86_64.tfs
-        sha256: f1071edf93be9f3db70c01c6b53546df5b04d98604adba1dd410bf851a8ccb9b
+        sha256: 3e9bf649231dc264b7f1b9ec3c5465a978d23c4663d860fb62b240997fac7f48
       aarch64-linux-gnu:
         artifact: xml2rfc-3.34.1-linux-gnu-arm64.tfs
-        sha256: c10f6b6f943e1ae576180c5cc751e62d419fb5fd4a7123b1fa8a77b2973aea33
+        sha256: c0d1cb4b3c3b9b7abe33df551e4191d928b577ff2ca59f92ac660330a6767481
       x86_64-linux-musl:
         artifact: xml2rfc-3.34.1-linux-musl-x86_64.tfs
-        sha256: 603d7387bb3d1a7d17facf8839c9cddab977c6ec502bcb033b946611dd86d50a
+        sha256: f58cf7f3ecdbe0cde97eb3fc78f416d2cae07f584003d39334d4fafa58187039
       aarch64-linux-musl:
         artifact: xml2rfc-3.34.1-linux-musl-arm64.tfs
-        sha256: 2156f66d6a0a64e2723305c2319f77a2df5da42c4d6059be4811f9bc0d3df164
+        sha256: 4e397f4be0e545a790f48399c222b711b40f471e948f3ac2c192f0c9070fd6a0
+      x86_64-windows-ucrt:
+        artifact: xml2rfc-3.34.1-windows-ucrt64.tfs
+        sha256: 8891add05c7611c5013be80fcc017470cf976e05141a8c263b8c40c618fe0ecb
     release:
-      ref: tfs:github:tebako-packages/xml2rfc:3.34.1
+      ref: tfs:github:tebako-packages/xml2rfc:3.34.2
     signature:
       keyid: efc3c250f7862a48
       asc: xml2rfc-3.34.1-linux-gnu-x86_64.tfs.asc
