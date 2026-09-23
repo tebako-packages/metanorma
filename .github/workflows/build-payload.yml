@@ -679,7 +679,21 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release upload "${{ github.ref_name }}" out/*/closure-*.json --clobber
+          # Skip-if-current (tebako-runtime-ruby#189's wedge lesson): the
+          # closure inventories are DERIVED metadata — replace on drift,
+          # skip when already current, never a blanket --clobber (a
+          # deleted name 422-blocks re-uploads for hours).
+          for f in out/*/closure-*.json; do
+            name="$(basename "$f")"
+            want="$(shasum -a 256 "$f" | cut -d' ' -f1)"
+            have="$(gh api "repos/tebako-packages/metanorma/releases/tags/${{ github.ref_name }}" \
+              --jq ".assets[] | select(.name == \"$name\") | .digest" | sed 's/^sha256://')"
+            if [ "$have" = "$want" ]; then
+              echo "$name is already current on the release — skipping"
+            else
+              gh release upload "${{ github.ref_name }}" "$f" --clobber
+            fi
+          done
       # main is branch-protected (and the GitHub-Actions bypass is not
       # available on this plan): the registry lands by bot PR + auto-merge,
       # never by direct push. Idempotent across re-runs of the same tag.
