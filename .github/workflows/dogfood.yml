@@ -9,9 +9,10 @@ name: dogfood
 # + spawned runtime edges -> shim exec).
 #
 # Legs:
-#   aarch64-macos — ACTIVE (payload published: metanorma 1.17.0 macos-arm64).
-#   x86_64-linux-gnu — joins when the recipe's linux leg publishes
-#     (Tebakofile platforms; the build-notes expect no new machinery).
+#   aarch64-macos — ACTIVE (gated on the payload being published — see
+#     the default-published gate below; skips loudly pre-publish).
+#   x86_64-linux-gnu — same gate (the recipe's linux leg publishes with
+#     the mac leg; the build-notes expect no new machinery).
 #   x86_64-windows-ucrt — joins when the windows payload publishes. The
 #     native-extension question is ANSWERED: the 0.16.4 runtime line ships
 #     the ruby DLL facet + the loader interpose / library_aliases (spec 22
@@ -27,6 +28,13 @@ name: dogfood
 # ruby40-published gate) until the first dual-line tag publishes the
 # flavor — the registries it rides are the PUBLISHED ones, and this
 # wiring lands before that tag by construction.
+#
+# The same holds for the default-line legs on a version-bump PR that
+# touches this workflow: the bumped version is unpublished by
+# definition until the tag's publish lands, so the dogfood +
+# dogfood-slim jobs ride the default-published gate and SKIP loudly
+# pre-publish — never a red leg for an artifact nobody could have
+# published yet.
 on:
   schedule:
     - cron: "17 3 * * *"        # nightly
@@ -38,8 +46,35 @@ permissions:
   contents: read
 
 jobs:
+  default-published:
+    name: default flavor published?
+    # Gate for the default-line dogfood legs: on a version-bump PR the
+    # bumped version exists only after the tag's publish lands the
+    # registry entry. A SKIP (the dependent jobs stay skipped) is the
+    # honest pre-publish state — never a red leg for an artifact nobody
+    # could have published yet. Mirrors the ruby40-published gate.
+    runs-on: ubuntu-24.04
+    outputs:
+      published: ${{ steps.probe.outputs.published }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: probe
+        run: |
+          set -euo pipefail
+          eval "$(ruby tools/pins.rb macos-arm64 | grep -E '^export (PAYLOAD_VERSION|PKG_NAME)=')"
+          url="https://raw.githubusercontent.com/tebako-packages/metanorma/main/tpkg-registry.yaml"
+          if curl -sfL "$url" | grep -q "version: '$PAYLOAD_VERSION'\|version: \"$PAYLOAD_VERSION\"\|version: $PAYLOAD_VERSION"; then
+            echo "$PKG_NAME@$PAYLOAD_VERSION is in the published registry — the default-line legs run"
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$PKG_NAME@$PAYLOAD_VERSION not in the published registry yet — the bump's tag publishes it; skipping the default-line dogfood legs loudly"
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
   dogfood:
     name: ${{ matrix.triplet }}
+    needs: default-published
+    if: needs.default-published.outputs.published == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -265,8 +300,11 @@ jobs:
 
   dogfood-slim:
     name: pr-slim (${{ matrix.plat }})
+    needs: default-published
+    if: needs.default-published.outputs.published == 'true'
     # Slim PR leg: install + version only (no compile — that needs fonts,
-    # Java for mn2pdf, and minutes of runtime).
+    # Java for mn2pdf, and minutes of runtime). Gated with the full leg:
+    # pre-publish the install cannot resolve, so the leg skips loudly.
     strategy:
       fail-fast: false
       matrix:
