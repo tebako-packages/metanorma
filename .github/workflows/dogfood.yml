@@ -63,7 +63,12 @@ jobs:
           set -euo pipefail
           eval "$(ruby tools/pins.rb macos-arm64 | grep -E '^export (PAYLOAD_VERSION|PKG_NAME)=')"
           url="https://raw.githubusercontent.com/tebako-packages/metanorma/main/tpkg-registry.yaml"
-          if curl -sfL "$url" | grep -q "version: '$PAYLOAD_VERSION'\|version: \"$PAYLOAD_VERSION\"\|version: $PAYLOAD_VERSION"; then
+          # A fetch failure is NOT absence: raw's edge cache/transient
+          # errors must red the gate, never silently skip the legs (the
+          # 09:48 run skipped green-published 1.17.0 on a stale/failed
+          # fetch while the registry was untouched since 07:26).
+          body=$(curl -sfL --retry 4 --retry-all-errors --retry-delay 5 "$url")             || { echo "::error::registry fetch failed ($url) — the gate cannot decide; failing loudly, retry the job"; exit 1; }
+          if printf '%s' "$body" | grep -q "version: '$PAYLOAD_VERSION'\|version: \"$PAYLOAD_VERSION\"\|version: $PAYLOAD_VERSION"; then
             echo "$PKG_NAME@$PAYLOAD_VERSION is in the published registry — the default-line legs run"
             echo "published=true" >> "$GITHUB_OUTPUT"
           else
@@ -412,7 +417,12 @@ jobs:
           set -euo pipefail
           eval "$(ruby tools/pins.rb macos-arm64 --ruby-line 4.0 | grep -E '^export (PAYLOAD_VERSION|PKG_NAME)=')"
           url="https://raw.githubusercontent.com/tebako-packages/metanorma/main/tpkg-registry.yaml"
-          if curl -sfL "$url" | grep -q "version: '$PAYLOAD_VERSION'\|version: \"$PAYLOAD_VERSION\"\|version: $PAYLOAD_VERSION"; then
+          # A fetch failure is NOT absence: raw's edge cache/transient
+          # errors must red the gate, never silently skip the legs (the
+          # 09:48 run skipped green-published 1.17.0 on a stale/failed
+          # fetch while the registry was untouched since 07:26).
+          body=$(curl -sfL --retry 4 --retry-all-errors --retry-delay 5 "$url")             || { echo "::error::registry fetch failed ($url) — the gate cannot decide; failing loudly, retry the job"; exit 1; }
+          if printf '%s' "$body" | grep -q "version: '$PAYLOAD_VERSION'\|version: \"$PAYLOAD_VERSION\"\|version: $PAYLOAD_VERSION"; then
             echo "$PKG_NAME@$PAYLOAD_VERSION is in the published registry — the 4.0 leg runs"
             echo "published=true" >> "$GITHUB_OUTPUT"
           else
