@@ -9,11 +9,9 @@ mount `/opt/inkscape`) and a spec-30 runtime edge on
 the mn2pdf PDF leg spawns the JVM from the store, never a host-PATH
 lookup), so installing it exercises the full dispatch chain.
 
-- Upstream: [metanorma-cli](https://github.com/metanorma/metanorma-cli) 1.16.9 (RubyGems)
-- Payload: `metanorma-1.16.9-<asset-platform>.tfs` (DwarFS image, per-triplet;
-  legs: `aarch64-macos`, `x86_64-linux-gnu`);
-  the `x86_64-windows-ucrt` leg builds in CI but is not published yet
-  (windows runtimes cannot load dynamic native extensions — `docs/build-notes.md` §7)
+- Upstream: [metanorma-cli](https://github.com/metanorma/metanorma-cli) 1.17.0 (RubyGems)
+- Payload: `metanorma-1.17.0-<asset-platform>.tfs` (DwarFS image, per-triplet;
+  legs: `aarch64-macos`, `x86_64-linux-gnu`, `x86_64-windows-ucrt`)
 - Registry: `tfs:github:tebako-packages/metanorma` (see `tpkg-registry.yaml`)
 
 ## Layout
@@ -21,7 +19,7 @@ lookup), so installing it exercises the full dispatch chain.
 - `Tebakofile` — upstream, runtime, resolution pins, feedstock deps, platforms
 - `manifests/payload.yaml` — the spec 03 payload manifest (filled at build)
 - `tpkg-registry.yaml` — this feedstock's registry (pinned at release)
-- `closure/1.16.9-<triplet>.txt` — the pinned, sha256-verified gem set
+- `closure/1.17.0-<triplet>.txt` — the pinned, sha256-verified gem set
   (aarch64-macos + x86_64-linux-gnu + x86_64-windows-ucrt)
 - `tools/` — `build` (stage → image → manifest), `boot_smoke`,
   `smoke_verdict` (the windows leg's pinned exec verdict),
@@ -44,7 +42,7 @@ pure-ruby range. Details: `docs/build-notes.md`.
 
 ```console
 $ tebako add-registry tfs:github:tebako-packages/index
-$ tebako install metanorma@1.16.9    # pulls the ruby runtime + inkscape too
+$ tebako install metanorma@1.17.0    # pulls the ruby runtime + inkscape too
 $ metanorma --version                 # via the shim layer
 ```
 

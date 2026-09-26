@@ -28,6 +28,8 @@ skip-defaults policy, with these **native extensions**:
 | oga 3.5 + ruby-ll 2.2.0 | C (liboga, libll) | no precompiled gems → **built per triplet** (oga via omml 0.2.5 `~> 3.4`; ruby-ll is oga's parser dep) |
 | psych 5.2.6 | C + libyaml | no precompiled gem, no vendored libyaml → **built per triplet** against the pinned libyaml 0.2.5 tarball (`--with-libyaml-source-dir`; needed because relaton-bib/-core demand `psych ~> 5.2.0` and the runtime default is 5.1.2) |
 | websocket-driver 0.8.2 | C (optional) | **built per triplet** (has a LoadError fallback to pure ruby; built anyway — the ext is trivial against the SDK headers) |
+| leptris 1.9.248.0 | C (ffi) | **precompiled** per-platform gem (canon 0.3.x's XML parser backend — entered the graph at 1.17.0 with canon 0.2.12→0.3.73) |
+| yeptris 0.6.22.1 | C (ffi) | **precompiled** per-platform gem (the stack's YAML/JSON native — entered the graph at 1.17.0) |
 | json 2.7.2, bigdecimal 3.1.5, strscan 3.0.9, racc 1.7.3, date 3.3.4 | C | **runtime-provided** (default/bundled gems of the ruby 3.3.7 runtime) |
 
 So the payload is **not** `universal`: it ships per-triplet and the
@@ -792,3 +794,41 @@ at provider selection ("provided by more than one installed payload",
 exit 65) before the version chain can apply. The published path is
 unaffected — both flavors are versions of the ONE `metanorma` registry
 entry, which is exactly what the dogfood-ruby40 leg exercises.
+
+## 10. The 1.17.0 roll (2026-09-26)
+
+Payload bump metanorma-cli 1.16.9 → **1.17.0** on both ruby lines
+(tebako-packages/metanorma#82 — picks up the upstream fix for the
+`dependencies_versions` nil crash that made `metanorma --version` exit
+non-zero on 1.16.9 when any installed-but-unloaded gem sat in the
+store; fixed in metanorma-cli 1.16.10, carried by 1.17.0).
+
+Compatibility: 1.17.0 requires ruby >= 3.3.0 (both runtime lines
+safe) and pins `metanorma ~> 2.5.1` (recipe pin 2.5.4 satisfies),
+`metanorma-iso ~> 3.5.0`, `metanorma-standoc ~> 3.5.0` — the same
+3.5.x line the private flavor gems bind against, so the flavor rebinds
+are gem-version-only.
+
+Notable graph moves (fresh per-line resolutions, 310 specs each):
+
+- metanorma-cli 1.16.9 → 1.17.0; metanorma-iso / metanorma-standoc
+  3.4.x → 3.5.0; the metanorma-* family rolls to its 3.5/2.9 line.
+- canon 0.2.12 → 0.3.73, which drags in **two new precompiled
+  natives**, both shipping the full platform matrix including
+  `x64-mingw-ucrt` (verified against `/info`):
+  - `leptris 1.9.248.0` — canon's XML parser backend
+  - `yeptris 0.6.22.1` — the stack's YAML/JSON native
+  Both join `PRECOMPILED_NATIVES` in `tools/gen_closure`; no
+  `tools/build` change (it stages precompiled gems generically from
+  closure rows; its source-built native list is untouched).
+- Resolution floats pinned as before: liquid 5.14.0 → **5.6.0**,
+  metanorma 2.5.5 → **2.5.4** (§3 pins, unchanged).
+
+Closures: six files, **268 gems per line per triplet** (was 260 at
+1.16.9) — `closure/1.17.0[-ruby4.0]-{aarch64-macos,x86_64-linux-gnu,x86_64-windows-ucrt}.txt`,
+all rows sha256-verified against rubygems `/info` at generation.
+
+Also in this roll: stale comment cleanup — the windows leg has
+published since the 1.16.9 line (registry-proven), so the
+"publication gated" framing in the Tebakofile/windows comments is
+retired (the §7 historical narrative stays as-written).

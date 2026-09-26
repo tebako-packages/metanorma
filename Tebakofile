@@ -9,7 +9,7 @@ upstream:
   # rubygems compact index and every .gem is sha256-verified against the
   # /info/<gem> checksum before use (tools/build).
   gem: "metanorma-cli"
-  version: "1.16.9"
+  version: "1.17.0"
   source: "https://rubygems.org"
 
 build:
@@ -55,8 +55,8 @@ build:
                            # family + vfork gate included).
     # The ruby axis (roadmap 77): ONE upstream version publishes ONE
     # registry version entry per line — the default line keeps the bare
-    # upstream version (1.16.9), every other line suffixes "-ruby<line>"
-    # (1.16.9-ruby4.0). Users choose through the existing spec 07 §2.1
+    # upstream version (1.17.0), every other line suffixes "-ruby<line>"
+    # (1.17.0-ruby4.0). Users choose through the existing spec 07 §2.1
     # version chain; each flavor's entrypoint runtime_requirement fills
     # from the line's `constraint` (spec 28 §8's native law locks each
     # flavor to its own ABI line — never cross-paired). Per line:
@@ -237,9 +237,9 @@ signing:
   keyid: "efc3c250f7862a48" # 2026-09-09 tamatebako root primary (low 64)
 
 platforms:
-  - aarch64-macos          # triplet-bound (nokogiri/ffi/libpng/parsanol/sqlite3
-                           # precompiled; brotli/ox/oga/ruby-ll/psych/
-                           # websocket-driver compiled per-triplet). More
+  - aarch64-macos          # triplet-bound (nokogiri/ffi/libpng/parsanol/sqlite3/
+                           # leptris/yeptris precompiled; brotli/ox/oga/ruby-ll/
+                           # psych/websocket-driver compiled per-triplet). More
                            # triplets: CI legs.
   - x86_64-linux-gnu       # built by CI (ubuntu-24.04): the POSIX shim
                            # staging, same shape as the mac leg — the
@@ -249,8 +249,8 @@ platforms:
   - x86_64-windows-ucrt    # built by CI (green incl. the six source-built
                            # natives); the boot smoke is ENFORCED on this
                            # runtime line (the W2 windows fixes landed in
-                           # 0.16.4); NOT published yet — the publish wiring
-                           # is the follow-up (docs/build-notes.md § Windows)
+                           # 0.16.4); published since the 1.16.9 line
+                           # (docs/build-notes.md § Windows)
 
 provides:
   # Informational shadow of the payload's command surface — the
@@ -260,7 +260,7 @@ provides:
   # mirrors into the registry. Do NOT grow this list here.
   # identity.version and each entrypoint's runtime_requirement are PER-LINE
   # (roadmap 77): they flow from build.runtime.lines (version →
-  # 1.16.9 / 1.16.9-ruby4.0, constraint → the line's ABI line) through
+  # 1.17.0 / 1.17.0-ruby4.0, constraint → the line's ABI line) through
   # tools/build's @@PAYLOAD_VERSION@@/@@CONSTRAINT@@ fill — one owner, no
   # second copy here.
   entrypoints:
@@ -271,4 +271,4 @@ provides:
 
 annotations:
   gem: metanorma-cli
-  gem_version: "1.16.9"
+  gem_version: "1.17.0"

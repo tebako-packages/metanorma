@@ -25,7 +25,7 @@ name: build-payload
 # ruby lines (build.runtime.lines — the keys are mirrored by the matrix;
 # every VALUE still flows from Tebakofile via tools/pins.rb --ruby-line).
 # One upstream version, one registry entry per line: the default line
-# publishes 1.16.9, the 4.0 line publishes 1.16.9-ruby4.0 — both from one
+# publishes 1.17.0, the 4.0 line publishes 1.17.0-ruby4.0 — both from one
 # tag, the publish job upserting the default line FIRST (tebako-cli sets
 # the registry `default:` only when absent).
 on:
@@ -140,7 +140,7 @@ jobs:
               ep = m.dig("provides", "extension_points") or abort("#{label}: provides.extension_points missing")
               ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("#{label}: extension_points drift: #{ep.inspect}")
               gems = m.dig("provides", "gems") or abort("#{label}: provides.gems missing")
-              gems.length > 200 or abort("#{label}: gem inventory suspiciously small: #{gems.length} (1.16.9 carries ~260)")
+              gems.length > 200 or abort("#{label}: gem inventory suspiciously small: #{gems.length} (1.17.0 carries ~270)")
             end
             gems = sibling.dig("provides", "gems")
             embedded.dig("provides", "gems") == gems or abort("sibling/embedded gem inventory skew")
@@ -308,7 +308,7 @@ jobs:
               ep = m.dig("provides", "extension_points") or abort("#{label}: provides.extension_points missing")
               ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("#{label}: extension_points drift: #{ep.inspect}")
               gems = m.dig("provides", "gems") or abort("#{label}: provides.gems missing")
-              gems.length > 200 or abort("#{label}: gem inventory suspiciously small: #{gems.length} (1.16.9 carries ~260)")
+              gems.length > 200 or abort("#{label}: gem inventory suspiciously small: #{gems.length} (1.17.0 carries ~270)")
             end
             gems = sibling.dig("provides", "gems")
             embedded.dig("provides", "gems") == gems or abort("sibling/embedded gem inventory skew")
@@ -408,7 +408,7 @@ jobs:
               ep = m.dig("provides", "extension_points") or abort("#{label}: provides.extension_points missing")
               ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("#{label}: extension_points drift: #{ep.inspect}")
               gems = m.dig("provides", "gems") or abort("#{label}: provides.gems missing")
-              gems.length > 200 or abort("#{label}: gem inventory suspiciously small: #{gems.length} (1.16.9 carries ~260)")
+              gems.length > 200 or abort("#{label}: gem inventory suspiciously small: #{gems.length} (1.17.0 carries ~270)")
             end
             gems = sibling.dig("provides", "gems")
             embedded.dig("provides", "gems") == gems or abort("sibling/embedded gem inventory skew")
@@ -537,8 +537,8 @@ jobs:
         # --registry-out. ORDER IS LOAD-BEARING: RUBY_LINES lists the
         # default line first and tebako-cli's upsert sets the registry
         # `default:` only when absent — the default line's entry must be
-        # the first to land. Each line's PAYLOAD_VERSION (1.16.9 /
-        # 1.16.9-ruby4.0) and its per-line artifact names flow from
+        # the first to land. Each line's PAYLOAD_VERSION (1.17.0 /
+        # 1.17.0-ruby4.0) and its per-line artifact names flow from
         # tools/pins.rb --ruby-line.
         #
         # Signing (Tebakofile's signing: block; spec 09 §9): SIGNING_KEYID

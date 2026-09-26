@@ -46,7 +46,15 @@ SKIP_DEFAULTS = {
     # NOT net-ftp: relaton-3gpp pins `~> 0.1.0` (three segments — < 0.2.0),
     # which the runtime-bundled 0.3.4 does NOT satisfy; net-ftp ships.
 }
-PRECOMPILED_NATIVES = {"nokogiri", "ffi", "libpng", "parsanol", "sqlite3"}
+PRECOMPILED_NATIVES = {"nokogiri", "ffi", "libpng", "parsanol", "sqlite3",
+                       # leptris: canon 0.3.x's parser backend (new in the
+                       # 1.17.0 graph), ships the full platform matrix incl.
+                       # x64-mingw-ucrt — precompiled like the five above
+                       "leptris",
+                       # yeptris: the stack's YAML/JSON native (new in the
+                       # 1.17.0 graph), full platform matrix incl.
+                       # x64-mingw-ucrt
+                       "yeptris"}
 # Resolution overrides, each justified in docs/build-notes.md (Tebakofile pins):
 PINS = {
     "liquid": "5.6.0",  # >= 5.6.1 demands strscan >= 3.1.1 (source-only native
