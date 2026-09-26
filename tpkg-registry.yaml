@@ -180,6 +180,182 @@ payloads:
     - w3c_api
     - xml2gv
     - xsdvi
+  - version: 1.17.0
+    platforms:
+      aarch64-macos:
+        artifact: metanorma-1.17.0-macos-arm64.tfs
+        sha256: c49fcc7be82c7dc6d9c898415049f489ce1a96d517b99724d923fae19896db2e
+      x86_64-linux-gnu:
+        artifact: metanorma-1.17.0-linux-gnu-x86_64.tfs
+        sha256: 8a7d052ae163113eba9ed7067e4c038a75c24f31bb5a94730d6781535ad4aefe
+      x86_64-windows-ucrt:
+        artifact: metanorma-1.17.0-windows-ucrt64.tfs
+        sha256: 5c2bdabaf1c429f73e97e6d0321360a6bb8f746a253cd8651320f2dcb80ae1eb
+    release:
+      ref: tfs:github:tebako-packages/metanorma:1.17.0-1
+    signature:
+      keyid: efc3c250f7862a48
+      asc: metanorma-1.17.0-macos-arm64.tfs.asc
+    runtime_requirement:
+      engine: ruby
+      constraint: "~> 3.3.0"
+      implementation: mri
+      abi: arm64-darwin-23
+    entrypoints:
+    - metanorma
+    - metanorma-manifest
+    - asciidoctor
+    - canon
+    - coradoc
+    - expressir
+    - fontist
+    - fontisan
+    - glossarist
+    - lutaml
+    - lutaml-model
+    - lutaml-sysml
+    - lutaml-wsd2uml
+    - lutaml-xsd
+    - lutaml-yaml2uml
+    - omnizip
+    - plurimath
+    - png_conform
+    - relaton
+    - reverse_adoc
+    - suma
+    - svg_conform
+    - unitsdb
+    - vectory
+    - w2a
+    - w2m
+    - cabriolet
+    - console
+    - convert2oscalyaml.rb
+    - dot2ruby
+    - ea
+    - ebnf
+    - emf
+    - emfsvg
+    - excavate
+    - fractor
+    - fuzzy_match
+    - gem2gv
+    - git2gv
+    - japanese_calendar
+    - jsonld
+    - ldiff
+    - loc-mods
+    - nokogiri
+    - premailer
+    - pubid-nist
+    - rdf
+    - reverse_markdown
+    - rng
+    - rougify
+    - ruby-ll
+    - ruby2gv
+    - setup
+    - socksify_ruby
+    - sparql
+    - sxp2json
+    - sxp2rdf
+    - sxp2xml
+    - sxp2yaml
+    - thor
+    - tokenize
+    - ukiryu
+    - unibuf
+    - w3c_api
+    - xml2gv
+    - xsdvi
+  - version: 1.17.0-ruby4.0
+    platforms:
+      aarch64-macos:
+        artifact: metanorma-1.17.0-ruby4.0-macos-arm64.tfs
+        sha256: 441a5117ed95555e11d439052cf02f821d9a92fe2a48c7a8a349a94d0b35bcac
+      x86_64-linux-gnu:
+        artifact: metanorma-1.17.0-ruby4.0-linux-gnu-x86_64.tfs
+        sha256: c2feea0807640d369c5dc92c0a0330172a8f57b9d38f31f3b0a8580150516cd4
+      x86_64-windows-ucrt:
+        artifact: metanorma-1.17.0-ruby4.0-windows-ucrt64.tfs
+        sha256: 4c7759fc75771bdbbdd15cebc414d809491f5163802819df1827356ea5339776
+    release:
+      ref: tfs:github:tebako-packages/metanorma:1.17.0-1
+    signature:
+      keyid: efc3c250f7862a48
+      asc: metanorma-1.17.0-ruby4.0-macos-arm64.tfs.asc
+    runtime_requirement:
+      engine: ruby
+      constraint: "~> 4.0.0"
+      implementation: mri
+      abi: arm64-darwin-23
+    entrypoints:
+    - metanorma
+    - metanorma-manifest
+    - asciidoctor
+    - canon
+    - coradoc
+    - expressir
+    - fontist
+    - fontisan
+    - glossarist
+    - lutaml
+    - lutaml-model
+    - lutaml-sysml
+    - lutaml-wsd2uml
+    - lutaml-xsd
+    - lutaml-yaml2uml
+    - omnizip
+    - plurimath
+    - png_conform
+    - relaton
+    - reverse_adoc
+    - suma
+    - svg_conform
+    - unitsdb
+    - vectory
+    - w2a
+    - w2m
+    - cabriolet
+    - console
+    - convert2oscalyaml.rb
+    - dot2ruby
+    - ea
+    - ebnf
+    - emf
+    - emfsvg
+    - excavate
+    - fractor
+    - fuzzy_match
+    - gem2gv
+    - git2gv
+    - japanese_calendar
+    - jsonld
+    - ldiff
+    - loc-mods
+    - nokogiri
+    - premailer
+    - pubid-nist
+    - rdf
+    - reverse_markdown
+    - rng
+    - rougify
+    - ruby-ll
+    - ruby2gv
+    - setup
+    - socksify_ruby
+    - sparql
+    - sxp2json
+    - sxp2rdf
+    - sxp2xml
+    - sxp2yaml
+    - thor
+    - tokenize
+    - ukiryu
+    - unibuf
+    - w3c_api
+    - xml2gv
+    - xsdvi
   default: 1.16.9-ruby4.0
 - name: tebako-runtime-java-temurin
   kind: runtime
