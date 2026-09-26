@@ -4,7 +4,7 @@ identity:
   schema_version: 1
   kind: app
   name: "metanorma"
-  version: "@@PAYLOAD_VERSION@@"          # the registry version entry — filled by tools/build (roadmap 77: 1.16.9 / 1.16.9-ruby4.0)
+  version: "@@PAYLOAD_VERSION@@"          # the registry version entry — filled by tools/build (roadmap 77: 1.17.0 / 1.17.0-ruby4.0)
   producer: {tool: feedstock-build, tool_version: "1"}
   created: "2026-07-27T00:00:00Z"          # pinned at release time
   source:
@@ -18,7 +18,7 @@ identity:
   encryption: {state: none}
   annotations:
     gem: metanorma-cli
-    gem_version: "1.16.9"
+    gem_version: "1.17.0"
 provides:
   # spec 03 §2.2 completeness: the COMPLETE inventory of user-invocable
   # commands the image carries — 66 commands from the 52 executable-bearing

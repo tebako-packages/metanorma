@@ -83,7 +83,7 @@ Gem.clear_paths
 # with metanorma-document's `module Collection`, whichever loads first
 # wins, and the base must win. The exe pulls metanorma via metanorma/cli
 # anyway, so establishing it here costs nothing at dispatch.
-gem "metanorma-cli", "= 1.16.9"
+gem "metanorma-cli", "= 1.17.0"
 require "metanorma"
 
 # Extension slices (the manifest's declared extension point, spec 03 §2.8):
@@ -106,4 +106,4 @@ ENV.filter_map { |k, v| v if k.start_with?("TEBAKO_MOUNT_FLAVORS_D_") }.sort.eac
   require File.basename(home)
 end
 
-load Gem.bin_path("metanorma-cli", "metanorma", "1.16.9")
+load Gem.bin_path("metanorma-cli", "metanorma", "1.17.0")

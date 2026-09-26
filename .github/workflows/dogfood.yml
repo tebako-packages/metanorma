@@ -9,7 +9,7 @@ name: dogfood
 # + spawned runtime edges -> shim exec).
 #
 # Legs:
-#   aarch64-macos — ACTIVE (payload published: metanorma 1.16.9 macos-arm64).
+#   aarch64-macos — ACTIVE (payload published: metanorma 1.17.0 macos-arm64).
 #   x86_64-linux-gnu — joins when the recipe's linux leg publishes
 #     (Tebakofile platforms; the build-notes expect no new machinery).
 #   x86_64-windows-ucrt — joins when the windows payload publishes. The
@@ -19,7 +19,7 @@ name: dogfood
 #     against it (tools/smoke_verdict flipped fail-closed).
 #
 # The ruby axis: the dogfood-ruby40 job below is the 4.0
-# flavor's slim proof — install metanorma@1.16.9-ruby4.0 fresh, run
+# flavor's slim proof — install metanorma@1.17.0-ruby4.0 fresh, run
 # `metanorma version` through the version chain's env link
 # (TEBAKO_METANORMA_VERSION), and force the ABI guard: the 4.0 flavor
 # pinned onto the 3.3-line runtime must fail with spec 28 §8's named
@@ -398,7 +398,7 @@ jobs:
       # Every version flows from Tebakofile (tools.release +
       # upstream.version + build.runtime.lines."4.0") — the workflow
       # carries no literals. PAYLOAD_VERSION here is the 4.0 flavor's
-      # registry entry (1.16.9-ruby4.0).
+      # registry entry (1.17.0-ruby4.0).
       - name: Read the pins (Tebakofile is the SSOT — ruby line 4.0)
         run: |
           ruby tools/pins.rb --release-only --ruby-line 4.0 >> "$GITHUB_ENV"
