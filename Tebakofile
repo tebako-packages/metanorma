@@ -146,28 +146,28 @@ depends:
 # upstream.sha256; provenance in docs/build-notes.md).
 tools:
   repo: "tamatebako/tebako"
-  release: "v2.8.4"          # v2.8.4 carries the extension-slice tooling
-                             # (spec 03 §2.8 — slice manifests, closure
-                             # subtraction, the augments check) alongside
-                             # the spec 09 §9 zero-interaction trust plane
-                             # (tebako#564): the embedded root public key +
-                             # primary-keyid signature pins — REQUIRED for
-                             # the publish-signing leg (the signing: block
-                             # below). The v2.1.x/v2.6.0 line's history is
-                             # in git log.
+  release: "v2.8.17"         # v2.8.17's resolver speaks the shard-era
+                             # registry grammar: runtime entries carry
+                             # platform-keyed artifact+sha256 inline and
+                             # no release-root manifest.json is fetched
+                             # (the python factory's relayout removed it —
+                             # older pins exit 69 resolving the spawned
+                             # runtimes). Still carries the extension-slice
+                             # tooling + the zero-interaction trust plane
+                             # the publish-signing leg needs.
   sha256:
     tebako:
-      macos-arm64: "f471e21ef81c139f313345aa08725237d68dcf6715d6f6c18d46e4a890e04955"
-      linux-gnu-x86_64: "4ed371f35ecd0ec4774bd4717f2718c6ebacd9d0034639fbe1d521b2cd52e1ac"
-      windows-ucrt64: "e180dd4349e06d113a9c1fce6f86deaa68b6ffe23e02801bc039cb0b2a15553c"
+      macos-arm64: "a94a9ec6b12fcff1d3c8889befebcc8f6d306bfc81a47696cd4268c97682cccd"
+      linux-gnu-x86_64: "355c81b97d86c4a76f215e46b9570cf4f30df44d5bb086c13459ff7e0de12929"
+      windows-ucrt64: "2dd60a74b1b3da91dc3d3ff8b8e5d6a35458f69f6a379c2536f8410e95f890c0"
     tebako-shim:
-      macos-arm64: "906254b3a74452e1e2d92951d97fbdc4a8e996e39b0db20e94e4a5fe12daa4fb"
-      linux-gnu-x86_64: "605718557264639e7c58047390e46651a8c6bc1c2b2c1c0d5eb63e7792453f12"
-      windows-ucrt64: "f9c4eff46739eb1fdc34b490912ab8e101cc8e8a0ff73cd03d61e8d2cd968f64"
+      macos-arm64: "cb7b888bb31916b58b79dec99e6b7baf97d1280bea9bb31768ec8ddef3769071"
+      linux-gnu-x86_64: "9a3599f815f6246929ea69e5c39379b5ba5161997756b57b923e524c706fbc03"
+      windows-ucrt64: "129dd752bd9d971df592c876082d2fc179b94177dbe0db57faeeb44672f19505"
     tfs:
-      macos-arm64: "7c5387d7796afac2c774a32e50da3f3b2a1ca49152d2766c38d64a80161e3820"
-      linux-gnu-x86_64: "775ad6d513a335a52925dfce492e87940ac4a281cca0e40148c405140fb430cd"
-      windows-ucrt64: "a18fb19f0a95aa62427536bd6f4f461856cfc17517dafbd361b7bb65721b663d"
+      macos-arm64: "f2c957bd27a3b2fea871e04bdf5c8de3689a8327a1474ca698e3936eaf239661"
+      linux-gnu-x86_64: "083e4886f751901493d124cf90f8dc20a88fb9ba0877db9af1a5b42d0c1d64db"
+      windows-ucrt64: "5ba7d570621ca39de15e680d1206c21d4b9ac571aef2a639ad94a68c2683f7c7"
 
 # The spawned java runtime behind payload.yaml's kind: runtime edge: the
 # openjdk feedstock's release line, consumed through the resolver's
