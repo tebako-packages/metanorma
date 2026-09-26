@@ -413,7 +413,7 @@ case "$TRIPLET" in
        "$FEEDSTOCK/tools/vendor_siblings.rb" "$DRIVER/"
     DRIVER_IMG="$WORK/stage-driver.tfs"
     rm -f "$DRIVER_IMG"
-    "$TFS_CLI" mkimage --format dwarfs "$DRIVER" -o "$DRIVER_IMG"
+    "$TFS_CLI" mkimage --format limnifs "$DRIVER" -o "$DRIVER_IMG"
 
     run_driver() { # <entry> [args...]
       # NB: MSYS2_ARG_CONV_EXCL='*' — MSYS2 path-converts POSIX-looking
@@ -630,10 +630,10 @@ mkdir -p "$PAYLOAD/__tpkg__/check/html-xml"
 cp "$FEEDSTOCK/fixtures/test-iso.adoc" "$PAYLOAD/__tpkg__/check/html-xml/test-iso.adoc"
 
 # ------------------------------------------------------------------ image
-step "tfs mkimage (the in-process dwarfs-t writer — never the mkdwarfs CLI)"
+step "tfs mkimage (the in-process writer — limnifs, the default format)"
 IMG="$OUT/metanorma-$PAYLOAD_VERSION-$ASSET_PLATFORM.tfs"
 rm -f "$IMG"
-"$TFS_CLI" mkimage --format dwarfs "$PAYLOAD" --output "$IMG"
+"$TFS_CLI" mkimage --format limnifs "$PAYLOAD" --output "$IMG"
 sha="$(sha256_file "$IMG")"
 echo "image: $IMG"
 echo "sha256: $sha"
