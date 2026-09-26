@@ -10,7 +10,7 @@ the mn2pdf PDF leg spawns the JVM from the store, never a host-PATH
 lookup), so installing it exercises the full dispatch chain.
 
 - Upstream: [metanorma-cli](https://github.com/metanorma/metanorma-cli) 1.17.0 (RubyGems)
-- Payload: `metanorma-1.17.0-<asset-platform>.tfs` (DwarFS image, per-triplet;
+- Payload: `metanorma-1.17.0-<asset-platform>.tfs` (LimniFS image, per-triplet;
   legs: `aarch64-macos`, `x86_64-linux-gnu`, `x86_64-windows-ucrt`)
 - Registry: `tfs:github:tebako-packages/metanorma` (see `tpkg-registry.yaml`)
 
