@@ -138,7 +138,7 @@ depends:
 
 # Factory tools used by tools/build (image creation + the packager): the
 # tebako/tfs CLIs from the tamatebako/tebako release (the tfs CLI's
-# in-process dwarfs-t Writer images both legs). The asset digests are
+# in-process writer — limnifs, the default format — images all legs). The asset digests are
 # pinned HERE — tools.sha256 is the repo's toolchain pin SSOT (the
 # workflows carry no version or digest literals; tools/pins.rb reads
 # this block into $GITHUB_ENV) and cross-checked against the release's

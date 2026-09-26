@@ -34,14 +34,14 @@ RUN tfs cat /work/win-env.tfs ssl/cert.pem > /tmp/cacert.pem \
  && cp /tmp/cacert.pem /etc/pki/tls/cert.pem \
  && cp /tmp/cacert.pem /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
 
-# --- the minimal TLS-probe payload (imaged in-process; never mkdwarfs) ---
+# --- the minimal TLS-probe payload (imaged in-process; limnifs) ---
 # The payload ships the same CA bundle at /ssl/cert.pem: leg B points
 # SSL_CERT_FILE AT THAT IN-VFS PATH — ruby sees it (VFS), the native
 # libcrypto does not (host miss) — the exact tebako#437 divergence.
 COPY payload/ /work/payload/
 RUN mkdir -p /work/payload/ssl && cp /tmp/cacert.pem /work/payload/ssl/cert.pem \
  && rm /tmp/cacert.pem \
- && tfs mkimage --format dwarfs /work/payload --output /work/tls-probe.tfs
+ && tfs mkimage --format limnifs /work/payload --output /work/tls-probe.tfs
 
 COPY run.sh /work/run.sh
 RUN chmod 755 /work/run.sh
