@@ -356,7 +356,7 @@ payloads:
     - w3c_api
     - xml2gv
     - xsdvi
-  default: 1.16.9-ruby4.0
+  default: 1.17.0-ruby4.0
 - name: tebako-runtime-java-temurin
   kind: runtime
   engine: java
