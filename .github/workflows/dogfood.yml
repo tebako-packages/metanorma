@@ -52,7 +52,14 @@ jobs:
     # bumped version exists only after the tag's publish lands the
     # registry entry. A SKIP (the dependent jobs stay skipped) is the
     # honest pre-publish state — never a red leg for an artifact nobody
-    # could have published yet. Mirrors the ruby40-published gate.
+    # could have published yet. Mirrors the ruby33-published gate.
+    # The gate ALSO skips on recipe/registry ABI skew: the default-line
+    # flip window (the recipe's default_line already moved, the re-cut
+    # tag has not re-published the bare row yet) leaves the published
+    # row's runtime_requirement on the OLD line while the recipe pins
+    # the NEW one — the legs would install the old row against the new
+    # preference and refuse by name (exit 69), a red leg for an
+    # artifact the tag is about to replace.
     runs-on: ubuntu-24.04
     outputs:
       published: ${{ steps.probe.outputs.published }}
@@ -61,20 +68,34 @@ jobs:
       - id: probe
         run: |
           set -euo pipefail
-          eval "$(ruby tools/pins.rb macos-arm64 | grep -E '^export (PAYLOAD_VERSION|PKG_NAME)=')"
+          eval "$(ruby tools/pins.rb macos-arm64 | grep -E '^export (PAYLOAD_VERSION|PKG_NAME|RUBY_CONSTRAINT)=')"
           url="https://raw.githubusercontent.com/tebako-packages/metanorma/main/tpkg-registry.yaml"
           # A fetch failure is NOT absence: raw's edge cache/transient
           # errors must red the gate, never silently skip the legs (the
           # 09:48 run skipped green-published 1.17.0 on a stale/failed
           # fetch while the registry was untouched since 07:26).
-          body=$(curl -sfL --retry 4 --retry-all-errors --retry-delay 5 "$url")             || { echo "::error::registry fetch failed ($url) — the gate cannot decide; failing loudly, retry the job"; exit 1; }
-          if printf '%s' "$body" | grep -q "version: '$PAYLOAD_VERSION'\|version: \"$PAYLOAD_VERSION\"\|version: $PAYLOAD_VERSION"; then
-            echo "$PKG_NAME@$PAYLOAD_VERSION is in the published registry — the default-line legs run"
-            echo "published=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::$PKG_NAME@$PAYLOAD_VERSION not in the published registry yet — the bump's tag publishes it; skipping the default-line dogfood legs loudly"
-            echo "published=false" >> "$GITHUB_OUTPUT"
-          fi
+          curl -sfL --retry 4 --retry-all-errors --retry-delay 5 "$url" -o "$RUNNER_TEMP/registry.yaml" \
+            || { echo "::error::registry fetch failed ($url) — the gate cannot decide; failing loudly, retry the job"; exit 1; }
+          ruby -ryaml -e '
+            reg, name, ver, constraint = ARGV
+            doc = YAML.unsafe_load_file(reg)
+            row = doc.fetch("payloads").find { |p| p["name"] == name }
+                      &.fetch("versions", [])
+                      &.find { |v| v["version"].to_s == ver }
+            if row.nil?
+              puts "::notice::#{name}@#{ver} not in the published registry yet — the bump'"'"'s tag publishes it; skipping the default-line dogfood legs loudly"
+              File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |f| f.puts "published=false" }
+              exit 0
+            end
+            actual = row.dig("runtime_requirement", "constraint")
+            if actual != constraint
+              puts "::notice::#{name}@#{ver} published with runtime constraint \"#{actual}\" but the recipe'"'"'s default line wants \"#{constraint}\" — mid-flip skew; the re-cut tag re-publishes the row, skipping the default-line dogfood legs loudly"
+              File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |f| f.puts "published=false" }
+              exit 0
+            end
+            puts "#{name}@#{ver} is in the published registry on the recipe'"'"'s default line (#{constraint}) — the default-line legs run"
+            File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |f| f.puts "published=true" }
+          ' "$RUNNER_TEMP/registry.yaml" "$PKG_NAME" "$PAYLOAD_VERSION" "$RUBY_CONSTRAINT"
 
   dogfood:
     name: ${{ matrix.triplet }}
