@@ -47,8 +47,8 @@
 # Produces: $OUT/metanorma-<payload-version>-<asset-platform>.tfs
 # (+ manifest yaml), the manifest EMBEDDED at /__tpkg__/manifest.yaml
 # (tier 1, authoritative). <payload-version> is the registry version entry
-#: the bare upstream version on the default line (1.16.9),
-# "<upstream>-ruby<line>" on the others (1.16.9-ruby4.0) — one upstream
+#: the bare upstream version on the default line (1.17.0),
+# "<upstream>-ruby<line>" on the others (1.17.0-ruby3.3) — one upstream
 # version, one registry entry per line, chosen by the user through the
 # spec 07 §2.1 version chain.
 #

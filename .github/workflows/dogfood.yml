@@ -19,13 +19,13 @@ name: dogfood
 #     phase W2) and the build-payload windows boot smoke is now ENFORCED
 #     against it (tools/smoke_verdict flipped fail-closed).
 #
-# The ruby axis: the dogfood-ruby40 job below is the 4.0
-# flavor's slim proof — install metanorma@1.17.0-ruby4.0 fresh, run
+# The ruby axis: the dogfood-ruby33 job below is the 3.3
+# flavor's slim proof — install metanorma@1.17.0-ruby3.3 fresh, run
 # `metanorma version` through the version chain's env link
-# (TEBAKO_METANORMA_VERSION), and force the ABI guard: the 4.0 flavor
-# pinned onto the 3.3-line runtime must fail with spec 28 §8's named
+# (TEBAKO_METANORMA_VERSION), and force the ABI guard: the 3.3 flavor
+# pinned onto the 4.0-line runtime must fail with spec 28 §8's named
 # error, never a segfault. The job SKIPS (loudly, via the
-# ruby40-published gate) until the first dual-line tag publishes the
+# ruby33-published gate) until the first dual-line tag publishes the
 # flavor — the registries it rides are the PUBLISHED ones, and this
 # wiring lands before that tag by construction.
 #
@@ -401,9 +401,9 @@ jobs:
           # a moving line (the resolver's last resort), the install is not.
           TEBAKO_METANORMA_VERSION="$PKG_VERSION" metanorma version | grep -E "Metanorma::Cli $PKG_VERSION"
 
-  ruby40-published:
-    name: ruby 4.0 flavor published?
-    # Gate for the dogfood-ruby40 leg: the flavor exists only after the
+  ruby33-published:
+    name: ruby 3.3 flavor published?
+    # Gate for the dogfood-ruby33 leg: the flavor exists only after the
     # first dual-line tag's publish lands the registry entry. A SKIP (the
     # dependent job stays skipped) is the honest pre-publish state — never
     # a red leg for an artifact nobody could have published yet.
@@ -415,7 +415,7 @@ jobs:
       - id: probe
         run: |
           set -euo pipefail
-          eval "$(ruby tools/pins.rb macos-arm64 --ruby-line 4.0 | grep -E '^export (PAYLOAD_VERSION|PKG_NAME)=')"
+          eval "$(ruby tools/pins.rb macos-arm64 --ruby-line 3.3 | grep -E '^export (PAYLOAD_VERSION|PKG_NAME)=')"
           url="https://raw.githubusercontent.com/tebako-packages/metanorma/main/tpkg-registry.yaml"
           # A fetch failure is NOT absence: raw's edge cache/transient
           # errors must red the gate, never silently skip the legs (the
@@ -423,17 +423,17 @@ jobs:
           # fetch while the registry was untouched since 07:26).
           body=$(curl -sfL --retry 4 --retry-all-errors --retry-delay 5 "$url")             || { echo "::error::registry fetch failed ($url) — the gate cannot decide; failing loudly, retry the job"; exit 1; }
           if printf '%s' "$body" | grep -q "version: '$PAYLOAD_VERSION'\|version: \"$PAYLOAD_VERSION\"\|version: $PAYLOAD_VERSION"; then
-            echo "$PKG_NAME@$PAYLOAD_VERSION is in the published registry — the 4.0 leg runs"
+            echo "$PKG_NAME@$PAYLOAD_VERSION is in the published registry — the 3.3 leg runs"
             echo "published=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::$PKG_NAME@$PAYLOAD_VERSION not in the published registry yet — the first dual-line tag publishes it; skipping the 4.0 dogfood leg loudly"
+            echo "::notice::$PKG_NAME@$PAYLOAD_VERSION not in the published registry yet — the first dual-line tag publishes it; skipping the 3.3 dogfood leg loudly"
             echo "published=false" >> "$GITHUB_OUTPUT"
           fi
 
-  dogfood-ruby40:
-    name: ruby4.0 flavor (${{ matrix.plat }})
-    needs: ruby40-published
-    if: needs.ruby40-published.outputs.published == 'true'
+  dogfood-ruby33:
+    name: ruby3.3 flavor (${{ matrix.plat }})
+    needs: ruby33-published
+    if: needs.ruby33-published.outputs.published == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -444,12 +444,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Every version flows from Tebakofile (tools.release +
-      # upstream.version + build.runtime.lines."4.0") — the workflow
-      # carries no literals. PAYLOAD_VERSION here is the 4.0 flavor's
-      # registry entry (1.17.0-ruby4.0).
-      - name: Read the pins (Tebakofile is the SSOT — ruby line 4.0)
+      # upstream.version + build.runtime.lines."3.3") — the workflow
+      # carries no literals. PAYLOAD_VERSION here is the 3.3 flavor's
+      # registry entry (1.17.0-ruby3.3).
+      - name: Read the pins (Tebakofile is the SSOT — ruby line 3.3)
         run: |
-          ruby tools/pins.rb --release-only --ruby-line 4.0 >> "$GITHUB_ENV"
+          ruby tools/pins.rb --release-only --ruby-line 3.3 >> "$GITHUB_ENV"
 
       - name: Stage the spawned-runtime mirror (java + python legs)
         env:
@@ -488,7 +488,7 @@ jobs:
           grep "  $jexe\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
           grep "  $jexe\.tfs\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
 
-      - name: Install CLI, add registry, install the 4.0 flavor
+      - name: Install CLI, add registry, install the 3.3 flavor
         # Same wiring as the slim leg (the spawned-edge prefs + the
         # combined mirror at INSTALL time only — the mirror is one base
         # for ALL engines and must never reach a dispatch; the one-stop
@@ -517,11 +517,11 @@ jobs:
             "$JAVA_VERSION" "$JAVA_TEBAKO" "$PYTHON_VERSION" "$PYTHON_TEBAKO" "$RUBY_V" "$RUNTIME_TEBAKO" >> "$HOME/.tebako/config.yaml"
           TEBAKO_RUNTIME_MIRROR="file://${{ runner.temp }}/dogfood-mirror" tebako install "metanorma@$PAYLOAD_VERSION"
 
-      - name: ABI guard — the 4.0 flavor refuses a 3.3-line runtime
-        # Force the wrong ABI line BEFORE any 4.0 runtime is cached (the
+      - name: ABI guard — the 3.3 flavor refuses a 4.0-line runtime
+        # Force the wrong ABI line BEFORE any 3.3 runtime is cached (the
         # install pre-stages only the spawned java/python runtimes): pin
-        # the ruby runtime preference to the default (3.3) line —
-        # recipe-sourced via pins.rb — and dispatch the 4.0 flavor with
+        # the ruby runtime preference to the default (4.0) line —
+        # recipe-sourced via pins.rb — and dispatch the 3.3 flavor with
         # TEBAKO_OFFLINE=1 so no download can rescue the resolution. The
         # pref-vs-constraint conflict must produce the shim's named ABI
         # refusal (spec 05 §5 + spec 28: a named error, never a segfault).
@@ -532,13 +532,13 @@ jobs:
         # compatible runtime wins over the preference — observed locally —
         # which is why this step must precede the version step.) The config
         # rides a save/restore so the version step runs with the
-        # recipe-pinned 4.0-line pref.
+        # recipe-pinned 3.3-line pref.
         run: |
           set -euo pipefail
-          eval "$(ruby tools/pins.rb macos-arm64 --ruby-line 3.3 | grep -E '^export (RUBY_V|RUNTIME_TEBAKO)=')"
+          eval "$(ruby tools/pins.rb macos-arm64 --ruby-line 4.0 | grep -E '^export (RUBY_V|RUNTIME_TEBAKO)=')"
           cfg="$HOME/.tebako/config.yaml"
           cp "$cfg" "$RUNNER_TEMP/config.yaml.bak"
-          # swap the install-time 4.0-line pref for the 3.3 pin — appending
+          # swap the install-time 3.3-line pref for the 4.0 pin — appending
           # a second `ruby:` key is a YAML duplicate (fail-closed parse)
           awk '/^  ruby:$/{skip=3} skip>0{skip--; next} {print}' "$cfg" > "$cfg.swap" && mv "$cfg.swap" "$cfg"
           printf '  ruby:\n    version: "%s"\n    tebako: "%s"\n' "$RUBY_V" "$RUNTIME_TEBAKO" >> "$cfg"
@@ -549,23 +549,23 @@ jobs:
           set -e
           cp "$RUNNER_TEMP/config.yaml.bak" "$cfg"
           cat "$RUNNER_TEMP/abi-guard.log"
-          [ "$rc" -ne 0 ] || { echo "FAIL: the 4.0 flavor RAN with a 3.3-line runtime preference — the ABI guard is broken"; exit 1; }
+          [ "$rc" -ne 0 ] || { echo "FAIL: the 3.3 flavor RAN with a 4.0-line runtime preference — the ABI guard is broken"; exit 1; }
           grep -qF "runtime preference ruby@$RUBY_V does not satisfy" "$RUNNER_TEMP/abi-guard.log" \
             && grep -qF "rebuild the payload against a newer ABI line" "$RUNNER_TEMP/abi-guard.log" \
             || { echo "FAIL: refused, but not with the shim's named ABI refusal (rc=$rc)"; exit 1; }
-          echo "ABI guard OK (rc=$rc): the 4.0 flavor refused the 3.3-line preference with the named ABI refusal"
+          echo "ABI guard OK (rc=$rc): the 3.3 flavor refused the 4.0-line preference with the named ABI refusal"
 
-      - name: metanorma version through the 4.0 flavor
+      - name: metanorma version through the 3.3 flavor
         # The version chain's env link (spec 07 §2.1, first hit wins)
-        # selects the flavor; the recipe-pinned 4.0-line pref — validated
-        # against the flavor's ~> 4.0.0 constraint (the ABI step above
-        # proved the gate) — resolves the 4.0-line runtime, never the 3.3
+        # selects the flavor; the recipe-pinned 3.3-line pref — validated
+        # against the flavor's ~> 3.3.0 constraint (the ABI step above
+        # proved the gate) — resolves the 3.3-line runtime, never the 4.0
         # line: the two flavors coexist in one store, each bound to its
         # own ABI line.
         run: |
           set -euo pipefail
           export PATH="$HOME/.tebako/shims:$PATH"
           TEBAKO_METANORMA_VERSION="$PAYLOAD_VERSION" metanorma version | grep -E "Metanorma::Cli $PKG_VERSION"
-          # the resolved runtime must be the 4.0 line
-          ls -d "$HOME"/.tebako/runtimes/ruby-4.0.* >/dev/null
-          echo "4.0 flavor OK on a 4.0-line runtime"
+          # the resolved runtime must be the 3.3 line
+          ls -d "$HOME"/.tebako/runtimes/ruby-3.3.* >/dev/null
+          echo "3.3 flavor OK on a 3.3-line runtime"

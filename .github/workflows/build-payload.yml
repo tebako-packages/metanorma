@@ -25,7 +25,7 @@ name: build-payload
 # ruby lines (build.runtime.lines — the keys are mirrored by the matrix;
 # every VALUE still flows from Tebakofile via tools/pins.rb --ruby-line).
 # One upstream version, one registry entry per line: the default line
-# publishes 1.17.0, the 4.0 line publishes 1.17.0-ruby4.0 — both from one
+# publishes 1.17.0, the 3.3 line publishes 1.17.0-ruby3.3 — both from one
 # tag, the publish job upserting the default line FIRST (tebako-cli sets
 # the registry `default:` only when absent).
 on:
@@ -53,7 +53,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby_line: ["3.3", "4.0"]   # the keys of Tebakofile build.runtime.lines
+        ruby_line: ["4.0", "3.3"]   # the keys of Tebakofile build.runtime.lines
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -162,7 +162,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby_line: ["3.3", "4.0"]   # the keys of Tebakofile build.runtime.lines
+        ruby_line: ["4.0", "3.3"]   # the keys of Tebakofile build.runtime.lines
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -330,7 +330,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby_line: ["3.3", "4.0"]   # the keys of Tebakofile build.runtime.lines
+        ruby_line: ["4.0", "3.3"]   # the keys of Tebakofile build.runtime.lines
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -538,7 +538,7 @@ jobs:
         # default line first and tebako-cli's upsert sets the registry
         # `default:` only when absent — the default line's entry must be
         # the first to land. Each line's PAYLOAD_VERSION (1.17.0 /
-        # 1.17.0-ruby4.0) and its per-line artifact names flow from
+        # 1.17.0-ruby3.3) and its per-line artifact names flow from
         # tools/pins.rb --ruby-line.
         #
         # Signing (Tebakofile's signing: block; spec 09 §9): SIGNING_KEYID

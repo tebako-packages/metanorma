@@ -566,14 +566,18 @@ sha256 `15140aa885409e86de4ba4c3b1b175a2097b56efcc3da153ab3cb1b671594c1f`
 ## 9. The ruby axis (roadmap 77): one recipe, two payload flavors
 
 The feedstock builds the payload per RUBY LINE (`build.runtime.lines`):
-the default line `3.3` (ruby 3.3.12, ABI `~> 3.3.0`) and the `4.0` line
-(ruby 4.0.6, ABI `~> 4.0.0`), sharing the runtime release line
-(`build.runtime.tebako: 0.16.22`). The line key drives everything
+the default line `4.0` (ruby 4.0.6, ABI `~> 4.0.0`) and the `3.3` line
+(ruby 3.3.12, ABI `~> 3.3.0`), sharing the runtime release line
+(`build.runtime.tebako: 0.16.24`). The default was `3.3` through the
+1.16.9 era and flipped to `4.0` on the 1.17.0 re-cut (2026-09-27): ruby
+4.0 is measurably faster and both lines had been dual-published and
+dogfood-gated since 1.16.9, so the bare version now rides 4.0.6 and the
+3.3 flavor carries the suffix. The line key drives everything
 per-line — the staging/exec runtime version, the entrypoint ABI
 constraint (the manifest's `@@CONSTRAINT@@` placeholder, filled per
 line at build), the mkmf SDK pin, the closure file, and the registry
 version entry: the default line keeps the bare upstream version
-(`1.16.9`), other lines suffix (`1.16.9-ruby4.0`). One upstream version,
+(`1.17.0`), other lines suffix (`1.17.0-ruby3.3`). One upstream version,
 one registry entry per line; the user picks through the spec 07 §2.1
 version chain (`TEBAKO_METANORMA_VERSION` / `.tebako-tools.yaml` /
 `defaults:`), and a native-extension payload stays locked to its ABI
@@ -825,7 +829,9 @@ Notable graph moves (fresh per-line resolutions, 310 specs each):
   metanorma 2.5.5 → **2.5.4** (§3 pins, unchanged).
 
 Closures: six files, **268 gems per line per triplet** (was 260 at
-1.16.9) — `closure/1.17.0[-ruby4.0]-{aarch64-macos,x86_64-linux-gnu,x86_64-windows-ucrt}.txt`,
+1.16.9) — `closure/1.17.0[-ruby3.3]-{aarch64-macos,x86_64-linux-gnu,x86_64-windows-ucrt}.txt`
+(the 4.0-default flip renamed the sets; the two lines' contents resolved
+identically at 1.17.0, verified by diff),
 all rows sha256-verified against rubygems `/info` at generation.
 
 Also in this roll: stale comment cleanup — the windows leg has

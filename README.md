@@ -32,11 +32,12 @@ lookup), so installing it exercises the full dispatch chain.
 
 ## Why triplet-bound
 
-metanorma's closure (260 gems) contains native extensions: nokogiri, ffi,
+metanorma's closure (268 gems) contains native extensions: nokogiri, ffi,
 libpng, parsanol, sqlite3 (precompiled per platform) and brotli, ox, oga (+ ruby-ll),
 psych, websocket-driver (compiled per triplet during the build). The payload ships
-per-triplet and its runtime requirement is the ABI line `~> 3.3.0`, not a
-pure-ruby range. Details: `docs/build-notes.md`.
+per-triplet and per ruby ABI line: the bare `1.17.0` entry rides ruby 4.0
+(`~> 4.0.0`), and the conservative `1.17.0-ruby3.3` flavor rides ruby 3.3
+(`~> 3.3.0`) — an ABI line, not a pure-ruby range. Details: `docs/build-notes.md`.
 
 ## Using
 

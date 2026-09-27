@@ -56,7 +56,7 @@ build:
     # The ruby axis (roadmap 77): ONE upstream version publishes ONE
     # registry version entry per line — the default line keeps the bare
     # upstream version (1.17.0), every other line suffixes "-ruby<line>"
-    # (1.17.0-ruby4.0). Users choose through the existing spec 07 §2.1
+    # (1.17.0-ruby3.3). Users choose through the existing spec 07 §2.1
     # version chain; each flavor's entrypoint runtime_requirement fills
     # from the line's `constraint` (spec 28 §8's native law locks each
     # flavor to its own ABI line — never cross-paired). Per line:
@@ -69,7 +69,12 @@ build:
     #                library from the facet DLL's own export table with
     #                dlltool (docs/build-notes.md § Windows). sha256 == the
     #                source-factory SSOT (tamatebako/ruby versions.yml).
-    default_line: "3.3"
+    default_line: "4.0"      # 2026-09-27 flip: ruby 4.0 is measurably faster
+                             # and the line is proven (dual-line publish since
+                             # 1.16.9, both ABI lines dogfood-gated) — the bare
+                             # 1.17.0 entry now rides 4.0.6; the 3.3 flavor
+                             # keeps publishing as 1.17.0-ruby3.3 for the
+                             # conservative chain.
     lines:
       "3.3":
         version: "3.3.12"
@@ -260,7 +265,7 @@ provides:
   # mirrors into the registry. Do NOT grow this list here.
   # identity.version and each entrypoint's runtime_requirement are PER-LINE
   # (roadmap 77): they flow from build.runtime.lines (version →
-  # 1.17.0 / 1.17.0-ruby4.0, constraint → the line's ABI line) through
+  # 1.17.0 / 1.17.0-ruby3.3, constraint → the line's ABI line) through
   # tools/build's @@PAYLOAD_VERSION@@/@@CONSTRAINT@@ fill — one owner, no
   # second copy here.
   entrypoints:
