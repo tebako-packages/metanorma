@@ -4,7 +4,7 @@ identity:
   schema_version: 1
   kind: app
   name: "metanorma"
-  version: "@@PAYLOAD_VERSION@@"          # the registry version entry — filled by tools/build (roadmap 77: 1.17.0 / 1.17.0-ruby4.0)
+  version: "@@PAYLOAD_VERSION@@"          # the registry version entry — filled by tools/build (roadmap 77: 1.17.0 / 1.17.0-ruby3.3)
   producer: {tool: feedstock-build, tool_version: "1"}
   created: "2026-07-27T00:00:00Z"          # pinned at release time
   source:
