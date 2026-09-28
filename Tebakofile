@@ -16,8 +16,16 @@ build:
   system: gemstage         # stage a GEM_HOME closure with a tebako runtime's own ruby
   runtime:
     engine: ruby
-    tebako: "0.16.24"      # runtime release line (image-era; the pinned CLI
+    tebako: "0.16.30"      # runtime release line (image-era; the pinned CLI
                            # refuses pre-era releases by contract, exit 75).
+                           # 0.16.30 re-cuts the catalog on ruby source
+                           # v0.2.38 (the spawn argv[0] fidelity fix,
+                           # ruby#121): a spawned subprocess now sees the
+                           # entrypoint's argv[0] instead of the loader
+                           # path — jing-driven compiles stop aborting
+                           # (tebako#669 bug 2; proven green locally on a
+                           # 3.3.12/0.16.30 build pre-publish, then on the
+                           # full catalog run).
                            # 0.16.24 re-cuts the signed line on the tebako
                            # v2.8.7 link unit (the windows 0xC0000139
                            # mount-boundary repair) — the first line whose
