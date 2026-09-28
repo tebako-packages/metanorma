@@ -184,15 +184,15 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: metanorma-1.17.0-macos-arm64.tfs
-        sha256: bb0448bb8b86201857bd869459c735d083acffd03dd4a85cb0fc263f8e8da173
+        sha256: '018012581363d4e31cf4dc057df77c659399410cc07ca52c1e024706acd7e627'
       x86_64-linux-gnu:
         artifact: metanorma-1.17.0-linux-gnu-x86_64.tfs
-        sha256: 35b9cfb1a69566020cba5d6aef0b2410b38f785fbb288adb4f09deed4dd5af8c
+        sha256: a8fa4de02c907388cc962529f722cd1eb9010b37e31646e2e08c6890fe5b2902
       x86_64-windows-ucrt:
         artifact: metanorma-1.17.0-windows-ucrt64.tfs
-        sha256: f66a767c4e3fd03cfda35f25259e74ebc69ef99836b75d3da1d16cdb9d288b78
+        sha256: ca82fa714f0b057b647018733f1359878b5f7f40485d13192446752acd5ac589
     release:
-      ref: tfs:github:tebako-packages/metanorma:1.17.0-2
+      ref: tfs:github:tebako-packages/metanorma:1.17.0-3
     signature:
       keyid: efc3c250f7862a48
       asc: metanorma-1.17.0-macos-arm64.tfs.asc
@@ -272,15 +272,15 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: metanorma-1.17.0-ruby3.3-macos-arm64.tfs
-        sha256: 661ba25d087660e09b6ed0ab49315ba038662a872014ea97ea16e978167a4baa
+        sha256: b8f21e08aec778edac5242629449e9674c0fa47eb391ca788bb23b2b73dbbdba
       x86_64-linux-gnu:
         artifact: metanorma-1.17.0-ruby3.3-linux-gnu-x86_64.tfs
-        sha256: 6cd90a15cf4a7dbef84d1d9eebfdae8da8344c61ffcb670ca919420042e5664a
+        sha256: f2cde156d4391129250b00b6edf9638f449a2bd6867ab5d6dd0525f59564d86d
       x86_64-windows-ucrt:
         artifact: metanorma-1.17.0-ruby3.3-windows-ucrt64.tfs
-        sha256: 0ba1cf7d09ee7989dc7b0d2b4b5e4e09baf68844950212d6413cbcafc5181b26
+        sha256: 7758be4195f9e6b666a480b1fef1422ab5506ea402287631924595b0e35ecc28
     release:
-      ref: tfs:github:tebako-packages/metanorma:1.17.0-2
+      ref: tfs:github:tebako-packages/metanorma:1.17.0-3
     signature:
       keyid: efc3c250f7862a48
       asc: metanorma-1.17.0-ruby3.3-macos-arm64.tfs.asc
@@ -366,6 +366,10 @@ payloads:
     platforms: universal
     release:
       ref: tfs:github:tamatebako/tebako-runtime-openjdk:v2.7.0
+  - version: 21.0.12-2.8.21
+    platforms: universal
+    release:
+      ref: tfs:github:tamatebako/tebako-runtime-openjdk:v2.8.21
 - name: tebako-runtime-python
   kind: runtime
   engine: python
@@ -401,6 +405,10 @@ payloads:
     platforms: universal
     release:
       ref: tfs:github:tamatebako/tebako-runtime-python:v0.1.3
+  - version: 3.14.7-0.2.7
+    platforms: universal
+    release:
+      ref: tfs:github:tamatebako/tebako-runtime-python:v0.2.7
 - name: inkscape
   kind: toolkit
   versions:
@@ -408,15 +416,15 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: inkscape-1.4.3-macos-arm64.tfs
-        sha256: 9cc56f85ff9c865a6eb0532d744cb8fe271895bab3bbe3c6a9aef1cc2c72a830
+        sha256: 5211a801149afe317e45fd3ddaf95bf177dabeb67c972e05326ae4a9b6e1805d
       x86_64-linux-gnu:
         artifact: inkscape-1.4.3-linux-gnu-x86_64.tfs
-        sha256: c1163508e1b7c00eb5916cbbb50cb0334a96d8c1aa93579f1f0700d3b0cd64a0
+        sha256: e59caced0ff3de4d788a023999062bbb11fb3c13d04afcfbbd5d51f1cd86f329
       x86_64-windows-ucrt:
         artifact: inkscape-1.4.3-windows-ucrt64.tfs
-        sha256: 014c8fb76fd123cb1b5fc50c3a99c236c2e0f0454bbadb32ea9346eb68a3422d
+        sha256: 1c654f366121eb09c1029e5fa887e75e4348ca5db6723b69de0ab5252a051494
     release:
-      ref: tfs:github:tebako-packages/inkscape:1.4.3-3
+      ref: tfs:github:tebako-packages/inkscape:1.4.3-4
     signature:
       keyid: efc3c250f7862a48
       asc: inkscape-1.4.3-macos-arm64.tfs.asc
