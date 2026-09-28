@@ -105,6 +105,10 @@ CLOSURE="$FEEDSTOCK/closure/$PAYLOAD_VERSION-$TRIPLET.txt"
 
 SDK_URL="${SDK_URL:-$(recipe build runtime lines "$RUBY_LINE" sdk url)}"
 SDK_SHA256="${SDK_SHA256:-$(recipe build runtime lines "$RUBY_LINE" sdk sha256)}"
+# The CLI's SDK provisioning fetches tfs-ruby-<ver>-src.tar.gz from this
+# source-factory release (Tebakofile-pinned; the env passthrough name is
+# the CLI's own override knob).
+export TEBAKO_SDK_SRC_RELEASE="${TEBAKO_SDK_SRC_RELEASE:-$(recipe build runtime sdk_src_release)}"
 LIBYAML_URL="${LIBYAML_URL:-$(recipe build libyaml url)}"
 LIBYAML_SHA256="${LIBYAML_SHA256:-$(recipe build libyaml sha256)}"
 

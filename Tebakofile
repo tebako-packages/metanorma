@@ -84,9 +84,16 @@ build:
     #                source-factory SSOT (tamatebako/ruby versions.yml).
     default_line: "4.0"      # 2026-09-27 flip: ruby 4.0 is measurably faster
                              # and the line is proven (dual-line publish since
-                             # 1.16.9, both ABI lines dogfood-gated) — the bare\n                             # 1.17.0 entry now rides 4.0.7; the 3.3 flavor
+                             # 1.16.9, both ABI lines dogfood-gated) — the bare
+                             # 1.17.0 entry now rides 4.0.7; the 3.3 flavor
                              # keeps publishing as 1.17.0-ruby3.3 for the
                              # conservative chain.
+    # The CLI's SDK provisioning (tebako-cli sdk.rs) fetches the patched
+    # source tarball per ruby version from THIS source-factory release —
+    # 4.0.7's src first ships in v0.2.36; v0.2.38 is the current line.
+    # (The CLI's built-in default predates 4.0.7; this pin is the
+    # feedstock's SSOT until a product release re-floors the default.)
+    sdk_src_release: "v0.2.38"
     lines:
       "3.3":
         version: "3.3.12"
