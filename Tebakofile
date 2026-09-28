@@ -84,8 +84,7 @@ build:
     #                source-factory SSOT (tamatebako/ruby versions.yml).
     default_line: "4.0"      # 2026-09-27 flip: ruby 4.0 is measurably faster
                              # and the line is proven (dual-line publish since
-                             # 1.16.9, both ABI lines dogfood-gated) — the bare
-                             # 1.17.0 entry now rides 4.0.6; the 3.3 flavor
+                             # 1.16.9, both ABI lines dogfood-gated) — the bare\n                             # 1.17.0 entry now rides 4.0.7; the 3.3 flavor
                              # keeps publishing as 1.17.0-ruby3.3 for the
                              # conservative chain.
     lines:
@@ -96,11 +95,11 @@ build:
           url: "https://cache.ruby-lang.org/pub/ruby/3.3/ruby-3.3.12.tar.gz"
           sha256: "b06d63beae271933033e27f0a389bc582a009e7845357d44365c39de525a051b"
       "4.0":
-        version: "4.0.6"
+        version: "4.0.7"
         constraint: "~> 4.0.0"
         sdk:
-          url: "https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.6.tar.gz"
-          sha256: "837d299e8f7ddf2be31a229a7a7e019d354979825117989acb3b32b1a9be262a"
+          url: "https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.7.tar.gz"
+          sha256: "911ace20f90d068ca0e4dda6d0e4f0f81e52e52f2dd4f4004c721e253412e82d"
   # libyaml for psych 5.2.6 (psych ships no precompiled gems and vendors no
   # libyaml; see docs/build-notes.md §3). mac leg: --with-libyaml-source-dir
   # inside the gem build; windows leg: host-built static libyaml + dir_config
