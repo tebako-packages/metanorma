@@ -182,20 +182,23 @@ case "$TRIPLET" in
     MANIFEST_RUBY="$SHIM"
     ;;
   x86_64-windows-ucrt)
-    # Direct fetch, verified against the release's SHA256SUMS.txt (the
-    # resolver's own fallback index; tmp+rename, a partial download never
-    # poisons the cache). The leg needs no shim (there is none on
-    # Windows), so the direct fetch stays the simplest path. 0.16.3+:
-    # the windows runtime is a stub exe + the ruby DLL facet — the exe
-    # does not start without the facet next to it under the manifest's
-    # dll.install_as name (the SSOT for the facet name).
+    # Direct fetch, verified against the shard's pins (the resolver's own
+    # fallback index; tmp+rename, a partial download never poisons the
+    # cache). The leg needs no shim (there is none on Windows), so the
+    # direct fetch stays the simplest path. 0.16.3+: the windows runtime
+    # is a stub exe + the ruby DLL facet — the exe does not start without
+    # the facet next to it under the manifest's dll.install_as name (the
+    # SSOT for the facet name). Bundle era: the members (exe, env image,
+    # dll) ride one <stem>.tar.gz per spec 36; per-file assets are no
+    # longer published.
     RT_RELEASE_URL="https://github.com/tamatebako/tebako-runtime-ruby/releases/download/v$TEBAKO_VERSION"
     RT_ASSET="tebako-runtime-$TEBAKO_VERSION-$RUBY_V-$RT_PLATFORM"
     mkdir -p "$RT_DIR"
     # The shard model: the per-stem <stem>.manifest.json is the SSOT for
-    # the facet's install name; per-asset .sha256 sidecars are the trust
-    # anchor. (The monolithic manifest.json / SHA256SUMS.txt stopped being
-    # release assets on the 0.16.24 line.)
+    # the facet's install name AND the bundle's sha256 pin; the bundle's
+    # .sha256 sidecar cross-checks the shard, the fetched bytes check
+    # against the sidecar, and the bundle's own SHA256SUMS (anchored by
+    # the bundle pin) pins every member.
     curl -sL -o "$WORK/shard.json" "$RT_RELEASE_URL/$RT_ASSET.manifest.json"
     grep -q '"dll"' "$WORK/shard.json" \
       || { echo "no dll facet in shard $RT_ASSET.manifest.json (or the shard 404'd)"; exit 1; }
@@ -208,20 +211,34 @@ case "$TRIPLET" in
     [ -n "$SHARD_INSTALL_AS" ] || { echo "the shard carries no dll.install_as"; exit 1; }
     [ "$SHARD_INSTALL_AS" = "$DLL_INSTALL_AS" ] \
       || { echo "dll facet drift: shard install_as=$SHARD_INSTALL_AS, derived $DLL_INSTALL_AS"; exit 1; }
-    for f in "$RT_ASSET" "$RT_ASSET.tfs" "$RT_ASSET.dll"; do
-      dst="$f"; [ "$f" = "$RT_ASSET" ] && dst="$f.exe"   # resolver cache naming
-      [ "$f" = "$RT_ASSET.dll" ] && dst="$DLL_INSTALL_AS"
-      if [ ! -f "$RT_DIR/$dst" ]; then
-        curl -sL -o "$RT_DIR/$dst.part" "$RT_RELEASE_URL/$f"
-        curl -sL -o "$WORK/expected.sha" "$RT_RELEASE_URL/$f.sha256"
-        want="$(cut -d' ' -f1 < "$WORK/expected.sha")"
-        [ ${#want} -eq 64 ] || { rm -f "$RT_DIR/$dst.part"; echo "no .sha256 sidecar for $f"; exit 1; }
-        got="$(sha256_file "$RT_DIR/$dst.part")"
-        [ "$got" = "$want" ] || { rm -f "$RT_DIR/$dst.part"; echo "SHA256 MISMATCH $f"; exit 1; }
-        mv "$RT_DIR/$dst.part" "$RT_DIR/$dst"
-      fi
-    done
-    echo "runtime verified against tebako-runtime-ruby v$TEBAKO_VERSION shard sidecars (exe + image + $DLL_INSTALL_AS)"
+    if [ ! -f "$RT_DIR/$RT_ASSET.exe" ] || [ ! -f "$RT_DIR/$RT_ASSET.tfs" ] || [ ! -f "$RT_DIR/$DLL_INSTALL_AS" ]; then
+      grep -q '"bundle"' "$WORK/shard.json" \
+        || { echo "no bundle facet in shard $RT_ASSET.manifest.json — pre-bundle release?"; exit 1; }
+      SHARD_BUNDLE_PIN="$(tr -d ' \t\r\n' < "$WORK/shard.json" | sed -n 's/.*"bundle":{[^}]*"sha256":"\([^"]*\)".*/\1/p')"
+      [ ${#SHARD_BUNDLE_PIN} -eq 64 ] || { echo "the shard's bundle facet carries no sha256 pin"; exit 1; }
+      curl -sL -o "$WORK/$RT_ASSET.tar.gz" "$RT_RELEASE_URL/$RT_ASSET.tar.gz"
+      curl -sL -o "$WORK/expected.sha" "$RT_RELEASE_URL/$RT_ASSET.tar.gz.sha256"
+      want="$(cut -d' ' -f1 < "$WORK/expected.sha")"
+      [ ${#want} -eq 64 ] || { rm -f "$WORK/$RT_ASSET.tar.gz"; echo "no .sha256 sidecar for $RT_ASSET.tar.gz"; exit 1; }
+      [ "$want" = "$SHARD_BUNDLE_PIN" ] \
+        || { rm -f "$WORK/$RT_ASSET.tar.gz"; echo "bundle pin drift: sidecar $want vs shard $SHARD_BUNDLE_PIN"; exit 1; }
+      got="$(sha256_file "$WORK/$RT_ASSET.tar.gz")"
+      [ "$got" = "$want" ] || { rm -f "$WORK/$RT_ASSET.tar.gz"; echo "SHA256 MISMATCH $RT_ASSET.tar.gz"; exit 1; }
+      rm -rf "$WORK/bundle-x"; mkdir -p "$WORK/bundle-x"
+      tar xzf "$WORK/$RT_ASSET.tar.gz" -C "$WORK/bundle-x"
+      # spec 36's member grammar: exe + image + dll + SHA256SUMS; the
+      # members verify against the bundle's own sums.
+      ( cd "$WORK/bundle-x" && { sha256sum -c SHA256SUMS 2>/dev/null || shasum -a 256 -c SHA256SUMS; } >/dev/null ) \
+        || { echo "bundle member verification failed ($RT_ASSET.tar.gz)"; exit 1; }
+      # Place with the resolver's cache naming: the exe gains .exe, the
+      # dll installs under its PE name (dll.install_as).
+      for pair in "$RT_ASSET:$RT_ASSET.exe" "$RT_ASSET.tfs:$RT_ASSET.tfs" "$RT_ASSET.dll:$DLL_INSTALL_AS"; do
+        src="${pair%%:*}"; dst="${pair##*:}"
+        [ -f "$WORK/bundle-x/$src" ] || { echo "bundle member missing: $src"; exit 1; }
+        mv "$WORK/bundle-x/$src" "$RT_DIR/$dst.part" && mv "$RT_DIR/$dst.part" "$RT_DIR/$dst"
+      done
+    fi
+    echo "runtime verified against tebako-runtime-ruby v$TEBAKO_VERSION shard bundle (exe + image + $DLL_INSTALL_AS)"
     RT_EXE="$RT_EXE.exe"
     MANIFEST_RUBY="ruby"
     ;;
