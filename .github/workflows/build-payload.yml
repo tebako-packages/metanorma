@@ -1361,3 +1361,15 @@ jobs:
               --body "Automated registry entry for ${{ github.ref_name }} (the build-payload publish job; main is protected, so the registry lands by PR)."
           fi
           gh pr merge --auto --squash "$branch" || gh pr merge --squash "$branch"
+
+  # Immediacy dispatch (spec 04 §2's freshness): on tags, after the
+  # publish job lands, poke the official aggregate so its regeneration
+  # does not wait for the 6-hourly schedule. The reusable workflow waits
+  # for THIS repo's registry PR to hit main first, then fires
+  # repository_dispatch: feedstock-published on tebako-packages/registry.
+  # Never fatal — the aggregate's schedule is the backstop.
+  ping-registry:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [release]
+    uses: tebako-packages/registry/.github/workflows/ping-aggregate.yml@main
+    secrets: inherit
