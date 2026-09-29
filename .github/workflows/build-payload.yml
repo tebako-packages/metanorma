@@ -1093,7 +1093,12 @@ jobs:
 
   release:
     name: publish
-    if: startsWith(github.ref, 'refs/tags/')
+    # tebako#686 follow-on (same mechanism as the legs' heads): a plain
+    # boolean here gets an implicit success() prepended, and the skip of
+    # the PR-only changes job stays sticky through the green legs — the
+    # job skipped on the 1.17.0-4 tag with all fourteen legs success.
+    # Naming a status function keeps the tag gate without inheriting it.
+    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/') }}
     # All seven legs publish: the windows boot-smoke + html-xml gate
     # proved green on the 0.16.6 line (PR #22, head 37396c0 — the
     # tebako#437 SSL_CERT_FILE workaround), so the wiring (needs +
