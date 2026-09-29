@@ -149,39 +149,29 @@ jobs:
         # python runtime — and TEBAKO_RUNTIME_MIRROR is one base for ALL
         # engines, so the bare JAVA_RELEASES_BASE can no longer serve
         # both. Stage a COMBINED local mirror carrying THIS leg's platform
-        # of each pinned line, every byte cross-checked against the
-        # release's own SHA256SUMS (the same shape as the build-payload
-        # publish job's mirror step).
+        # of each pinned line, every staged byte verified against the
+        # release's sidecars and shard digests (the same shape as the
+        # build-payload publish job's mirror step).
         run: |
           set -euo pipefail
           mirror="${{ runner.temp }}/dogfood-mirror"
           mkdir -p "$mirror/v$JAVA_TEBAKO" "$mirror/v$PYTHON_TEBAKO"
-          jexe="tebako-runtime-$JAVA_TEBAKO-$JAVA_VERSION-${{ matrix.plat }}"
-          for f in manifest.json SHA256SUMS.txt "$jexe" "$jexe.tfs"; do
-            curl -sL --fail -o "$mirror/v$JAVA_TEBAKO/$f" "$JAVA_RELEASES_BASE/v$JAVA_TEBAKO/$f"
-          done
-          # A partial mirror must not advertise bytes it does not carry:
-          # the factory index lists EVERY flavor, and the graalvm sibling's
-          # version (25.x) outranks the temurin pin (21.x) on the payload's
-          # wide constraint — the resolver's newest-satisfying pick would
-          # name files this mirror never staged (the 2.7.0 dogfood 404).
-          # Trim the staged index to the pinned version's entries.
-          jq --arg v "$JAVA_VERSION" '[.[] | select(.java_version == $v)]' \
-            "$mirror/v$JAVA_TEBAKO/manifest.json" > "$mirror/v$JAVA_TEBAKO/.manifest.trim"
-          [ "$(jq length "$mirror/v$JAVA_TEBAKO/.manifest.trim")" -gt 0 ] \
-            || { echo "::error::java mirror trim empty — pin $JAVA_VERSION absent from the factory manifest"; exit 1; }
-          mv "$mirror/v$JAVA_TEBAKO/.manifest.trim" "$mirror/v$JAVA_TEBAKO/manifest.json"
-          # The python factory's release serves per-package manifest
-          # shards + sidecars, no monoliths (the per-leg concurrent
-          # publish): stage + verify + derive the trimmed index via the
-          # shared tool — same selection grammar as the monolith-era trim
-          # (the pin's exact version plus its variant suffixes on THIS
-          # leg's platform).
+          # Both spawned-runtime factories publish the shard model
+          # (per-stem manifest shards + per-asset .sha256 sidecars; the
+          # monolithic manifest.json / SHA256SUMS.txt are gone): stage +
+          # verify + derive the trimmed index via the shared tool — the
+          # pin's exact version plus its variant suffixes on THIS leg's
+          # platform. A partial mirror must not advertise bytes it does
+          # not carry: the factory index spans every flavor, and the
+          # graalvm sibling's version (25.x) outranks the temurin pin
+          # (21.x) on the payload's wide constraint — the resolver's
+          # newest-satisfying pick would name files this mirror never
+          # staged (the 2.7.0 dogfood 404).
+          tools/stage_spawned_mirror "$mirror/v$JAVA_TEBAKO" \
+            "$JAVA_RELEASES_BASE" "$JAVA_TEBAKO" "$JAVA_VERSION" "${{ matrix.plat }}"
           tools/stage_spawned_mirror "$mirror/v$PYTHON_TEBAKO" \
             "$PYTHON_RELEASES_BASE" "$PYTHON_TEBAKO" "$PYTHON_VERSION" "${{ matrix.plat }}"
-          cd "$mirror/v$JAVA_TEBAKO"
-          grep "  $jexe\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
-          grep "  $jexe\.tfs\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+          ls -l "$mirror/v$JAVA_TEBAKO" "$mirror/v$PYTHON_TEBAKO"
 
       - name: Add the closure registries and install metanorma
         # The tebako-packages index (registry-of-registries) is not walked
@@ -353,37 +343,27 @@ jobs:
         # the xml2rfc provider's nested python); TEBAKO_RUNTIME_MIRROR is
         # one base for ALL engines, so stage a combined local mirror (same
         # shape as the full leg / the publish job), every byte
-        # SHA256SUMS-verified.
+        # sidecar-verified.
         run: |
           set -euo pipefail
           mirror="${{ runner.temp }}/dogfood-mirror"
           mkdir -p "$mirror/v$JAVA_TEBAKO" "$mirror/v$PYTHON_TEBAKO"
-          jexe="tebako-runtime-$JAVA_TEBAKO-$JAVA_VERSION-${{ matrix.plat }}"
-          for f in manifest.json SHA256SUMS.txt "$jexe" "$jexe.tfs"; do
-            curl -sL --fail -o "$mirror/v$JAVA_TEBAKO/$f" "$JAVA_RELEASES_BASE/v$JAVA_TEBAKO/$f"
-          done
-          # A partial mirror must not advertise bytes it does not carry:
-          # the factory index lists EVERY flavor, and the graalvm sibling's
-          # version (25.x) outranks the temurin pin (21.x) on the payload's
-          # wide constraint — the resolver's newest-satisfying pick would
-          # name files this mirror never staged (the 2.7.0 dogfood 404).
-          # Trim the staged index to the pinned version's entries.
-          jq --arg v "$JAVA_VERSION" '[.[] | select(.java_version == $v)]' \
-            "$mirror/v$JAVA_TEBAKO/manifest.json" > "$mirror/v$JAVA_TEBAKO/.manifest.trim"
-          [ "$(jq length "$mirror/v$JAVA_TEBAKO/.manifest.trim")" -gt 0 ] \
-            || { echo "::error::java mirror trim empty — pin $JAVA_VERSION absent from the factory manifest"; exit 1; }
-          mv "$mirror/v$JAVA_TEBAKO/.manifest.trim" "$mirror/v$JAVA_TEBAKO/manifest.json"
-          # The python factory's release serves per-package manifest
-          # shards + sidecars, no monoliths (the per-leg concurrent
-          # publish): stage + verify + derive the trimmed index via the
-          # shared tool — same selection grammar as the monolith-era trim
-          # (the pin's exact version plus its variant suffixes on THIS
-          # leg's platform).
+          # Both spawned-runtime factories publish the shard model
+          # (per-stem manifest shards + per-asset .sha256 sidecars; the
+          # monolithic manifest.json / SHA256SUMS.txt are gone): stage +
+          # verify + derive the trimmed index via the shared tool — the
+          # pin's exact version plus its variant suffixes on THIS leg's
+          # platform. A partial mirror must not advertise bytes it does
+          # not carry: the factory index spans every flavor, and the
+          # graalvm sibling's version (25.x) outranks the temurin pin
+          # (21.x) on the payload's wide constraint — the resolver's
+          # newest-satisfying pick would name files this mirror never
+          # staged (the 2.7.0 dogfood 404).
+          tools/stage_spawned_mirror "$mirror/v$JAVA_TEBAKO" \
+            "$JAVA_RELEASES_BASE" "$JAVA_TEBAKO" "$JAVA_VERSION" "${{ matrix.plat }}"
           tools/stage_spawned_mirror "$mirror/v$PYTHON_TEBAKO" \
             "$PYTHON_RELEASES_BASE" "$PYTHON_TEBAKO" "$PYTHON_VERSION" "${{ matrix.plat }}"
-          cd "$mirror/v$JAVA_TEBAKO"
-          grep "  $jexe\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
-          grep "  $jexe\.tfs\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+          ls -l "$mirror/v$JAVA_TEBAKO" "$mirror/v$PYTHON_TEBAKO"
 
       - name: Install CLI, add registry, install metanorma, exec version
         # Same runtime-edge wiring as the full leg: the spawned edges
@@ -482,32 +462,22 @@ jobs:
           set -euo pipefail
           mirror="${{ runner.temp }}/dogfood-mirror"
           mkdir -p "$mirror/v$JAVA_TEBAKO" "$mirror/v$PYTHON_TEBAKO"
-          jexe="tebako-runtime-$JAVA_TEBAKO-$JAVA_VERSION-${{ matrix.plat }}"
-          for f in manifest.json SHA256SUMS.txt "$jexe" "$jexe.tfs"; do
-            curl -sL --fail -o "$mirror/v$JAVA_TEBAKO/$f" "$JAVA_RELEASES_BASE/v$JAVA_TEBAKO/$f"
-          done
-          # A partial mirror must not advertise bytes it does not carry:
-          # the factory index lists EVERY flavor, and the graalvm sibling's
-          # version (25.x) outranks the temurin pin (21.x) on the payload's
-          # wide constraint — the resolver's newest-satisfying pick would
-          # name files this mirror never staged (the 2.7.0 dogfood 404).
-          # Trim the staged index to the pinned version's entries.
-          jq --arg v "$JAVA_VERSION" '[.[] | select(.java_version == $v)]' \
-            "$mirror/v$JAVA_TEBAKO/manifest.json" > "$mirror/v$JAVA_TEBAKO/.manifest.trim"
-          [ "$(jq length "$mirror/v$JAVA_TEBAKO/.manifest.trim")" -gt 0 ] \
-            || { echo "::error::java mirror trim empty — pin $JAVA_VERSION absent from the factory manifest"; exit 1; }
-          mv "$mirror/v$JAVA_TEBAKO/.manifest.trim" "$mirror/v$JAVA_TEBAKO/manifest.json"
-          # The python factory's release serves per-package manifest
-          # shards + sidecars, no monoliths (the per-leg concurrent
-          # publish): stage + verify + derive the trimmed index via the
-          # shared tool — same selection grammar as the monolith-era trim
-          # (the pin's exact version plus its variant suffixes on THIS
-          # leg's platform).
+          # Both spawned-runtime factories publish the shard model
+          # (per-stem manifest shards + per-asset .sha256 sidecars; the
+          # monolithic manifest.json / SHA256SUMS.txt are gone): stage +
+          # verify + derive the trimmed index via the shared tool — the
+          # pin's exact version plus its variant suffixes on THIS leg's
+          # platform. A partial mirror must not advertise bytes it does
+          # not carry: the factory index spans every flavor, and the
+          # graalvm sibling's version (25.x) outranks the temurin pin
+          # (21.x) on the payload's wide constraint — the resolver's
+          # newest-satisfying pick would name files this mirror never
+          # staged (the 2.7.0 dogfood 404).
+          tools/stage_spawned_mirror "$mirror/v$JAVA_TEBAKO" \
+            "$JAVA_RELEASES_BASE" "$JAVA_TEBAKO" "$JAVA_VERSION" "${{ matrix.plat }}"
           tools/stage_spawned_mirror "$mirror/v$PYTHON_TEBAKO" \
             "$PYTHON_RELEASES_BASE" "$PYTHON_TEBAKO" "$PYTHON_VERSION" "${{ matrix.plat }}"
-          cd "$mirror/v$JAVA_TEBAKO"
-          grep "  $jexe\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
-          grep "  $jexe\.tfs\$" SHA256SUMS.txt | { sha256sum -c - 2>/dev/null || shasum -a 256 -c -; }
+          ls -l "$mirror/v$JAVA_TEBAKO" "$mirror/v$PYTHON_TEBAKO"
 
       - name: Install CLI, add registry, install the 3.3 flavor
         # Same wiring as the slim leg (the spawned-edge prefs + the
