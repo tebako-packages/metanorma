@@ -191,15 +191,27 @@ tools:
   sha256:
     tebako:
       macos-arm64: "8891a20fe12f3758a897b8aac2f90da80a3a35fb8626bf46b3ca9b98bd767942"
+      macos-x86_64: "438da189f026c9194dff607fe5006b3e9ba94b36a2c1a0d8a9651c6e4bb2ab85"
       linux-gnu-x86_64: "63d1086dfe74887246aeb1e00ecbed53d1e183777026ae6bfba10808d1b37010"
+      linux-gnu-arm64: "fc5f6c2f243c55b6c466bc62c0c85591ae1c5c188a8f3d66c84e468ebd42427b"
+      linux-musl-x86_64: "aaf87f0c2750efea535b439a77698cd2ceb675a28f749dc37de9ac9982d6c09e"
+      linux-musl-arm64: "726b7f1254cfe28dbd82e07e252cfc781cc6da3814b6e612b324d481e466c2d2"
       windows-ucrt64: "be560770adcfe54464cda9190b597c67aef532dbd6ddb43eb72847900b178c2f"
     tebako-shim:
       macos-arm64: "c2b95280ec32a427fe93eb6d90d644771f4f45ef1500c978084e94f7115385d4"
+      macos-x86_64: "2de51c76075a3a85e37208455a604b35af2696325023fd3246357cf633f4dee1"
       linux-gnu-x86_64: "5edbc39a5f3a85da4bd6f16f391bafb1b3343fa1341ae71b9106846249ba2257"
+      linux-gnu-arm64: "c03aaf44e3c9a358f23cc0a36971cc677f3abc30e31ea5939030ba55c4abcf85"
+      linux-musl-x86_64: "21e480a0630b6c3c7d5e74930ca43328f6c6e40df606541f39a2eae7ba399285"
+      linux-musl-arm64: "4b021db9d05727a26f94b070ee7e5470c73cf8a3ce7dddba2b6bf0ea14736b22"
       windows-ucrt64: "748ce58860d808dc1176137273e1f0abc7935cd1709fc32713241fe57c30773b"
     tfs:
       macos-arm64: "08f201f20e808dc0d4253e1617a3dc549a1a316132fdce9d81457645049d2eda"
+      macos-x86_64: "78ada85085d54eb9094d58e2ca468a768433bd7a45dddebfe60345ccf859b9a4"
       linux-gnu-x86_64: "69c1db503c17a5a6f8dfba907e2dc0d4dc214e2d9761d865c4151d38e0a91527"
+      linux-gnu-arm64: "917c117e4bd61d5b3c1c9d7f1c47919958c7d0f23171dc7b63036f2a4a16865d"
+      linux-musl-x86_64: "871862acbc917a0965cd7613451b4a3f190b829b4075b46cbdf18cd18c5d9de5"
+      linux-musl-arm64: "630ced3bc7eef45e88781037beab7522f2cdc6060001f6d033b35d5a7a9b5b82"
       windows-ucrt64: "6207b465156bc25c090320e0f8761d47dbafc4fe2b61e8141aaae826f311a816"
 
 # The spawned java runtime behind payload.yaml's kind: runtime edge: the
@@ -274,11 +286,30 @@ platforms:
                            # leptris/yeptris precompiled; brotli/ox/oga/ruby-ll/
                            # psych/websocket-driver compiled per-triplet). More
                            # triplets: CI legs.
+  - x86_64-macos           # built by CI (macos-15-intel): the same darwin shim
+                           # staging + feedstock SDK header dir as the arm64 mac
+                           # leg; precompiled natives swapped for their
+                           # x86_64-darwin variants (closure file)
   - x86_64-linux-gnu       # built by CI (ubuntu-24.04): the POSIX shim
                            # staging, same shape as the mac leg — the
                            # CLI-provisioned runtime SDK supplies the mkmf
                            # inputs; precompiled natives swapped for their
                            # glibc-x86_64 variants (closure file)
+  - aarch64-linux-gnu      # built by CI (ubuntu-24.04-arm, native arm): the
+                           # x86_64-linux-gnu leg shape verbatim; precompiled
+                           # natives swapped for their aarch64-linux(-gnu)
+                           # variants (closure file)
+  - x86_64-linux-musl      # built by CI inside alpine:3.21 on ubuntu-24.04
+                           # (docker run from the gnu host — node actions
+                           # cannot run on musl, the ecosystem's musl
+                           # pattern); the gnu leg's POSIX shim staging
+                           # unchanged, the musl runtime/SDK/tools resolve by
+                           # the leg's own platform pins; precompiled natives
+                           # swapped for their x86_64-linux-musl variants
+  - aarch64-linux-musl     # built by CI inside alpine:3.21 on
+                           # ubuntu-24.04-arm (same docker-run shape as the
+                           # x86_64 musl leg); precompiled natives swapped
+                           # for their aarch64-linux-musl variants
   - x86_64-windows-ucrt    # built by CI (green incl. the six source-built
                            # natives); the boot smoke is ENFORCED on this
                            # runtime line (the W2 windows fixes landed in
