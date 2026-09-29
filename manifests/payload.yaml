@@ -229,10 +229,13 @@ checks:
     # 32538413907): both POSIX legs sat in that phase for 173s+ of total
     # silence and died at 180; the dogfood run (warm-path equivalent on the
     # same runner class) cleared it in ~58s — cold CI egress lands between.
-    # 600 is the generous bound; the PASS verdict line prints the measured
-    # elapsed (`check html-xml PASS <n>s`), so tighten to measured+headroom
-    # once a green run reports the real number.
-    timeout: 600
+    # 600 was the generous bound, and the seven-triplet expansion measured
+    # it: macos-15-intel runs ~2.5x slower than the arm64/gnu legs (arm64
+    # 232s, gnu 198-218s, Intel 574s PASS on the 3.3 line, 600s timeout on
+    # the 4.0 line — run 36519979322). 1200 is the Intel runner's
+    # measured+headroom bound; the PASS verdict line prints the measured
+    # elapsed (`check html-xml PASS <n>s`).
+    timeout: 1200
   # The bundled-CLI smokes — spec 03 §2.2 completeness made executable:
   # the generic stub (templates/bin/command staged at /bin/<name>) derives
   # its identity from its filename, resolves the owning gem via
