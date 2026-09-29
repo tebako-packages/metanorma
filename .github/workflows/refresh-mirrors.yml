@@ -1,0 +1,83 @@
+name: refresh-mirrors
+
+# Re-derives this registry's MIRROR rows between metanorma publishes.
+# The publish job renders them at tag time, but providers publish on
+# their own cadence — between metanorma tags the inkscape/xml2rfc mirror
+# rows (copied wholesale from the provider registries) and the
+# spawned-runtime rows (java/python, from Tebakofile's pins) can drift
+# from the providers, and this feedstock's dogfood + a wild
+# `tebako install metanorma` resolve against THIS registry (the one-stop
+# channel-3 argument in the publish job). The 2026-09-29 incident:
+# inkscape 1.4.3-5 shipped while this registry still mirrored 1.4.3-4,
+# failing the aggregate's divergence gate and the snap arm64 acceptance.
+#
+# The render is tools/refresh_mirrors.rb — the SAME tool the
+# build-payload publish job calls, so the two paths cannot diverge.
+# Drift lands on main by bot PR + auto-merge under the CI PAT (main is
+# branch-protected; a GITHUB_TOKEN-authored PR never triggers
+# pull_request workflows, tebako#686). No drift → no PR → no noise.
+
+on:
+  schedule:
+    - cron: "23 */6 * * *"   # off the herd marks; bounds staleness at ~6 h
+  workflow_dispatch:
+  repository_dispatch:
+    types: [provider-published]   # providers may fan out for immediacy
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: refresh-mirrors
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Re-derive mirror rows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read the recipe pins (Tebakofile is the SSOT)
+        run: ruby tools/pins.rb linux-gnu-x86_64 --env >> "$GITHUB_ENV"
+
+      - name: Fetch the provider registries (the mirror sources)
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/registry-inkscape.yaml" \
+            https://raw.githubusercontent.com/tebako-packages/inkscape/main/tpkg-registry.yaml
+          curl -fsSL -o "$RUNNER_TEMP/registry-xml2rfc.yaml" \
+            https://raw.githubusercontent.com/tebako-packages/xml2rfc/main/tpkg-registry.yaml
+
+      - name: Re-render the mirror rows
+        run: ruby tools/refresh_mirrors.rb "$RUNNER_TEMP/registry-inkscape.yaml" "$RUNNER_TEMP/registry-xml2rfc.yaml"
+
+      - name: Land the drift by bot PR (or nothing when current)
+        env:
+          GH_TOKEN: ${{ secrets.TEBAKO_CI_PAT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "tebako-ci"
+          git config user.email "tebako@ribose.com"
+          git fetch origin main
+          if git diff --quiet origin/main -- tpkg-registry.yaml; then
+            echo "mirrors already current — nothing to land"
+            exit 0
+          fi
+          git diff origin/main -- tpkg-registry.yaml | head -40
+          branch="bot/mirror-refresh-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$branch"
+          git add tpkg-registry.yaml
+          git commit -m "registry: re-derive mirror rows from the provider registries
+
+          refresh-mirrors.yml (scheduled/dispatched): the inkscape +
+          xml2rfc payload mirrors are wholesale copies of the provider
+          entries and the java/python runtime rows render from
+          Tebakofile's pins — tools/refresh_mirrors.rb, the same render
+          the build-payload publish job calls."
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "registry: re-derive mirror rows from providers" \
+            --body "Automated mirror refresh (refresh-mirrors.yml): the provider registries moved since the last render. Rendered by tools/refresh_mirrors.rb — the publish job's own render."
+          gh pr merge --auto --squash "$branch" || gh pr merge --squash "$branch"

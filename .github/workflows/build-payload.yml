@@ -1288,56 +1288,21 @@ jobs:
           # argument as the spawned runtimes above (the macOS pkg seed's
           # install failed exit 65 on exactly this gap). The entries are
           # copied WHOLESALE (platforms + digests + signature +
-          # release.ref) from the provider registries at publish time —
-          # the provider registry is the SSOT, this is the L3 mirror by
-          # value, replaced by entry name on every publish.
+          # release.ref) from the provider registries — the provider
+          # registry is the SSOT, this is the L3 mirror by value,
+          # replaced by entry name at every render (here AND in the
+          # scheduled refresh-mirrors workflow).
           curl -fsSL -o "$RUNNER_TEMP/registry-inkscape.yaml" \
             https://raw.githubusercontent.com/tebako-packages/inkscape/main/tpkg-registry.yaml
           curl -fsSL -o "$RUNNER_TEMP/registry-xml2rfc.yaml" \
             https://raw.githubusercontent.com/tebako-packages/xml2rfc/main/tpkg-registry.yaml
-          ruby -ryaml -e '
-            path = "tpkg-registry.yaml"
-            reg = YAML.load_file(path)
-            entries = [
-              { "name" => "tebako-runtime-java-temurin", "kind" => "runtime",
-                "engine" => "java", "implementation" => "temurin",
-                "versions" => [ { "version" => "#{ENV.fetch("JAVA_VERSION")}-#{ENV.fetch("JAVA_TEBAKO")}",
-                                  "platforms" => "universal",
-                                  "release" => { "ref" => "tfs:github:tamatebako/tebako-runtime-openjdk:v#{ENV.fetch("JAVA_TEBAKO")}" } } ] },
-              { "name" => "tebako-runtime-python", "kind" => "runtime",
-                "engine" => "python", "implementation" => "cpython",
-                "versions" => [ { "version" => "#{ENV.fetch("PYTHON_VERSION")}-#{ENV.fetch("PYTHON_TEBAKO")}",
-                                  "platforms" => "universal",
-                                  "release" => { "ref" => "tfs:github:tamatebako/tebako-runtime-python:v#{ENV.fetch("PYTHON_TEBAKO")}" } } ] },
-            ]
-            entries.each do |entry|
-              existing = reg["payloads"].find { |p| p["name"] == entry["name"] }
-              if existing.nil?
-                reg["payloads"] << entry
-              else
-                entry["versions"].each do |v|
-                  slot = existing["versions"].find { |ev| ev["version"] == v["version"] }
-                  slot ? existing["versions"][existing["versions"].index(slot)] = v : existing["versions"] << v
-                end
-                %w[kind engine implementation].each { |k| entry.key?(k) ? existing[k] = entry[k] : existing.delete(k) }
-              end
-            end
-            # The requires-closure payload mirrors — wholesale copies from
-            # the provider registries fetched above, replaced by entry
-            # name (the provider entry IS the current truth; version
-            # accumulation belongs to the providers, not the mirror).
-            {
-              "inkscape" => "#{ENV.fetch("RUNNER_TEMP")}/registry-inkscape.yaml",
-              "xml2rfc" => "#{ENV.fetch("RUNNER_TEMP")}/registry-xml2rfc.yaml",
-            }.each do |name, mirror_path|
-              provider = YAML.load_file(mirror_path)
-              entry = provider["payloads"].find { |p| p["name"] == name } or
-                abort "NAMED FAILURE: provider registry #{mirror_path} carries no #{name} entry"
-              existing = reg["payloads"].find { |p| p["name"] == name }
-              existing ? reg["payloads"][reg["payloads"].index(existing)] = entry : reg["payloads"] << entry
-            end
-            File.write(path, reg.to_yaml)
-          '
+          # The render lives in tools/refresh_mirrors.rb — the SAME tool
+          # the refresh-mirrors workflow runs between publishes, so this
+          # job and that workflow can never diverge (the 2026-09-29
+          # inkscape 1.4.3-4 ↔ 1.4.3-5 staleness class).
+          ruby tools/refresh_mirrors.rb \
+            "$RUNNER_TEMP/registry-inkscape.yaml" \
+            "$RUNNER_TEMP/registry-xml2rfc.yaml"
       # The extension-slice dedup source (spec 03 §2.8): each leg's build
       # generated closure-<version>-<platform>.json (the staged gem
       # inventory) into its dist artifact; flavor feedstocks fetch the
