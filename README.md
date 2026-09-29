@@ -11,7 +11,9 @@ lookup), so installing it exercises the full dispatch chain.
 
 - Upstream: [metanorma-cli](https://github.com/metanorma/metanorma-cli) 1.17.0 (RubyGems)
 - Payload: `metanorma-1.17.0-<asset-platform>.tfs` (LimniFS image, per-triplet;
-  legs: `aarch64-macos`, `x86_64-linux-gnu`, `x86_64-windows-ucrt`)
+  legs: `aarch64-macos`, `x86_64-macos`, `x86_64-linux-gnu`,
+  `aarch64-linux-gnu`, `x86_64-linux-musl`, `aarch64-linux-musl`,
+  `x86_64-windows-ucrt`)
 - Registry: `tfs:github:tebako-packages/metanorma` (see `tpkg-registry.yaml`)
 
 ## Layout
@@ -20,7 +22,7 @@ lookup), so installing it exercises the full dispatch chain.
 - `manifests/payload.yaml` — the spec 03 payload manifest (filled at build)
 - `tpkg-registry.yaml` — this feedstock's registry (pinned at release)
 - `closure/1.17.0-<triplet>.txt` — the pinned, sha256-verified gem set
-  (aarch64-macos + x86_64-linux-gnu + x86_64-windows-ucrt)
+  (all seven triplets, both ruby lines)
 - `tools/` — `build` (stage → image → manifest), `boot_smoke`,
   `smoke_verdict` (the windows leg's pinned exec verdict),
   `stage_native_manual.rb` (windows native builds),

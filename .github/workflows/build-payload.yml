@@ -4,9 +4,19 @@ name: build-payload
 #
 # STATUS:
 #   aarch64-macos — green: build + boot smoke; tags publish.
+#   x86_64-macos — build + boot smoke (macos-15-intel): the arm64 mac leg
+#   shape verbatim (darwin SDK header dir + sdk_patch preload); tags
+#   publish together with the other legs.
 #   x86_64-linux-gnu — build + boot smoke (ubuntu-24.04, the POSIX shim
 #   staging — same shape as the mac leg; the five precompiled natives are
 #   the glibc-x86_64 variants); tags publish together with the mac leg.
+#   aarch64-linux-gnu — build + boot smoke (ubuntu-24.04-arm, native arm):
+#   the x86_64-linux-gnu leg shape verbatim.
+#   x86_64-linux-musl / aarch64-linux-musl — build + boot smoke inside
+#   alpine:3.21 (docker run from the matching-arch gnu host — node actions
+#   cannot run on musl; the product repo's musl pattern): the linux-gnu
+#   leg shape unchanged, the container installs its own toolchain per step
+#   and the musl runtime/tools resolve by the leg's own platform pins.
 #   x86_64-windows-ucrt — build + boot smoke ENFORCED: the 0.16.x runtime
 #   line carries the windows runtime-layer fixes the exec gate waited on
 #   (the ruby DLL facet + the loader interpose / library_aliases — spec 22
@@ -505,17 +515,571 @@ jobs:
           name: dist-x86_64-linux-gnu-${{ matrix.ruby_line }}
           path: out/x86_64-linux-gnu/
 
+  build-mac-intel:
+    name: x86_64-macos (ruby ${{ matrix.ruby_line }})
+    needs: changes
+    # tebako#686: the registry-only step guards — see the mac leg's job
+    # comment (branch protection pins the per-leg check names, so the
+    # leg must run and report green, building nothing).
+    # The arm64 mac leg's shape verbatim on the Intel runner (the
+    # ecosystem's current Intel image — same as the ruby factory's
+    # macos-x86_64 host): TRIPLET + the pins platform are the only
+    # differences.
+    runs-on: macos-15-intel
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby_line: ["4.0", "3.3"]   # the keys of Tebakofile build.runtime.lines
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.registry_only != 'true'
+
+      - name: Read the toolchain pins (Tebakofile is the SSOT)
+        if: needs.changes.outputs.registry_only != 'true'
+        run: ruby tools/pins.rb macos-x86_64 --ruby-line "${{ matrix.ruby_line }}" --env >> "$GITHUB_ENV"
+
+      - name: Fetch tebako CLI tools (pinned by Tebakofile, sha256-verified)
+        if: needs.changes.outputs.registry_only != 'true'
+        # Same pins discipline as the arm64 mac leg (the digests are
+        # cross-checked against the release's SHA256SUMS).
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
+          base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
+          curl -sLO "$base/$TEBAKO_ASSET"
+          curl -sLO "$base/$TFS_ASSET"
+          curl -sLO "$base/SHA256SUMS"
+          echo "$TEBAKO_SHA256  $TEBAKO_ASSET" > SHA256PINS
+          echo "$TFS_SHA256  $TFS_ASSET" >> SHA256PINS
+          shasum -a 256 -c SHA256PINS
+          # The pins must agree with the release's own sums (both anchored).
+          for pair in "$TEBAKO_ASSET:$TEBAKO_SHA256" "$TFS_ASSET:$TFS_SHA256"; do
+            asset="${pair%%:*}"; want="${pair##*:}"
+            got=$(awk -v a="$asset" '$2 == a {print $1}' SHA256SUMS)
+            [ "$got" = "$want" ] || { echo "::error::pin mismatch for $asset: Tebakofile=$want release=${got:-ABSENT}"; exit 1; }
+          done
+          chmod 755 "$TEBAKO_ASSET" "$TFS_ASSET"
+          mv "$TEBAKO_ASSET" tebako
+          mv "$TFS_ASSET" tfs
+          echo "$RUNNER_TEMP/tebako-tools" >> "$GITHUB_PATH"
+
+      - name: Build the payload
+        if: needs.changes.outputs.registry_only != 'true'
+        env:
+          TRIPLET: x86_64-macos
+          TEBAKO_CLI: tebako
+          TFS_CLI: tfs
+        run: tools/build
+
+      - name: Boot-smoke
+        if: needs.changes.outputs.registry_only != 'true'
+        # Hard gate, same as the arm64 mac leg: the packaged tool's
+        # version command runs from the image before any release
+        # publishes.
+        env:
+          TFS: tfs
+        run: |
+          . out/x86_64-macos/runtime.env
+          TFS="$TFS" RUNTIME="$RUNTIME" RUNTIME_IMAGE="$RUNTIME_IMAGE" \
+            tools/boot_smoke "$PAYLOAD_IMG"
+
+      - name: Payload checks (the press-time moment)
+        if: needs.changes.outputs.registry_only != 'true'
+        # Same gate as the arm64 mac leg (see its comment for the
+        # contract); PAYLOAD_IMG rides runtime.env (absolute — the check
+        # driver's cwd is the scratch dir).
+        run: |
+          . out/x86_64-macos/runtime.env
+          tebako check "$PAYLOAD_IMG" \
+            --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
+
+      - name: Manifest shape (extension slices)
+        if: needs.changes.outputs.registry_only != 'true'
+        # Same structural proof as the arm64 mac leg (sibling + embedded
+        # manifest, closure/manifest gem-count parity — see its comment).
+        run: |
+          . out/x86_64-macos/runtime.env
+          tfs cat "$PAYLOAD_IMG" /__tpkg__/manifest.yaml > embedded-manifest.yaml
+          ruby -ryaml -rjson -e '
+            man = Dir["out/*/metanorma-*.manifest.yaml"].first or abort("no sibling manifest")
+            sibling = YAML.load_file(man)
+            embedded = YAML.load_file("embedded-manifest.yaml")
+            { "sibling" => sibling, "embedded" => embedded }.each do |label, m|
+              ep = m.dig("provides", "extension_points") or abort("#{label}: provides.extension_points missing")
+              ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("#{label}: extension_points drift: #{ep.inspect}")
+              gems = m.dig("provides", "gems") or abort("#{label}: provides.gems missing")
+              gems.length > 200 or abort("#{label}: gem inventory suspiciously small: #{gems.length} (1.17.0 carries ~270)")
+            end
+            gems = sibling.dig("provides", "gems")
+            embedded.dig("provides", "gems") == gems or abort("sibling/embedded gem inventory skew")
+            clo = Dir["out/*/closure-*.json"].first or abort("no closure asset")
+            c = JSON.parse(File.read(clo))
+            c["gems"].length == gems.length or abort("closure/manifest count skew: #{c["gems"].length} vs #{gems.length}")
+            puts "manifest shape OK (sibling+embedded): #{gems.length} gems, extension point /flavors.d, closure #{File.basename(clo)}"
+          '
+
+      - name: Stage artifact
+        if: needs.changes.outputs.registry_only != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist-x86_64-macos-${{ matrix.ruby_line }}
+          path: out/x86_64-macos/
+
+  build-linux-arm:
+    name: aarch64-linux-gnu (ruby ${{ matrix.ruby_line }})
+    needs: changes
+    # tebako#686: the registry-only step guards — see the mac leg's job
+    # comment (branch protection pins the per-leg check names, so the
+    # leg must run and report green, building nothing).
+    # The x86_64-linux-gnu leg's shape verbatim on the native arm runner:
+    # TRIPLET + the pins platform are the only differences.
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby_line: ["4.0", "3.3"]   # the keys of Tebakofile build.runtime.lines
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.registry_only != 'true'
+
+      - name: Read the toolchain pins (Tebakofile is the SSOT)
+        if: needs.changes.outputs.registry_only != 'true'
+        run: ruby tools/pins.rb linux-gnu-arm64 --ruby-line "${{ matrix.ruby_line }}" --env >> "$GITHUB_ENV"
+
+      - name: Fetch tebako CLI tools (pinned by Tebakofile, sha256-verified)
+        if: needs.changes.outputs.registry_only != 'true'
+        # Same pins discipline as the x86_64 linux leg (the digests are
+        # cross-checked against the release's SHA256SUMS).
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
+          base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
+          curl -sLO "$base/$TEBAKO_ASSET"
+          curl -sLO "$base/$TFS_ASSET"
+          curl -sLO "$base/SHA256SUMS"
+          echo "$TEBAKO_SHA256  $TEBAKO_ASSET" > SHA256PINS
+          echo "$TFS_SHA256  $TFS_ASSET" >> SHA256PINS
+          sha256sum -c SHA256PINS
+          # The pins must agree with the release's own sums (both anchored).
+          for pair in "$TEBAKO_ASSET:$TEBAKO_SHA256" "$TFS_ASSET:$TFS_SHA256"; do
+            asset="${pair%%:*}"; want="${pair##*:}"
+            got=$(awk -v a="$asset" '$2 == a {print $1}' SHA256SUMS)
+            [ "$got" = "$want" ] || { echo "::error::pin mismatch for $asset: Tebakofile=$want release=${got:-ABSENT}"; exit 1; }
+          done
+          chmod 755 "$TEBAKO_ASSET" "$TFS_ASSET"
+          mv "$TEBAKO_ASSET" tebako
+          mv "$TFS_ASSET" tfs
+          echo "$RUNNER_TEMP/tebako-tools" >> "$GITHUB_PATH"
+
+      - name: Build the payload
+        if: needs.changes.outputs.registry_only != 'true'
+        env:
+          TRIPLET: aarch64-linux-gnu
+          TEBAKO_CLI: tebako
+          TFS_CLI: tfs
+        run: tools/build
+
+      - name: Boot-smoke
+        if: needs.changes.outputs.registry_only != 'true'
+        # Hard gate, same as the x86_64 linux leg: the packaged tool's
+        # version command runs from the image before any release
+        # publishes.
+        env:
+          TFS: tfs
+        run: |
+          . out/aarch64-linux-gnu/runtime.env
+          TFS="$TFS" RUNTIME="$RUNTIME" RUNTIME_IMAGE="$RUNTIME_IMAGE" \
+            tools/boot_smoke "$PAYLOAD_IMG"
+
+      - name: Payload checks (the press-time moment)
+        if: needs.changes.outputs.registry_only != 'true'
+        # Same gate as the x86_64 linux leg (see the mac step's comment
+        # for the contract); PAYLOAD_IMG rides runtime.env (absolute —
+        # the check driver's cwd is the scratch dir).
+        run: |
+          . out/aarch64-linux-gnu/runtime.env
+          tebako check "$PAYLOAD_IMG" \
+            --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
+
+      - name: Manifest shape (extension slices)
+        if: needs.changes.outputs.registry_only != 'true'
+        # Same structural proof as the x86_64 linux leg (sibling +
+        # embedded manifest, closure/manifest gem-count parity — see the
+        # mac step's comment).
+        run: |
+          . out/aarch64-linux-gnu/runtime.env
+          tfs cat "$PAYLOAD_IMG" /__tpkg__/manifest.yaml > embedded-manifest.yaml
+          ruby -ryaml -rjson -e '
+            man = Dir["out/*/metanorma-*.manifest.yaml"].first or abort("no sibling manifest")
+            sibling = YAML.load_file(man)
+            embedded = YAML.load_file("embedded-manifest.yaml")
+            { "sibling" => sibling, "embedded" => embedded }.each do |label, m|
+              ep = m.dig("provides", "extension_points") or abort("#{label}: provides.extension_points missing")
+              ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("#{label}: extension_points drift: #{ep.inspect}")
+              gems = m.dig("provides", "gems") or abort("#{label}: provides.gems missing")
+              gems.length > 200 or abort("#{label}: gem inventory suspiciously small: #{gems.length} (1.17.0 carries ~270)")
+            end
+            gems = sibling.dig("provides", "gems")
+            embedded.dig("provides", "gems") == gems or abort("sibling/embedded gem inventory skew")
+            clo = Dir["out/*/closure-*.json"].first or abort("no closure asset")
+            c = JSON.parse(File.read(clo))
+            c["gems"].length == gems.length or abort("closure/manifest count skew: #{c["gems"].length} vs #{gems.length}")
+            puts "manifest shape OK (sibling+embedded): #{gems.length} gems, extension point /flavors.d, closure #{File.basename(clo)}"
+          '
+
+      - name: Stage artifact
+        if: needs.changes.outputs.registry_only != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist-aarch64-linux-gnu-${{ matrix.ruby_line }}
+          path: out/aarch64-linux-gnu/
+
+  build-linux-musl:
+    name: x86_64-linux-musl (ruby ${{ matrix.ruby_line }})
+    needs: changes
+    # tebako#686: the registry-only step guards — see the mac leg's job
+    # comment (branch protection pins the per-leg check names, so the
+    # leg must run and report green, building nothing).
+    # The musl shape (the product repo's musl pattern — tebako's
+    # release.yml linux-musl leg): node actions cannot run on musl, so
+    # checkout / pins / tool-fetch / upload stay on the gnu host and every
+    # build/smoke/check step runs inside alpine:3.21 via docker run with
+    # the workspace + the fetched tools bind-mounted at the same paths.
+    # The leg's own body is the linux-gnu leg unchanged — the musl
+    # runtime, the musl tebako/tfs tools, and the CLI-provisioned SDK all
+    # resolve by the leg's own platform pins, so nothing in tools/build is
+    # musl-aware. The throwaway container installs its own toolchain per
+    # step (busybox ash prelude — POSIX only).
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby_line: ["4.0", "3.3"]   # the keys of Tebakofile build.runtime.lines
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.registry_only != 'true'
+
+      - name: Read the toolchain pins (Tebakofile is the SSOT)
+        if: needs.changes.outputs.registry_only != 'true'
+        run: ruby tools/pins.rb linux-musl-x86_64 --ruby-line "${{ matrix.ruby_line }}" --env >> "$GITHUB_ENV"
+
+      - name: Fetch tebako CLI tools (pinned by Tebakofile, sha256-verified)
+        if: needs.changes.outputs.registry_only != 'true'
+        # Same pins discipline as the gnu leg (the digests are
+        # cross-checked against the release's SHA256SUMS). No PATH export:
+        # the binaries are dynamic-musl (they run only inside the
+        # container, which gets them bind-mounted at /tebako-tools).
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
+          base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
+          curl -sLO "$base/$TEBAKO_ASSET"
+          curl -sLO "$base/$TFS_ASSET"
+          curl -sLO "$base/SHA256SUMS"
+          echo "$TEBAKO_SHA256  $TEBAKO_ASSET" > SHA256PINS
+          echo "$TFS_SHA256  $TFS_ASSET" >> SHA256PINS
+          sha256sum -c SHA256PINS
+          # The pins must agree with the release's own sums (both anchored).
+          for pair in "$TEBAKO_ASSET:$TEBAKO_SHA256" "$TFS_ASSET:$TFS_SHA256"; do
+            asset="${pair%%:*}"; want="${pair##*:}"
+            got=$(awk -v a="$asset" '$2 == a {print $1}' SHA256SUMS)
+            [ "$got" = "$want" ] || { echo "::error::pin mismatch for $asset: Tebakofile=$want release=${got:-ABSENT}"; exit 1; }
+          done
+          chmod 755 "$TEBAKO_ASSET" "$TFS_ASSET"
+          mv "$TEBAKO_ASSET" tebako
+          mv "$TFS_ASSET" tfs
+
+      - name: Build the payload (in the alpine:3.21 container)
+        if: needs.changes.outputs.registry_only != 'true'
+        env:
+          TRIPLET: x86_64-linux-musl
+          RUBY_LINE: ${{ matrix.ruby_line }}
+        run: |
+          set -euo pipefail
+          docker run --rm -i \
+            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
+            -v "$RUNNER_TEMP/tebako-tools:/tebako-tools:ro" \
+            -w "$GITHUB_WORKSPACE" \
+            -e GITHUB_WORKSPACE -e TRIPLET -e RUBY_LINE \
+            -e TEBAKO_CLI=/tebako-tools/tebako \
+            -e TFS_CLI=/tebako-tools/tfs \
+            -e SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+            alpine:3.21 sh -s <<'ALPINE'
+          set -e
+          # The throwaway container installs its own toolchain: bash for
+          # tools/build, ruby for the recipe/manifest reads (recipe() +
+          # the manifest fill), git for the embedded-manifest commit stamp
+          # (safe.directory: the bind-mounted checkout belongs to the
+          # host's runner user), build-base for the CLI's SDK configure
+          # replay + the six source-built natives.
+          apk add -q --no-cache bash curl git ruby build-base ca-certificates
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          exec bash tools/build
+          ALPINE
+
+      - name: Boot-smoke (in the alpine:3.21 container)
+        if: needs.changes.outputs.registry_only != 'true'
+        # Hard gate, same contract as the gnu leg: the packaged tool's
+        # version command runs from the image before any release
+        # publishes. The runtime exe is dynamic-musl — it execs only in
+        # the container.
+        env:
+          RUBY_LINE: ${{ matrix.ruby_line }}
+        run: |
+          set -euo pipefail
+          docker run --rm -i \
+            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
+            -v "$RUNNER_TEMP/tebako-tools:/tebako-tools:ro" \
+            -w "$GITHUB_WORKSPACE" \
+            -e RUBY_LINE -e RUBY_V \
+            alpine:3.21 sh -s <<'ALPINE'
+          set -e
+          apk add -q --no-cache bash ruby
+          . out/x86_64-linux-musl/runtime.env
+          TFS=/tebako-tools/tfs RUNTIME="$RUNTIME" RUNTIME_IMAGE="$RUNTIME_IMAGE" \
+            bash tools/boot_smoke "$PAYLOAD_IMG"
+          ALPINE
+
+      - name: Payload checks (the press-time moment; in the alpine:3.21 container)
+        if: needs.changes.outputs.registry_only != 'true'
+        # Same gate as the gnu leg (see the mac step's comment for the
+        # contract); PAYLOAD_IMG rides runtime.env (absolute — the check
+        # driver's cwd is the scratch dir). git + ca-certificates ride
+        # along: the html-xml check's fontist invocation spawns git on a
+        # cold formulas repo (the windows leg's run-32538413907 lesson)
+        # and fetches over https.
+        env:
+          RUBY_LINE: ${{ matrix.ruby_line }}
+        run: |
+          set -euo pipefail
+          docker run --rm -i \
+            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
+            -v "$RUNNER_TEMP/tebako-tools:/tebako-tools:ro" \
+            -w "$GITHUB_WORKSPACE" \
+            -e RUBY_LINE \
+            alpine:3.21 sh -s <<'ALPINE'
+          set -e
+          apk add -q --no-cache git ca-certificates
+          . out/x86_64-linux-musl/runtime.env
+          /tebako-tools/tebako check "$PAYLOAD_IMG" \
+            --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
+          ALPINE
+
+      - name: Manifest shape (extension slices; in the alpine:3.21 container)
+        if: needs.changes.outputs.registry_only != 'true'
+        # Same structural proof as the gnu leg (sibling + embedded
+        # manifest, closure/manifest gem-count parity — see the mac
+        # step's comment); tfs is dynamic-musl, so the read runs in the
+        # container.
+        run: |
+          set -euo pipefail
+          docker run --rm -i \
+            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
+            -v "$RUNNER_TEMP/tebako-tools:/tebako-tools:ro" \
+            -w "$GITHUB_WORKSPACE" \
+            alpine:3.21 sh -s <<'ALPINE'
+          set -e
+          apk add -q --no-cache ruby
+          . out/x86_64-linux-musl/runtime.env
+          /tebako-tools/tfs cat "$PAYLOAD_IMG" /__tpkg__/manifest.yaml > embedded-manifest.yaml
+          ruby -ryaml -rjson -e '
+            man = Dir["out/*/metanorma-*.manifest.yaml"].first or abort("no sibling manifest")
+            sibling = YAML.load_file(man)
+            embedded = YAML.load_file("embedded-manifest.yaml")
+            { "sibling" => sibling, "embedded" => embedded }.each do |label, m|
+              ep = m.dig("provides", "extension_points") or abort("#{label}: provides.extension_points missing")
+              ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("#{label}: extension_points drift: #{ep.inspect}")
+              gems = m.dig("provides", "gems") or abort("#{label}: provides.gems missing")
+              gems.length > 200 or abort("#{label}: gem inventory suspiciously small: #{gems.length} (1.17.0 carries ~270)")
+            end
+            gems = sibling.dig("provides", "gems")
+            embedded.dig("provides", "gems") == gems or abort("sibling/embedded gem inventory skew")
+            clo = Dir["out/*/closure-*.json"].first or abort("no closure asset")
+            c = JSON.parse(File.read(clo))
+            c["gems"].length == gems.length or abort("closure/manifest count skew: #{c["gems"].length} vs #{gems.length}")
+            puts "manifest shape OK (sibling+embedded): #{gems.length} gems, extension point /flavors.d, closure #{File.basename(clo)}"
+          '
+          ALPINE
+
+      - name: Stage artifact
+        if: needs.changes.outputs.registry_only != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist-x86_64-linux-musl-${{ matrix.ruby_line }}
+          path: out/x86_64-linux-musl/
+
+  build-linux-musl-arm:
+    name: aarch64-linux-musl (ruby ${{ matrix.ruby_line }})
+    needs: changes
+    # tebako#686: the registry-only step guards — see the mac leg's job
+    # comment (branch protection pins the per-leg check names, so the
+    # leg must run and report green, building nothing).
+    # The x86_64 musl leg's docker-run shape verbatim on the native arm
+    # runner (ubuntu-24.04-arm — the same runner the product repo's musl
+    # arm leg uses): TRIPLET + the pins platform are the only
+    # differences.
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby_line: ["4.0", "3.3"]   # the keys of Tebakofile build.runtime.lines
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.registry_only != 'true'
+
+      - name: Read the toolchain pins (Tebakofile is the SSOT)
+        if: needs.changes.outputs.registry_only != 'true'
+        run: ruby tools/pins.rb linux-musl-arm64 --ruby-line "${{ matrix.ruby_line }}" --env >> "$GITHUB_ENV"
+
+      - name: Fetch tebako CLI tools (pinned by Tebakofile, sha256-verified)
+        if: needs.changes.outputs.registry_only != 'true'
+        # Same pins discipline as the gnu leg (the digests are
+        # cross-checked against the release's SHA256SUMS). No PATH export:
+        # the binaries are dynamic-musl (they run only inside the
+        # container, which gets them bind-mounted at /tebako-tools).
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
+          base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
+          curl -sLO "$base/$TEBAKO_ASSET"
+          curl -sLO "$base/$TFS_ASSET"
+          curl -sLO "$base/SHA256SUMS"
+          echo "$TEBAKO_SHA256  $TEBAKO_ASSET" > SHA256PINS
+          echo "$TFS_SHA256  $TFS_ASSET" >> SHA256PINS
+          sha256sum -c SHA256PINS
+          # The pins must agree with the release's own sums (both anchored).
+          for pair in "$TEBAKO_ASSET:$TEBAKO_SHA256" "$TFS_ASSET:$TFS_SHA256"; do
+            asset="${pair%%:*}"; want="${pair##*:}"
+            got=$(awk -v a="$asset" '$2 == a {print $1}' SHA256SUMS)
+            [ "$got" = "$want" ] || { echo "::error::pin mismatch for $asset: Tebakofile=$want release=${got:-ABSENT}"; exit 1; }
+          done
+          chmod 755 "$TEBAKO_ASSET" "$TFS_ASSET"
+          mv "$TEBAKO_ASSET" tebako
+          mv "$TFS_ASSET" tfs
+
+      - name: Build the payload (in the alpine:3.21 container)
+        if: needs.changes.outputs.registry_only != 'true'
+        env:
+          TRIPLET: aarch64-linux-musl
+          RUBY_LINE: ${{ matrix.ruby_line }}
+        run: |
+          set -euo pipefail
+          docker run --rm -i \
+            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
+            -v "$RUNNER_TEMP/tebako-tools:/tebako-tools:ro" \
+            -w "$GITHUB_WORKSPACE" \
+            -e GITHUB_WORKSPACE -e TRIPLET -e RUBY_LINE \
+            -e TEBAKO_CLI=/tebako-tools/tebako \
+            -e TFS_CLI=/tebako-tools/tfs \
+            -e SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+            alpine:3.21 sh -s <<'ALPINE'
+          set -e
+          # Same throwaway toolchain as the x86_64 musl leg (see its
+          # comment): bash, ruby (recipe/manifest reads), git (the
+          # embedded-manifest commit stamp + safe.directory for the
+          # bind-mounted checkout), build-base (SDK configure replay +
+          # the six source-built natives).
+          apk add -q --no-cache bash curl git ruby build-base ca-certificates
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          exec bash tools/build
+          ALPINE
+
+      - name: Boot-smoke (in the alpine:3.21 container)
+        if: needs.changes.outputs.registry_only != 'true'
+        # Hard gate, same contract as the x86_64 musl leg (the runtime
+        # exe is dynamic-musl — it execs only in the container).
+        env:
+          RUBY_LINE: ${{ matrix.ruby_line }}
+        run: |
+          set -euo pipefail
+          docker run --rm -i \
+            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
+            -v "$RUNNER_TEMP/tebako-tools:/tebako-tools:ro" \
+            -w "$GITHUB_WORKSPACE" \
+            -e RUBY_LINE -e RUBY_V \
+            alpine:3.21 sh -s <<'ALPINE'
+          set -e
+          apk add -q --no-cache bash ruby
+          . out/aarch64-linux-musl/runtime.env
+          TFS=/tebako-tools/tfs RUNTIME="$RUNTIME" RUNTIME_IMAGE="$RUNTIME_IMAGE" \
+            bash tools/boot_smoke "$PAYLOAD_IMG"
+          ALPINE
+
+      - name: Payload checks (the press-time moment; in the alpine:3.21 container)
+        if: needs.changes.outputs.registry_only != 'true'
+        # Same gate as the x86_64 musl leg (git + ca-certificates ride
+        # along for the html-xml check's fontist invocation).
+        env:
+          RUBY_LINE: ${{ matrix.ruby_line }}
+        run: |
+          set -euo pipefail
+          docker run --rm -i \
+            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
+            -v "$RUNNER_TEMP/tebako-tools:/tebako-tools:ro" \
+            -w "$GITHUB_WORKSPACE" \
+            -e RUBY_LINE \
+            alpine:3.21 sh -s <<'ALPINE'
+          set -e
+          apk add -q --no-cache git ca-certificates
+          . out/aarch64-linux-musl/runtime.env
+          /tebako-tools/tebako check "$PAYLOAD_IMG" \
+            --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
+          ALPINE
+
+      - name: Manifest shape (extension slices; in the alpine:3.21 container)
+        if: needs.changes.outputs.registry_only != 'true'
+        # Same structural proof as the x86_64 musl leg (sibling +
+        # embedded manifest, closure/manifest gem-count parity).
+        run: |
+          set -euo pipefail
+          docker run --rm -i \
+            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
+            -v "$RUNNER_TEMP/tebako-tools:/tebako-tools:ro" \
+            -w "$GITHUB_WORKSPACE" \
+            alpine:3.21 sh -s <<'ALPINE'
+          set -e
+          apk add -q --no-cache ruby
+          . out/aarch64-linux-musl/runtime.env
+          /tebako-tools/tfs cat "$PAYLOAD_IMG" /__tpkg__/manifest.yaml > embedded-manifest.yaml
+          ruby -ryaml -rjson -e '
+            man = Dir["out/*/metanorma-*.manifest.yaml"].first or abort("no sibling manifest")
+            sibling = YAML.load_file(man)
+            embedded = YAML.load_file("embedded-manifest.yaml")
+            { "sibling" => sibling, "embedded" => embedded }.each do |label, m|
+              ep = m.dig("provides", "extension_points") or abort("#{label}: provides.extension_points missing")
+              ep == [{ "name" => "flavors", "mount" => "/flavors.d", "layout" => "gem-home" }] or abort("#{label}: extension_points drift: #{ep.inspect}")
+              gems = m.dig("provides", "gems") or abort("#{label}: provides.gems missing")
+              gems.length > 200 or abort("#{label}: gem inventory suspiciously small: #{gems.length} (1.17.0 carries ~270)")
+            end
+            gems = sibling.dig("provides", "gems")
+            embedded.dig("provides", "gems") == gems or abort("sibling/embedded gem inventory skew")
+            clo = Dir["out/*/closure-*.json"].first or abort("no closure asset")
+            c = JSON.parse(File.read(clo))
+            c["gems"].length == gems.length or abort("closure/manifest count skew: #{c["gems"].length} vs #{gems.length}")
+            puts "manifest shape OK (sibling+embedded): #{gems.length} gems, extension point /flavors.d, closure #{File.basename(clo)}"
+          '
+          ALPINE
+
+      - name: Stage artifact
+        if: needs.changes.outputs.registry_only != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist-aarch64-linux-musl-${{ matrix.ruby_line }}
+          path: out/aarch64-linux-musl/
+
   release:
     name: publish
     if: startsWith(github.ref, 'refs/tags/')
-    # All three legs publish: the windows boot-smoke + html-xml gate
+    # All seven legs publish: the windows boot-smoke + html-xml gate
     # proved green on the 0.16.6 line (PR #22, head 37396c0 — the
     # tebako#437 SSL_CERT_FILE workaround), so the wiring (needs +
-    # --payload + the registry entry) now includes the windows artifact.
+    # --payload + the registry entry) includes the windows artifact, and
+    # the 1.17.0-4 line adds x86_64-macos / aarch64-linux-gnu /
+    # x86_64-linux-musl / aarch64-linux-musl on the same green-leg gate.
     # Each leg is a 2-leg matrix (one per ruby line) — needs
-    # waits for all six; the publish step below upserts one registry
+    # waits for all fourteen; the publish step below upserts one registry
     # version entry per line into the SAME registry file.
-    needs: [build, build-linux, build-windows]
+    needs: [build, build-mac-intel, build-linux, build-linux-arm, build-linux-musl, build-linux-musl-arm, build-windows]
     runs-on: macos-14
     env:
       TEBAKO_CLI: ${{ github.workspace }}/.packager/tebako
@@ -664,7 +1228,11 @@ jobs:
             "$TEBAKO_CLI" publish "${SIGN_ARGS[@]+"${SIGN_ARGS[@]}"}" --name "$PKG_NAME" \
               --release "tfs:github:tebako-packages/metanorma:${{ github.ref_name }}" \
               --payload aarch64-macos="out/aarch64-macos-$ruby_line/$PKG_NAME-$PAYLOAD_VERSION-macos-arm64.tfs" \
+              --payload x86_64-macos="out/x86_64-macos-$ruby_line/$PKG_NAME-$PAYLOAD_VERSION-macos-x86_64.tfs" \
               --payload x86_64-linux-gnu="out/x86_64-linux-gnu-$ruby_line/$PKG_NAME-$PAYLOAD_VERSION-linux-gnu-x86_64.tfs" \
+              --payload aarch64-linux-gnu="out/aarch64-linux-gnu-$ruby_line/$PKG_NAME-$PAYLOAD_VERSION-linux-gnu-arm64.tfs" \
+              --payload x86_64-linux-musl="out/x86_64-linux-musl-$ruby_line/$PKG_NAME-$PAYLOAD_VERSION-linux-musl-x86_64.tfs" \
+              --payload aarch64-linux-musl="out/aarch64-linux-musl-$ruby_line/$PKG_NAME-$PAYLOAD_VERSION-linux-musl-arm64.tfs" \
               --payload x86_64-windows-ucrt="out/x86_64-windows-ucrt-$ruby_line/$PKG_NAME-$PAYLOAD_VERSION-windows-ucrt64.tfs" \
               --registry-out "$PWD/tpkg-registry.yaml"
           done
@@ -791,7 +1359,7 @@ jobs:
           branch="publish/${{ github.ref_name }}-registry"
           git checkout -b "$branch"
           git add tpkg-registry.yaml
-          git commit -m "publish ${{ github.ref_name }}: registry entries (macos-arm64, linux-gnu-x86_64, windows-ucrt64; ruby lines: $RUBY_LINES)"
+          git commit -m "publish ${{ github.ref_name }}: registry entries (macos-arm64, macos-x86_64, linux-gnu-x86_64, linux-gnu-arm64, linux-musl-x86_64, linux-musl-arm64, windows-ucrt64; ruby lines: $RUBY_LINES)"
           git push origin "$branch"
           if ! gh pr view "$branch" >/dev/null 2>&1; then
             gh pr create --base main --head "$branch" \
