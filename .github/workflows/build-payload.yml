@@ -811,8 +811,13 @@ jobs:
           # the manifest fill), git for the embedded-manifest commit stamp
           # (safe.directory: the bind-mounted checkout belongs to the
           # host's runner user), build-base for the CLI's SDK configure
-          # replay + the six source-built natives.
-          apk add -q --no-cache bash curl git ruby build-base ca-certificates
+          # replay + the six source-built natives. clang: the musl
+          # runtime's rbconfig records CC=clang and CFLAGS carrying the
+          # clang-only -fdeclspec (the factory builds musl rubies with
+          # clang), so mkmf probes must ride clang — the gnu legs get one
+          # for free from the runner image (clang-18), alpine needs the
+          # package (alpine 3.21 ships clang 19 as /usr/bin/clang).
+          apk add -q --no-cache bash curl git ruby build-base clang ca-certificates
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           exec bash tools/build
           ALPINE
@@ -978,8 +983,10 @@ jobs:
           # comment): bash, ruby (recipe/manifest reads), git (the
           # embedded-manifest commit stamp + safe.directory for the
           # bind-mounted checkout), build-base (SDK configure replay +
-          # the six source-built natives).
-          apk add -q --no-cache bash curl git ruby build-base ca-certificates
+          # the six source-built natives), clang (the musl runtime's
+          # rbconfig records CC=clang + clang-only CFLAGS — mkmf probes
+          # must not fall back to gcc).
+          apk add -q --no-cache bash curl git ruby build-base clang ca-certificates
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           exec bash tools/build
           ALPINE

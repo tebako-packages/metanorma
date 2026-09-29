@@ -305,11 +305,18 @@ platforms:
                            # pattern); the gnu leg's POSIX shim staging
                            # unchanged, the musl runtime/SDK/tools resolve by
                            # the leg's own platform pins; precompiled natives
-                           # swapped for their x86_64-linux-musl variants
+                           # swapped for their x86_64-linux-musl variants.
+                           # Container toolchain deviation: clang is installed
+                           # alongside build-base — the musl runtime's rbconfig
+                           # records CC=clang with clang-only CFLAGS
+                           # (-fdeclspec), and mkmf probes must not fall back
+                           # to gcc (the gnu legs get clang-18 free from the
+                           # runner image)
   - aarch64-linux-musl     # built by CI inside alpine:3.21 on
-                           # ubuntu-24.04-arm (same docker-run shape as the
-                           # x86_64 musl leg); precompiled natives swapped
-                           # for their aarch64-linux-musl variants
+                           # ubuntu-24.04-arm (same docker-run shape and the
+                           # same clang deviation as the x86_64 musl leg);
+                           # precompiled natives swapped for their
+                           # aarch64-linux-musl variants
   - x86_64-windows-ucrt    # built by CI (green incl. the six source-built
                            # natives); the boot smoke is ENFORCED on this
                            # runtime line (the W2 windows fixes landed in
