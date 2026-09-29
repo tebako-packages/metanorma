@@ -74,7 +74,10 @@ jobs:
   # publish/* branch-name convention: the build legs no-op exactly
   # this file set (see the guard on their steps); every other PR —
   # and every non-PR event, where this job never runs — builds
-  # unchanged.
+  # unchanged. On non-PR events this job is SKIPPED, and a skipped
+  # need cascades into the dependent job — the legs' job-level
+  # `if: !cancelled()` (see the mac leg's head) is what keeps non-PR
+  # builds alive.
   changes:
     name: registry-only change detection
     if: github.event_name == 'pull_request'
@@ -99,6 +102,7 @@ jobs:
   build:
     name: aarch64-macos (ruby ${{ matrix.ruby_line }})
     needs: changes
+    if: ${{ !cancelled() }}
     # tebako#686: on a registry-only bot PR the legs must still REPORT —
     # branch protection pins the per-leg check names, and a job-level
     # skip never expands the matrix (the pinned names would pend
@@ -106,7 +110,14 @@ jobs:
     # instead: the leg runs, builds nothing, and reports green in
     # seconds. A skipped changes job — every non-PR event — and a
     # detection failure (a missing output reads as "not registry-only")
-    # both keep the build: the safe default is to build.
+    # both keep the build: the safe default is to build. The job-level
+    # `if: !cancelled()` is what makes that true: a job-level if with no
+    # status-check function gets an implicit success(), and a SKIPPED
+    # need fails it — before this line, every non-PR event cascaded the
+    # changes job's skip into all fourteen legs AND the publish job (the
+    # 1.17.0-4 tag run, 36539514581, published nothing; tebako#686
+    # follow-on). The publish job needs no such line: its implicit
+    # success() is the correct gate — skipped legs must never publish.
     runs-on: macos-14
     strategy:
       fail-fast: false
@@ -225,6 +236,7 @@ jobs:
   build-windows:
     name: x86_64-windows-ucrt (ruby ${{ matrix.ruby_line }})
     needs: changes
+    if: ${{ !cancelled() }}
     # tebako#686: the registry-only step guards — see the mac leg's job
     # comment (branch protection pins the per-leg check names, so the
     # leg must run and report green, building nothing).
@@ -406,6 +418,7 @@ jobs:
   build-linux:
     name: x86_64-linux-gnu (ruby ${{ matrix.ruby_line }})
     needs: changes
+    if: ${{ !cancelled() }}
     # tebako#686: the registry-only step guards — see the mac leg's job
     # comment (branch protection pins the per-leg check names, so the
     # leg must run and report green, building nothing).
@@ -518,6 +531,7 @@ jobs:
   build-mac-intel:
     name: x86_64-macos (ruby ${{ matrix.ruby_line }})
     needs: changes
+    if: ${{ !cancelled() }}
     # tebako#686: the registry-only step guards — see the mac leg's job
     # comment (branch protection pins the per-leg check names, so the
     # leg must run and report green, building nothing).
@@ -628,6 +642,7 @@ jobs:
   build-linux-arm:
     name: aarch64-linux-gnu (ruby ${{ matrix.ruby_line }})
     needs: changes
+    if: ${{ !cancelled() }}
     # tebako#686: the registry-only step guards — see the mac leg's job
     # comment (branch protection pins the per-leg check names, so the
     # leg must run and report green, building nothing).
@@ -737,6 +752,7 @@ jobs:
   build-linux-musl:
     name: x86_64-linux-musl (ruby ${{ matrix.ruby_line }})
     needs: changes
+    if: ${{ !cancelled() }}
     # tebako#686: the registry-only step guards — see the mac leg's job
     # comment (branch protection pins the per-leg check names, so the
     # leg must run and report green, building nothing).
@@ -916,6 +932,7 @@ jobs:
   build-linux-musl-arm:
     name: aarch64-linux-musl (ruby ${{ matrix.ruby_line }})
     needs: changes
+    if: ${{ !cancelled() }}
     # tebako#686: the registry-only step guards — see the mac leg's job
     # comment (branch protection pins the per-leg check names, so the
     # leg must run and report green, building nothing).
