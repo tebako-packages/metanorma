@@ -1109,6 +1109,15 @@ jobs:
     # waits for all fourteen; the publish step below upserts one registry
     # version entry per line into the SAME registry file.
     needs: [build, build-mac-intel, build-linux, build-linux-arm, build-linux-musl, build-linux-musl-arm, build-windows]
+    # A job-level block REPLACES the workflow-level grant, so contents +
+    # pull-requests are restated; attestations/id-token arm the SLSA L3
+    # provenance step at the job tail (same tag gate — push/PR runs
+    # never run this job, so they never attest).
+    permissions:
+      contents: write
+      pull-requests: write
+      attestations: write
+      id-token: write
     runs-on: macos-14
     env:
       TEBAKO_CLI: ${{ github.workspace }}/.packager/tebako
@@ -1329,6 +1338,28 @@ jobs:
               gh release upload "${{ github.ref_name }}" "$f" --clobber
             fi
           done
+
+      # SLSA L3 provenance over the exact bytes this tag ships — the
+      # seven per-line payload images (the tebako publish uploads above)
+      # plus the closure inventories. The per-triplet-line dir globs
+      # deliberately cannot reach out/publish-mirror/v*/ (the staged
+      # spawned-runtime mirror — those bytes ship on the java/python
+      # factories' own releases, never this one). The CLI-derived .asc
+      # signatures never touch the disk. Gated with the job (tag runs
+      # only); push/PR runs never attest.
+      - name: Attest build provenance
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            out/aarch64-macos-*/*.tfs
+            out/x86_64-macos-*/*.tfs
+            out/x86_64-linux-gnu-*/*.tfs
+            out/aarch64-linux-gnu-*/*.tfs
+            out/x86_64-linux-musl-*/*.tfs
+            out/aarch64-linux-musl-*/*.tfs
+            out/x86_64-windows-ucrt-*/*.tfs
+            out/*/closure-*.json
       # main is branch-protected (and the GitHub-Actions bypass is not
       # available on this plan): the registry lands by bot PR + auto-merge,
       # never by direct push. Idempotent across re-runs of the same tag.
