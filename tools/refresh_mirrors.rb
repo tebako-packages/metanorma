@@ -4,18 +4,20 @@
 # refresh_mirrors.rb — re-render this registry's MIRROR rows in place:
 # the spawned-runtime rows (java/python, rendered from Tebakofile's pins
 # via tools/pins.rb — never hand-duplicated) and the requires-closure
-# payload mirrors (inkscape, xml2rfc — copied WHOLESALE from the provider
+# payload mirrors (xml2rfc — copied WHOLESALE from the provider
 # registries; the provider registry is the SSOT, this is the L3 mirror by
-# value, replaced by entry name).
+# value, replaced by entry name). The inkscape toolkit mirror was retired
+# with the dependency itself: vectory 0.12 (bundled from metanorma 1.17.0)
+# converts SVG→EMF / EPS→SVG in-process through the pure-Ruby
+# emfsvg/postsvg gems, so the payload no longer mounts an inkscape image.
 #
 # Why a tool: the publish job ran this as an inline ruby -e, so the
 # mirror rows only re-derived at metanorma publish time and went stale
-# between publishes (the inkscape 1.4.3-4 ↔ provider 1.4.3-5 divergence,
-# 2026-09-29). The same render now serves BOTH the publish job and the
-# refresh-mirrors workflow (scheduled + dispatched), so the two paths can
-# never diverge again.
+# between publishes (the 2026-09-29 divergence class). The same render
+# now serves BOTH the publish job and the refresh-mirrors workflow
+# (scheduled + dispatched), so the two paths can never diverge again.
 #
-#   ruby tools/refresh_mirrors.rb <inkscape-registry.yaml> <xml2rfc-registry.yaml>
+#   ruby tools/refresh_mirrors.rb <xml2rfc-registry.yaml>
 #
 # Env (flowed from tools/pins.rb): JAVA_VERSION, JAVA_TEBAKO,
 # PYTHON_VERSION, PYTHON_TEBAKO. Operates on tpkg-registry.yaml in the
@@ -24,10 +26,14 @@
 require "yaml"
 
 path = "tpkg-registry.yaml"
-inkscape_path = ARGV[0] or abort "NAMED FAILURE: usage: refresh_mirrors.rb <inkscape-registry.yaml> <xml2rfc-registry.yaml>"
-xml2rfc_path = ARGV[1] or abort "NAMED FAILURE: usage: refresh_mirrors.rb <inkscape-registry.yaml> <xml2rfc-registry.yaml>"
+xml2rfc_path = ARGV[0] or abort "NAMED FAILURE: usage: refresh_mirrors.rb <xml2rfc-registry.yaml>"
 
 reg = YAML.load_file(path)
+
+# Retired mirrors are deleted outright (the tool only upserts otherwise):
+# inkscape stopped being a requires edge when the payload moved to
+# vectory 0.12's in-process converters.
+reg["payloads"].reject! { |p| p["name"] == "inkscape" }
 
 # The spawned-runtime registry entries (spec 04 §2's kind: runtime,
 # schema MINOR 1 — the resolver's channel 3): without them a real-world
@@ -64,14 +70,13 @@ entries.each do |entry|
   end
 end
 
-# The requires-closure payload mirrors (the toolkit inkscape and the
-# spec-32 executable xml2rfc): a wild `tebako install metanorma`
-# registers only THIS registry, so every non-runtime requires edge must
-# resolve here too. The entries are copied WHOLESALE (platforms +
-# digests + signature + release.ref) from the provider registries —
-# version accumulation belongs to the providers, not the mirror.
+# The requires-closure payload mirror (the spec-32 executable xml2rfc):
+# a wild `tebako install metanorma` registers only THIS registry, so
+# every non-runtime requires edge must resolve here too. The entry is
+# copied WHOLESALE (platforms + digests + signature + release.ref) from
+# the provider registry — version accumulation belongs to the provider,
+# not the mirror.
 {
-  "inkscape" => inkscape_path,
   "xml2rfc" => xml2rfc_path,
 }.each do |name, mirror_path|
   provider = YAML.load_file(mirror_path)

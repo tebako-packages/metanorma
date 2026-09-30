@@ -57,19 +57,15 @@ host without java compiles identically). See §7.4.
 - `psych (~> 5.2.0)` ← relaton-bib 2.1.6, relaton-core 0.0.13
 - `nokogiri` ← ~30 gems (isodoc, metanorma, relaton-*, vectory, ...)
 
-### The inkscape link (spec 03 DEPENDS)
+### The figure path — in-process since 1.17.0 (inkscape dep retired)
 
-The figure path: isodoc rasterizes SVG figures through **vectory 0.10.1**,
-which shells out to `inkscape` on PATH. The payload therefore declares
-
-```yaml
-requires:
-  - {kind: toolkit, name: inkscape, constraint: ">= 1.3", mount: /opt/inkscape}
-```
-
-and the dispatcher mounts the inkscape toolkit payload at the
-consumer-declared point. The dogfood compile (`fixtures/site.adoc`, one
-SVG figure) exercises exactly this chain.
+Historically (up to 1.16.x): isodoc rasterized SVG figures through
+vectory ≤ 0.10, which shelled out to `inkscape` on PATH, so the payload
+declared a toolkit DEPENDS mounted at `/opt/inkscape`. Since vectory
+0.12 (bundled from 1.17.0) both conversions run in-process through the
+pure-Ruby `emfsvg` (SVG→EMF) and `postsvg` (EPS→SVG) gems — the payload
+carries no graphics toolkit dependency, and the dogfood compile
+(`fixtures/site.adoc`, one SVG figure) exercises exactly this chain.
 
 ## 2. Self-hosting: no host ruby anywhere
 

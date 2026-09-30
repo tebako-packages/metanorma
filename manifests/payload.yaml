@@ -149,13 +149,9 @@ requires:
   - kind: language
     engine: ruby
     constraint: "@@CONSTRAINT@@"
-  # metanorma's graphics chain (spec 03 §2.3 DEPENDS): isodoc rasterizes SVG
-  # figures through vectory -> inkscape for doc/html output. The dispatcher
-  # mounts the inkscape toolkit payload at the consumer-declared point.
-  - kind: toolkit
-    name: inkscape
-    constraint: ">= 1.3"
-    mount: /opt/inkscape
+  # metanorma's graphics chain needs no toolkit mount: since vectory 0.12
+  # (bundled from 1.17.0) SVG→EMF and EPS→SVG convert in-process through
+  # the pure-Ruby emfsvg/postsvg gems — no external inkscape binary.
   # the hermetic java answer (jing + mn2pdf): the openjdk RUNTIME
   # (kind: runtime, spec 30) — the JVM runs as a spawned child process
   # dispatched through tebako from the store, never co-mounted, never a

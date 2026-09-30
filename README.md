@@ -2,12 +2,13 @@
 
 Feedstock for **metanorma** — the flagship `kind: app` payload of the
 `tebako-packages` org (a runtime-required ruby application) and the org's
-CI dogfood: its payload declares a toolkit dependency on
-[`inkscape`](https://github.com/tebako-packages/inkscape) (consumer-declared
-mount `/opt/inkscape`) and a spec-30 runtime edge on
+CI dogfood: its payload declares a spec-30 runtime edge on
 [`openjdk`](https://github.com/tebako-packages/openjdk) (`engine: java` —
 the mn2pdf PDF leg spawns the JVM from the store, never a host-PATH
-lookup), so installing it exercises the full dispatch chain.
+lookup) and a spec-32 executable edge on `xml2rfc`, so installing it
+exercises the full dispatch chain. Figure conversion (SVG→EMF, EPS→SVG)
+runs in-process through vectory's pure-Ruby emfsvg/postsvg converters —
+no external graphics binary.
 
 - Upstream: [metanorma-cli](https://github.com/metanorma/metanorma-cli) 1.17.0 (RubyGems)
 - Payload: `metanorma-1.17.0-<asset-platform>.tfs` (LimniFS image, per-triplet;
@@ -29,7 +30,7 @@ lookup), so installing it exercises the full dispatch chain.
   `vendor_siblings.rb` (windows: vendored DLL siblings — zlib1.dll next to
   the payload's libpng16.dll, spec 22 §2.1's importer-dir rule), `resolve_closure` +
   `gen_closure` (re-resolve a new upstream version)
-- `fixtures/` — the dogfood document (one figure through the inkscape path)
+- `fixtures/` — the dogfood document (one figure through the vectory SVG→EMF path)
 - `docs/build-notes.md` — dep-tree findings, what ran, what's deferred
 
 ## Why triplet-bound
@@ -45,7 +46,7 @@ per-triplet and per ruby ABI line: the bare `1.17.0` entry rides ruby 4.0
 
 ```console
 $ tebako add-registry tfs:github:tebako-packages/index
-$ tebako install metanorma@1.17.0    # pulls the ruby runtime + inkscape too
+$ tebako install metanorma@1.17.0    # pulls the ruby runtime + the java/python spawn edges
 $ metanorma --version                 # via the shim layer
 ```
 
@@ -53,6 +54,7 @@ $ metanorma --version                 # via the shim layer
 
 `.github/workflows/dogfood.yml` is the roadmap-32 proof: a bare runner
 installs the tebako CLI from the tebako-rs release, installs this payload
-through the index, compiles a document whose figure is rasterized by the
-inkscape payload, and asserts the PDF's magic bytes — plus a tight-jail
-variant. Gated until tebako-rs v0.1.0 ships (see the workflow header).
+through the index, compiles a document whose figure converts through
+vectory's in-process SVG→EMF path, and asserts the PDF's magic bytes —
+plus a tight-jail variant. Gated until tebako-rs v0.1.0 ships (see the
+workflow header).
