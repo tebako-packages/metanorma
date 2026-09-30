@@ -137,10 +137,6 @@ build:
 # Feedstock deps consumed at exec time (spec 03 DEPENDS; the dispatcher
 # mounts the toolkit payload at the consumer-declared point).
 depends:
-  - kind: toolkit
-    name: inkscape
-    constraint: ">= 1.3"
-    mount: /opt/inkscape
   # spec 32's first instance: the ietf chain's xml2rfc spawn edge.
   # Expose-only (never co-mounted): the provider payload dispatches as a
   # child through its own spec-17 composition on the python runtime.

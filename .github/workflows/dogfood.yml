@@ -2,11 +2,11 @@ name: dogfood
 # THE dogfood: a bare runner installs the tebako CLI from the
 # published tamatebako/tebako release, adds the tebako-packages registries,
 # installs the published metanorma payload, and runs a real compile whose
-# figure goes through the inkscape toolkit payload and whose PDF leg spawns
-# the openjdk RUNTIME (the kind: runtime edge, spec 30 — the JVM is a child
-# process dispatched from the store, never a host-PATH lookup) — proving the
-# full dispatch chain (registry -> runtime + app payload + toolkit payloads
-# + spawned runtime edges -> shim exec).
+# figure converts in-process through vectory's pure-Ruby emfsvg path and
+# whose PDF leg spawns the openjdk RUNTIME (the kind: runtime edge,
+# spec 30 — the JVM is a child process dispatched from the store, never a
+# host-PATH lookup) — proving the full dispatch chain (registry -> runtime
+# + app payload + spawned runtime edges -> shim exec).
 #
 # Legs:
 #   aarch64-macos — ACTIVE (gated on the payload being published — see
@@ -178,10 +178,10 @@ jobs:
         # by the CLI (still true at v2.1.0: it registers as 0 payloads —
         # the packages[] follow is a filed product gap).
         # Add the feedstock registry directly. It is the ONE-STOP
-        # registry: its mirror carries the closure payloads too
-        # (inkscape, xml2rfc, the spawned runtimes' indices) — adding the
-        # standalone inkscape/xml2rfc registries as well double-lists
-        # those payloads and install fails with AmbiguousRegistries
+        # registry: its mirror carries the closure payload too
+        # (xml2rfc, plus the spawned runtimes' indices) — adding the
+        # standalone xml2rfc registry as well double-lists
+        # that payload and install fails with AmbiguousRegistries
         # (exit 65, the resolver's named ambiguity guard).
         # The spawned runtime edges do NOT ride a payload registry:
         # install pre-stages them through the runtime release index
@@ -209,7 +209,7 @@ jobs:
 
       - name: Assert the store holds exactly one of each closure payload
         # Structural, not log-scraping: one .tfs per closure payload
-        # (metanorma + inkscape + xml2rfc — the spec-32 executable edge's
+        # (metanorma + xml2rfc — the spec-32 executable edge's
         # provider is pre-staged by the install-time transitive spawn
         # closure). The spawned RUNTIMES are not payloads — they land under
         # runtimes/ (asserted below). The primary RUBY runtime is
@@ -218,14 +218,14 @@ jobs:
         run: |
           set -euo pipefail
           store="$HOME/.tebako"
-          for payload in metanorma inkscape xml2rfc; do
+          for payload in metanorma xml2rfc; do
             n=$(ls "$store/payloads/$payload"/*.tfs 2>/dev/null | wc -l | tr -d ' ' || true)
             echo "$payload images in store: $n"
             [ "$n" = "1" ] || { echo "FAIL: $payload has $n images (expected 1)"; exit 1; }
             # the trust anchor rides every payload
             ls "$store/payloads/$payload"/*.tfs.sha256 >/dev/null
           done
-          echo "store OK: 1 image each for metanorma, inkscape, xml2rfc"
+          echo "store OK: 1 image each for metanorma, xml2rfc"
 
       - name: Assert the spawned runtimes pre-staged at install
         # spec 30 §3 + spec 32: install_runtime_edge resolves + downloads
@@ -277,7 +277,7 @@ jobs:
           set -euo pipefail
           cp fixtures/site.adoc fixtures/figure.svg site/
 
-      - name: metanorma compile (figure via inkscape payload, PDF via the spawned java runtime)
+      - name: metanorma compile (figure via vectory's in-process converter, PDF via the spawned java runtime)
         # The PDF leg (mn2pdf) spawns `java` — the spec-30 surface rewrites
         # it to a full dispatch of the pre-staged openjdk runtime's wrapper
         # exe from the store (never a host PATH lookup; a host without java

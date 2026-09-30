@@ -1233,10 +1233,10 @@ jobs:
           else
             echo "::notice::recipe declares no signing — publishing unsigned (unsigned is first-class; the registry carries no signature pins)"
           fi
-          # inkscape + xml2rfc resolve from THIS repo's own registry (the
-          # one-stop mirror — #66): no add-registry of the provider
-          # feedstocks, or the requires closure sees two listings and the
-          # resolver names AmbiguousRegistries (exit 65).
+          # xml2rfc resolves from THIS repo's own registry (the one-stop
+          # mirror — #66): no add-registry of the provider feedstock, or the
+          # requires closure sees two listings and the resolver names
+          # AmbiguousRegistries (exit 65).
           # The java + python runtime preferences (Tebakofile's java and
           # python blocks) — the verify's clean-cache install inherits the
           # publisher home's runtimes: prefs (tebako >= the verify-pref
@@ -1281,27 +1281,23 @@ jobs:
           # resolver's entry scan to entries carrying the edge's named
           # implementation (the xml2rfc python edge names cpython) — an
           # entry without it is invisible to that edge (exit 69).
-          # The requires-closure PAYLOAD mirrors (the toolkit inkscape
-          # and the spec-32 executable xml2rfc): a wild `tebako install
-          # metanorma` registers only THIS registry, so every non-runtime
-          # requires edge must resolve here too — the same channel-3
-          # argument as the spawned runtimes above (the macOS pkg seed's
-          # install failed exit 65 on exactly this gap). The entries are
-          # copied WHOLESALE (platforms + digests + signature +
-          # release.ref) from the provider registries — the provider
-          # registry is the SSOT, this is the L3 mirror by value,
+          # The requires-closure PAYLOAD mirror (the spec-32 executable
+          # xml2rfc): a wild `tebako install metanorma` registers only
+          # THIS registry, so every non-runtime requires edge must resolve
+          # here too — the same channel-3 argument as the spawned runtimes
+          # above (the macOS pkg seed's install failed exit 65 on exactly
+          # this gap). The entry is copied WHOLESALE (platforms + digests
+          # + signature + release.ref) from the provider registry — the
+          # provider registry is the SSOT, this is the L3 mirror by value,
           # replaced by entry name at every render (here AND in the
           # scheduled refresh-mirrors workflow).
-          curl -fsSL -o "$RUNNER_TEMP/registry-inkscape.yaml" \
-            https://raw.githubusercontent.com/tebako-packages/inkscape/main/tpkg-registry.yaml
           curl -fsSL -o "$RUNNER_TEMP/registry-xml2rfc.yaml" \
             https://raw.githubusercontent.com/tebako-packages/xml2rfc/main/tpkg-registry.yaml
           # The render lives in tools/refresh_mirrors.rb — the SAME tool
           # the refresh-mirrors workflow runs between publishes, so this
           # job and that workflow can never diverge (the 2026-09-29
-          # inkscape 1.4.3-4 ↔ 1.4.3-5 staleness class).
+          # staleness class).
           ruby tools/refresh_mirrors.rb \
-            "$RUNNER_TEMP/registry-inkscape.yaml" \
             "$RUNNER_TEMP/registry-xml2rfc.yaml"
       # The extension-slice dedup source (spec 03 §2.8): each leg's build
       # generated closure-<version>-<platform>.json (the staged gem

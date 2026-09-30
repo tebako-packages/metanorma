@@ -16,8 +16,8 @@
 
 .Foreword
 This document exists to prove the tebako-packages metanorma payload: a real
-compile whose figure is rasterized through the inkscape toolkit payload
-(SVG -> PNG/EMF via vectory), mounted at /opt/inkscape by the dispatcher.
+compile whose figure converts through the payload's in-process vectory path
+(SVG -> EMF via emfsvg — no external graphics binary).
 
 == Terms and definitions
 
@@ -31,5 +31,5 @@ The figure in <<fig-dogfood>> exercises the SVG conversion path of the
 payload's graphics chain.
 
 [[fig-dogfood]]
-.A figure that exercises the inkscape SVG path
+.A figure that exercises the vectory SVG path
 image::figure.svg[]
