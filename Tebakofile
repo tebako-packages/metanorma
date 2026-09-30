@@ -243,8 +243,15 @@ java:
   # The preference flows into ~/.tebako/config.yaml `runtimes:` at
   # install/publish time so the edge's download resolves to THIS exact
   # pair (a pref-less pick would query the wrong release line).
+  # v2.8.23: the first line carrying the aarch64-linux-gnu legs
+  # (tebako-runtime-openjdk#54) — the snap arm64 acceptance's pdf compile
+  # spawns mn2pdf on this pair and v2.8.21 has no linux-gnu-arm64 assets
+  # (exit 69 "no released java runtime for linux-gnu-arm64", snap run
+  # 36619167377). The line's launcher also carries the spawn host-arg
+  # routing fix (tebako#692/#693). Same JRE (21.0.12+8) — the wrapper
+  # line alone advances.
   version: "21.0.12"       # Temurin JRE 21.0.12+8 repack
-  tebako: "2.8.21"          # the release line = the wrapper's tebako build
+  tebako: "2.8.23"          # the release line = the wrapper's tebako build
   releases_base: "https://github.com/tamatebako/tebako-runtime-openjdk/releases/download"
 
 # The nested python runtime behind payload.yaml's spec-32 kind: executable
