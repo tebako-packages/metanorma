@@ -2,15 +2,14 @@ name: refresh-mirrors
 
 # Re-derives this registry's MIRROR rows between metanorma publishes.
 # The publish job renders them at tag time, but providers publish on
-# their own cadence — between metanorma tags the xml2rfc mirror
-# row (copied wholesale from the provider registry) and the
+# their own cadence — between metanorma tags the inkscape/xml2rfc mirror
+# rows (copied wholesale from the provider registries) and the
 # spawned-runtime rows (java/python, from Tebakofile's pins) can drift
 # from the providers, and this feedstock's dogfood + a wild
 # `tebako install metanorma` resolve against THIS registry (the one-stop
 # channel-3 argument in the publish job). The 2026-09-29 incident:
-# a provider shipped a new tag while this registry still mirrored the
-# previous one, failing the aggregate's divergence gate and the snap
-# arm64 acceptance.
+# inkscape 1.4.3-5 shipped while this registry still mirrored 1.4.3-4,
+# failing the aggregate's divergence gate and the snap arm64 acceptance.
 #
 # The render is tools/refresh_mirrors.rb — the SAME tool the
 # build-payload publish job calls, so the two paths cannot diverge.
@@ -46,11 +45,13 @@ jobs:
       - name: Fetch the provider registries (the mirror sources)
         run: |
           set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/registry-inkscape.yaml" \
+            https://raw.githubusercontent.com/tebako-packages/inkscape/main/tpkg-registry.yaml
           curl -fsSL -o "$RUNNER_TEMP/registry-xml2rfc.yaml" \
             https://raw.githubusercontent.com/tebako-packages/xml2rfc/main/tpkg-registry.yaml
 
       - name: Re-render the mirror rows
-        run: ruby tools/refresh_mirrors.rb "$RUNNER_TEMP/registry-xml2rfc.yaml"
+        run: ruby tools/refresh_mirrors.rb "$RUNNER_TEMP/registry-inkscape.yaml" "$RUNNER_TEMP/registry-xml2rfc.yaml"
 
       - name: Land the drift by bot PR (or nothing when current)
         env:
@@ -70,9 +71,9 @@ jobs:
           git add tpkg-registry.yaml
           git commit -m "registry: re-derive mirror rows from the provider registries
 
-          refresh-mirrors.yml (scheduled/dispatched): the xml2rfc
-          payload mirror is a wholesale copy of the provider
-          entry and the java/python runtime rows render from
+          refresh-mirrors.yml (scheduled/dispatched): the inkscape +
+          xml2rfc payload mirrors are wholesale copies of the provider
+          entries and the java/python runtime rows render from
           Tebakofile's pins — tools/refresh_mirrors.rb, the same render
           the build-payload publish job calls."
           git push origin "$branch"
