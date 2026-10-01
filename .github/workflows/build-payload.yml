@@ -66,6 +66,9 @@ concurrency:
 permissions:
   contents: write
   pull-requests: write
+  # OCI dual-publish (spec 38): the release job's publish step pushes the
+  # payload artifacts to ghcr.io when the OCI_REPO variable is set.
+  packages: write
 
 jobs:
   # Registry-only detection (tebako#686): the tag run's publish job
@@ -1224,6 +1227,13 @@ jobs:
         env:
           TEBAKO_RUNTIME_MIRROR: file://${{ github.workspace }}/out/publish-mirror
           TEBAKO_SIGNING_KEY: ${{ secrets.TEBAKO_CI_SIGNING_KEY }}
+          # OCI dual-publish destination (spec 38; repo variable — unset
+          # means dormant, the --oci flag is omitted byte-for-byte and the
+          # publish is unchanged). Activation: set OCI_REPO to
+          # tfs+oci://ghcr.io/tebako-packages/metanorma once the tebako CLI
+          # floor carries publish --oci (tebako#701) and the ghcr package
+          # is public + repo-attached.
+          OCI_REPO: ${{ vars.OCI_REPO }}
         run: |
           set -euo pipefail
           # The signing key staging: with a recipe-declared signing block
@@ -1241,6 +1251,23 @@ jobs:
             SIGN_ARGS=(--sign="$SIGNING_KEYID")
           else
             echo "::notice::recipe declares no signing — publishing unsigned (unsigned is first-class; the registry carries no signature pins)"
+          fi
+          # OCI dual-publish (spec 38 §11; dormant while OCI_REPO is unset):
+          # the SAME staged bytes ride the OCI repo, per-triplet tags derive,
+          # signatures follow as sha256-<hex>.asc sibling digest-tags, and
+          # the per-triplet registry rows gain the additive oci: mirror
+          # locator. The ghcr credential is the spec-38 §6 tier-3
+          # docker-config auths entry (plain auth — credHelpers are the
+          # named refusal), minted from this job's own GITHUB_TOKEN and
+          # confined to ghcr.io.
+          OCI_ARGS=()
+          if [ -n "${OCI_REPO:-}" ]; then
+            mkdir -p ~/.docker
+            printf '{"auths":{"ghcr.io":{"auth":"%s"}}}\n' \
+              "$(printf '%s' "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" | base64 | tr -d '\n')" \
+              > ~/.docker/config.json
+            chmod 600 ~/.docker/config.json
+            OCI_ARGS=(--oci "$OCI_REPO")
           fi
           # inkscape + xml2rfc resolve from THIS repo's own registry (the
           # one-stop mirror — #66): no add-registry of the provider
@@ -1260,10 +1287,11 @@ jobs:
           for ruby_line in $RUBY_LINES; do
             eval "$(ruby tools/pins.rb macos-arm64 --ruby-line "$ruby_line")"
             echo "== publish ruby line $ruby_line as version $PAYLOAD_VERSION"
-            # SIGN_ARGS carries --sign=<keyid> when the recipe signs; the
-            # ${arr[@]+...} guard keeps the empty (unsigned) expansion
-            # legal under set -u on bash 3.2 (macOS's /bin/bash).
-            "$TEBAKO_CLI" publish "${SIGN_ARGS[@]+"${SIGN_ARGS[@]}"}" --name "$PKG_NAME" \
+            # SIGN_ARGS carries --sign=<keyid> when the recipe signs;
+            # OCI_ARGS carries --oci <repo> when the variable activates the
+            # dual-publish; the ${arr[@]+...} guards keep both empty
+            # expansions legal under set -u on bash 3.2 (macOS's /bin/bash).
+            "$TEBAKO_CLI" publish "${SIGN_ARGS[@]+"${SIGN_ARGS[@]}"}" "${OCI_ARGS[@]+"${OCI_ARGS[@]}"}" --name "$PKG_NAME" \
               --release "tfs:github:tebako-packages/metanorma:${{ github.ref_name }}" \
               --payload aarch64-macos="out/aarch64-macos-$ruby_line/$PKG_NAME-$PAYLOAD_VERSION-macos-arm64.tfs" \
               --payload x86_64-macos="out/x86_64-macos-$ruby_line/$PKG_NAME-$PAYLOAD_VERSION-macos-x86_64.tfs" \
