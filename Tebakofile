@@ -166,7 +166,11 @@ depends:
 # upstream.sha256; provenance in docs/build-notes.md).
 tools:
   repo: "tamatebako/tebako"
-  release: "v2.8.22"         # v2.8.22 presses ruby 4.0.7 (the 0.16.31
+  release: "v2.8.24"         # v2.8.24 ships spec 38's publish --oci (the
+                             # dual-publish leg the OCI_REPO variable arms)
+                             # + spec 39's blksum sidecar staging beside
+                             # every payload image. v2.8.22 presses ruby
+                             # 4.0.7 (the 0.16.31
                              # line's 4.0 tip — v2.8.21's table exits 110
                              # on it). v2.8.21's imager writes limnifs
                              # metadata
