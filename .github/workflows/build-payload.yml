@@ -1112,13 +1112,18 @@ jobs:
     # waits for all fourteen; the publish step below upserts one registry
     # version entry per line into the SAME registry file.
     needs: [build, build-mac-intel, build-linux, build-linux-arm, build-linux-musl, build-linux-musl-arm, build-windows]
-    # A job-level block REPLACES the workflow-level grant, so contents +
-    # pull-requests are restated; attestations/id-token arm the SLSA L3
-    # provenance step at the job tail (same tag gate — push/PR runs
-    # never run this job, so they never attest).
+    # A job-level block REPLACES the workflow-level grant, so every
+    # grant this job needs is restated here: contents + pull-requests
+    # for the release/registry-bot flow, packages for the ghcr.io
+    # dual-publish push (dropping it revokes the token's package scope
+    # and the push dies CredentialRequired — the 1.17.0-6 tag run),
+    # attestations/id-token for the SLSA L3 provenance step at the job
+    # tail (same tag gate — push/PR runs never run this job, so they
+    # never attest).
     permissions:
       contents: write
       pull-requests: write
+      packages: write
       attestations: write
       id-token: write
     runs-on: macos-14
