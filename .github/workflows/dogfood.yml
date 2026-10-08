@@ -65,37 +65,24 @@ jobs:
       published: ${{ steps.probe.outputs.published }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - id: probe
+      - id: pins
         run: |
           set -euo pipefail
           eval "$(ruby tools/pins.rb macos-arm64 | grep -E '^export (PAYLOAD_VERSION|PKG_NAME|RUBY_CONSTRAINT)=')"
-          url="https://raw.githubusercontent.com/tebako-packages/metanorma/main/tpkg-registry.yaml"
-          # A fetch failure is NOT absence: raw's edge cache/transient
-          # errors must red the gate, never silently skip the legs (the
-          # 09:48 run skipped green-published 1.17.0 on a stale/failed
-          # fetch while the registry was untouched since 07:26).
-          curl -sfL --retry 4 --retry-all-errors --retry-delay 5 "$url" -o "$RUNNER_TEMP/registry.yaml" \
-            || { echo "::error::registry fetch failed ($url) — the gate cannot decide; failing loudly, retry the job"; exit 1; }
-          ruby -ryaml -e '
-            reg, name, ver, constraint = ARGV
-            doc = YAML.unsafe_load_file(reg)
-            row = doc.fetch("payloads").find { |p| p["name"] == name }
-                      &.fetch("versions", [])
-                      &.find { |v| v["version"].to_s == ver }
-            if row.nil?
-              puts "::notice::#{name}@#{ver} not in the published registry yet — the bump'"'"'s tag publishes it; skipping the default-line dogfood legs loudly"
-              File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |f| f.puts "published=false" }
-              exit 0
-            end
-            actual = row.dig("runtime_requirement", "constraint")
-            if actual != constraint
-              puts "::notice::#{name}@#{ver} published with runtime constraint \"#{actual}\" but the recipe'"'"'s default line wants \"#{constraint}\" — mid-flip skew; the re-cut tag re-publishes the row, skipping the default-line dogfood legs loudly"
-              File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |f| f.puts "published=false" }
-              exit 0
-            end
-            puts "#{name}@#{ver} is in the published registry on the recipe'"'"'s default line (#{constraint}) — the default-line legs run"
-            File.open(ENV.fetch("GITHUB_OUTPUT"), "a") { |f| f.puts "published=true" }
-          ' "$RUNNER_TEMP/registry.yaml" "$PKG_NAME" "$PAYLOAD_VERSION" "$RUBY_CONSTRAINT"
+          {
+            echo "name=$PKG_NAME"
+            echo "version=$PAYLOAD_VERSION"
+            echo "constraint=$RUBY_CONSTRAINT"
+          } >> "$GITHUB_OUTPUT"
+      # The gate is the shared composite action (tebako-packages/index) —
+      # never re-inline a per-repo probe here.
+      - id: probe
+        uses: tebako-packages/index/.github/actions/probe-registry-row@main
+        with:
+          registry-url: https://raw.githubusercontent.com/tebako-packages/metanorma/main/tpkg-registry.yaml
+          payload: ${{ steps.pins.outputs.name }}
+          version: ${{ steps.pins.outputs.version }}
+          constraint: ${{ steps.pins.outputs.constraint }}
 
   dogfood:
     name: ${{ matrix.triplet }}
@@ -413,23 +400,23 @@ jobs:
       published: ${{ steps.probe.outputs.published }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - id: probe
+      - id: pins
         run: |
           set -euo pipefail
           eval "$(ruby tools/pins.rb macos-arm64 --ruby-line 3.3 | grep -E '^export (PAYLOAD_VERSION|PKG_NAME)=')"
-          url="https://raw.githubusercontent.com/tebako-packages/metanorma/main/tpkg-registry.yaml"
-          # A fetch failure is NOT absence: raw's edge cache/transient
-          # errors must red the gate, never silently skip the legs (the
-          # 09:48 run skipped green-published 1.17.0 on a stale/failed
-          # fetch while the registry was untouched since 07:26).
-          body=$(curl -sfL --retry 4 --retry-all-errors --retry-delay 5 "$url")             || { echo "::error::registry fetch failed ($url) — the gate cannot decide; failing loudly, retry the job"; exit 1; }
-          if printf '%s' "$body" | grep -q "version: '$PAYLOAD_VERSION'\|version: \"$PAYLOAD_VERSION\"\|version: $PAYLOAD_VERSION"; then
-            echo "$PKG_NAME@$PAYLOAD_VERSION is in the published registry — the 3.3 leg runs"
-            echo "published=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::$PKG_NAME@$PAYLOAD_VERSION not in the published registry yet — the first dual-line tag publishes it; skipping the 3.3 dogfood leg loudly"
-            echo "published=false" >> "$GITHUB_OUTPUT"
-          fi
+          {
+            echo "name=$PKG_NAME"
+            echo "version=$PAYLOAD_VERSION"
+          } >> "$GITHUB_OUTPUT"
+      # The gate is the shared composite action (tebako-packages/index) —
+      # never re-inline a per-repo probe here. No constraint input: the
+      # flavor row's presence is enough (the dual-line tag publishes it).
+      - id: probe
+        uses: tebako-packages/index/.github/actions/probe-registry-row@main
+        with:
+          registry-url: https://raw.githubusercontent.com/tebako-packages/metanorma/main/tpkg-registry.yaml
+          payload: ${{ steps.pins.outputs.name }}
+          version: ${{ steps.pins.outputs.version }}
 
   dogfood-ruby33:
     name: ruby3.3 flavor (${{ matrix.plat }})
