@@ -155,7 +155,7 @@ jobs:
           if .tools/tebako registry --help 2>&1 | grep -q 'validate'; then
             .tools/tebako registry validate tpkg-registry.yaml
           else
-            echo "::notice::the pinned $TEBAKO_RELEASE predates the registry-validate verb — the grammar gate activates with the pin carrying it (tamatebako/tebako registry-contract wave)"
+            echo "::notice::the pinned $TEBAKO_RELEASE predates the registry-validate verb — the grammar gate activates with the pin carrying it (tamatebako/tebako#741)"
           fi
       - name: Untouched registry reports green
         if: steps.touch.outputs.touched == 'false'
