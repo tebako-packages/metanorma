@@ -102,6 +102,64 @@ jobs:
           else
             echo "registry_only=false" >> "$GITHUB_OUTPUT"
           fi
+  # The registry grammar gate (tebako#549/#440's producer gate): any PR
+  # TOUCHING tpkg-registry.yaml — the publish flow's bot PRs and the
+  # mirror-refresh alike — validates the file with the PINNED tebako CLI
+  # before merge, so a malformed or contract-breaking row fails ITS OWN
+  # PR instead of every reader at merge. The job reports on every PR
+  # (a skipped job pends the pinned check name forever — tebako#686's
+  # lesson) and no-ops loudly when the file is untouched. The verdict's
+  # extras set rides the pinned release: the one-grammar and abi-mirror
+  # extras activate when the pin reaches the tebako release carrying
+  # them (the pin bump is the whole move — no workflow edit).
+  registry-validate:
+    name: registry validate
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Gate to registry-touching PRs
+        id: touch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          files="$(gh pr view "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" \
+            --json files --jq '[.files[].path] | join(" ")')"
+          echo "changed files: $files"
+          case " $files " in
+            *" tpkg-registry.yaml "*) echo "touched=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "touched=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - name: Read the toolchain pins (Tebakofile is the SSOT)
+        if: steps.touch.outputs.touched == 'true'
+        run: ruby tools/pins.rb linux-gnu-x86_64 --env >> "$GITHUB_ENV"
+      - name: Fetch the CLI (pinned by Tebakofile, sha256-verified)
+        if: steps.touch.outputs.touched == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p .tools
+          curl -sL --fail --retry 5 --retry-all-errors -o .tools/tebako \
+            "https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE/$TEBAKO_ASSET"
+          echo "$TEBAKO_SHA256  .tools/tebako" | sha256sum -c -
+          chmod +x .tools/tebako
+      - name: Validate tpkg-registry.yaml
+        if: steps.touch.outputs.touched == 'true'
+        # The validate verb lands in the tebako release carrying
+        # tebako#549/#440's producer gate (unreleased at pin time — the
+        # probe below). Until the pin reaches it the step skips LOUDLY;
+        # the bump then activates the full extras set (the one-grammar
+        # spellings, the multi-platform abi mirror) with no workflow edit.
+        run: |
+          set -euo pipefail
+          if .tools/tebako registry --help 2>&1 | grep -q 'validate'; then
+            .tools/tebako registry validate tpkg-registry.yaml
+          else
+            echo "::notice::the pinned $TEBAKO_RELEASE predates the registry-validate verb — the grammar gate activates with the pin carrying it (tamatebako/tebako registry-contract wave)"
+          fi
+      - name: Untouched registry reports green
+        if: steps.touch.outputs.touched == 'false'
+        run: echo "tpkg-registry.yaml untouched by this PR — nothing to validate"
   build:
     name: aarch64-macos (ruby ${{ matrix.ruby_line }})
     needs: changes

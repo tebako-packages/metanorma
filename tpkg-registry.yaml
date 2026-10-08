@@ -24,7 +24,6 @@ payloads:
       engine: ruby
       constraint: "~> 3.3.0"
       implementation: mri
-      abi: arm64-darwin-23
     entrypoints:
     - metanorma
     - metanorma-manifest
@@ -112,7 +111,6 @@ payloads:
       engine: ruby
       constraint: "~> 4.0.0"
       implementation: mri
-      abi: arm64-darwin-23
     entrypoints:
     - metanorma
     - metanorma-manifest
@@ -240,7 +238,6 @@ payloads:
       engine: ruby
       constraint: "~> 4.0.0"
       implementation: mri
-      abi: arm64-darwin-23
     entrypoints:
     - metanorma
     - metanorma-manifest
@@ -368,7 +365,6 @@ payloads:
       engine: ruby
       constraint: "~> 3.3.0"
       implementation: mri
-      abi: arm64-darwin-23
     entrypoints:
     - metanorma
     - metanorma-manifest
@@ -550,7 +546,6 @@ payloads:
       engine: python
       constraint: "~> 3.13.0"
       implementation: cpython
-      abi: cpython-313-x86_64-linux-gnu.so
     entrypoints:
     - xml2rfc
   - version: 3.34.1
@@ -613,7 +608,6 @@ payloads:
       engine: python
       constraint: "~> 3.14.0"
       implementation: cpython
-      abi: cpython-314-x86_64-linux-gnu.so
     entrypoints:
     - xml2rfc
   default: 3.34.0
