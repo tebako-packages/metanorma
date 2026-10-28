@@ -39,6 +39,17 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # The fleet identity (tebako-release#3): the drift PR rides the
+      # tebako-fleet App's installation token — App-pushed branches fire
+      # pull_request CI, and the token spends its own per-installation
+      # budget instead of the shared per-user PAT.
+      - name: Mint the fleet token
+        id: fleet
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.TEBAKO_CI_APP_ID }}
+          private-key: ${{ secrets.TEBAKO_CI_APP_PRIVATE_KEY }}
+
       - name: Read the recipe pins (Tebakofile is the SSOT)
         run: ruby tools/pins.rb linux-gnu-x86_64 --env >> "$GITHUB_ENV"
 
@@ -55,7 +66,7 @@ jobs:
 
       - name: Land the drift by bot PR (or nothing when current)
         env:
-          GH_TOKEN: ${{ secrets.TEBAKO_CI_PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.fleet.outputs.token }}
         run: |
           set -euo pipefail
           git config user.name "tebako-ci"

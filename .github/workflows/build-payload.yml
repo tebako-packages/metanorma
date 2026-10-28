@@ -1190,11 +1190,20 @@ jobs:
       TEBAKO_HOME: ${{ github.workspace }}/.tebako
       TEBAKO_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      # The checkout rides the CI PAT so the registry bot branch's push
-      # is the PAT's doing as well (tebako#686 — the publish step below).
+      # The fleet identity (tebako-release#3): the checkout and the
+      # registry bot branch's push ride the tebako-fleet App's
+      # installation token (tebako#686) — App-pushed branches fire
+      # pull_request CI, and the token spends its own per-installation
+      # budget instead of the shared per-user PAT.
+      - name: Mint the fleet token
+        id: fleet
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.TEBAKO_CI_APP_ID }}
+          private-key: ${{ secrets.TEBAKO_CI_APP_PRIVATE_KEY }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          token: ${{ secrets.TEBAKO_CI_PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ steps.fleet.outputs.token }}
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: dist-*
@@ -1456,13 +1465,13 @@ jobs:
       # never by direct push. Idempotent across re-runs of the same tag.
       - name: Publish the registry entry via pull request
         env:
-          # The CI PAT authors the PR: a GITHUB_TOKEN-authored PR's checks
-          # sit on the approval queue until they expire red. tebako#686:
-          # the legs' registry-only step guards (job heads above) make the
-          # PAT-authored PR's pinned leg checks report green WITHOUT a
-          # build — before them the full matrix ran tag-less here and
-          # fast-failed, so auto-merge never fired.
-          GH_TOKEN: ${{ secrets.TEBAKO_CI_PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          # The fleet App's token authors the PR: a GITHUB_TOKEN-authored
+          # PR's checks sit on the approval queue until they expire red.
+          # tebako#686: the legs' registry-only step guards (job heads
+          # above) make the App-authored PR's pinned leg checks report
+          # green WITHOUT a build — before them the full matrix ran
+          # tag-less here and fast-failed, so auto-merge never fired.
+          GH_TOKEN: ${{ steps.fleet.outputs.token }}
         run: |
           set -euo pipefail
           git config user.name "tebako-ci"
