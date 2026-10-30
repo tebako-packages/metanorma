@@ -37,6 +37,8 @@ SKIP_DEFAULTS = {
     # logic, evidence in build-notes):
     "stringio",      # psych unconstrained
     "timeout",       # net-protocol unconstrained
+    "fiddle",        # bundled with the runtime on windows; gem-installing
+                     # it over the runtime's own breaks the native build
     "yaml",          # oscal unconstrained
     "singleton",     # versionian ~> 0.2 (both lines; 4.0.6 bundles 0.3.0 ∈ ~> 0.2)
     "ruby2_keywords",# faraday >= 0.0.4
