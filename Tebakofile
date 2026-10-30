@@ -9,7 +9,7 @@ upstream:
   # rubygems compact index and every .gem is sha256-verified against the
   # /info/<gem> checksum before use (tools/build).
   gem: "metanorma-cli"
-  version: "1.17.0"
+  version: "1.18.1"
   source: "https://rubygems.org"
 
 build:
