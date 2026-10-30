@@ -166,67 +166,37 @@ depends:
 # upstream.sha256; provenance in docs/build-notes.md).
 tools:
   repo: "tamatebako/tebako"
-  release: "v2.8.27"         # v2.8.27 carries the tebako#440 publish fix:
-                             # a multi-platform registry row's mirrored
-                             # runtime_requirement omits abi (per-triplet by
-                             # construction — one platform's value on every
-                             # row was metanorma#116's published lie), so a
-                             # re-publish never re-introduces the line.
-                             # v2.8.24 ships spec 38's publish --oci (the
-                             # dual-publish leg the OCI_REPO variable arms)
-                             # + spec 39's blksum sidecar staging beside
-                             # every payload image. v2.8.22 presses ruby
-                             # 4.0.7 (the 0.16.31
-                             # line's 4.0 tip — v2.8.21's table exits 110
-                             # on it). v2.8.21's imager writes limnifs
-                             # metadata
-                             # inlined up to the 64 MiB product ceiling
-                             # (this payload's blob is ≈7.9 MiB — older
-                             # tools externalize it and the self-contained
-                             # image cannot carry the sidecar), and its
-                             # resolver speaks the shard-era registry
-                             # grammar: runtime entries carry
-                             # platform-keyed artifact+sha256 inline and
-                             # no release-root manifest.json is fetched
-                             # (the python factory's relayout removed it —
-                             # older pins exit 69 resolving the spawned
-                             # runtimes). Carries v2.8.18's shim bundle-row
-                             # split (tebako#673), the extension-slice
-                             # tooling + the zero-interaction trust plane
-                             # the publish-signing leg needs.
+  release: "v2.8.66"        # the published Latest line (v2.8.67 is
+                             # draft-state): carries the contract-era
+                             # resolver the packed-metanorma presses
+                             # already run on; v2.8.27's release sums
+                             # drifted out from under the pin
+                             # (2026-10-28 main breakage).
   sha256:
     tebako:
-      macos-arm64: "a08dc958b08b4ad6ac49f7f0aee3652c2c1cd31956e0d62f325d1215f2f4c704"
-      macos-x86_64: "ff748b5165e8ead09ceda488643af6cbdff14efda4de12e591aab43d67479c50"
-      linux-gnu-x86_64: "6649e700b504f45310fe7274b1ccce3ca462fc4936b37cd3b50edb15a9ce558e"
-      linux-gnu-arm64: "b579d35ff8deee073cda810a8fefec935e4ecc77f65c1d7340a4d756eca07be6"
-      linux-musl-x86_64: "2612c7f88a950fa2d7b73229ca51d2667e8cea813c63cd7004aa4e75eb168497"
-      linux-musl-arm64: "631a910d4d853141660bd323949e400006223ee4e6dbb8ca77d51b67ee360bd8"
-      windows-ucrt64: "c147f7f12c5832eff6e22fe25cbe82e7affe36432f381f9a4da3d229f8cb4d36"
+      macos-arm64: "cb86001fc48c9c853d0f1f745b92ccf14f7b8ed01e59eed0114a5ebc960c0d7f"
+      macos-x86_64: "101a30d3cdc305462ff9ab8660c3547a2c9dc8e22b9eb5a50b0ecb4793bd09d3"
+      linux-gnu-x86_64: "cd37a9e7774f822b2d41f8a4a264dbcbbc16a32a9e23e4bc83f7e81b8e7ebddb"
+      linux-gnu-arm64: "9ecc6697d0321cd7253d8729f55103a93441c921ae30654a40d6f8c830e1f898"
+      linux-musl-x86_64: "92cc1a8a557a3a58a81d8719b4df5cdbb70ece65fea113090fabcd4151b37538"
+      linux-musl-arm64: "0184b70ec2e15f40cfe193c4211cdedb224f26a8e940d7fd94c7c62fff8a16bd"
+      windows-ucrt64: "3f028486c54db4a5a08fe36150afa8fca88bae04d608d026dec96e90ae52447b"
     tebako-shim:
-      macos-arm64: "a1f1934bbea387dd6feee9e5c3c4b294fd13b7c884c1a740b07cbe297621c50b"
-      macos-x86_64: "7c939638ee3d454cff7ccbb6b06f197328ecc22183ab36384fb52b4dcd9c27a8"
-      linux-gnu-x86_64: "4c697fb149eddf4717193b56e6743f49260c8c859e4d3f16830ac4ff308ddb9c"
-      linux-gnu-arm64: "7c8424c8264e88799f26b2492166034ded7ebb89d750c2e1ef037638a82eb64d"
-      linux-musl-x86_64: "130c9bcd6f78aa554e91a191962682db9bdfcb43885bf0d69bba4e5991e08265"
-      linux-musl-arm64: "0563a40d5858cb7738e7c9e7c83cb3581e5186877086939f435b3ad02c760761"
-      windows-ucrt64: "1b87770a002cdc1b1527d142269169b2fdcbe4cd1abda71ea8a3e5a88426f91c"
+      macos-arm64: "1a300785ec9688837ee9562e4b878ac224065e2989c04b82a207a93146e551d8"
+      macos-x86_64: "b4d5950b65e245ae193ece3fec4af91a3aae0aba6bf81de58467bf399e0ae4b7"
+      linux-gnu-x86_64: "97b0d8f448d129f62caf3aa6be2ecd64fa945cbc8560c4bc15a07d6bfcdf4983"
+      linux-gnu-arm64: "2b96e14ca11d9edba59c704a566cad95e8903b02932848f548f73647718e4861"
+      linux-musl-x86_64: "f292690d7c411562e3a484dbdc0581e3d00e3d88a1e702a1074ee0a0f10a6983"
+      linux-musl-arm64: "2819c59a83c380687afd53f48ee5a78cf5782a7decb8ecfea37591767ae23760"
+      windows-ucrt64: "1bcb853449af053ea831832fe863ea6012a68194164a2420e2635cd629d4a653"
     tfs:
-      macos-arm64: "9e03e56ace4bfb0c5c7d9902d95916f47bbe30796bb88e08a07afbe7a29286da"
-      macos-x86_64: "6dad9395102ac0c78b7166b0c5ef0d5c458b42c7f55171c0df6e834c4ea354e5"
-      linux-gnu-x86_64: "d237c1713be4ed03f34ad6845cb6edd66d9bdb8dfeff56706fbb00e1292f0989"
-      linux-gnu-arm64: "fae075b55f309deff5d15bed647c4a3593280b0075d34868189ff0a366fdf307"
-      linux-musl-x86_64: "f2aeb8b61a0196238f05ff580ff4155fa373a0111f1f7d6543cc8dfc0c80e36f"
-      linux-musl-arm64: "f67632b7e0e50bf214fd867b0b9ae2ab2253f947af71e5eabf5884e7214e6763"
-      windows-ucrt64: "40e20166bbddb21fb9a736a12cf2d490eee9eca69097f662200bf71721d79614"
-
-# The spawned java runtime behind payload.yaml's kind: runtime edge: the
-# openjdk feedstock's release line, consumed through the resolver's
-# {base}/v<tebako_version>/<asset> URL shape (spec 13 §2a). The workflows
-# scope this as TEBAKO_RUNTIME_MIRROR to install/publish-verify steps
-# ONLY — never at dispatch/compile time, where the primary ruby runtime's
-# download would be misdirected (the mirror is one base for ALL engines;
-# a per-engine source key in config.yaml is the filed product follow-up).
+      macos-arm64: "eef0a61bdc656f5ded7b3186a1660ca8798958cbb9e44d7132dd851f7e877aaf"
+      macos-x86_64: "6e411e0a9b541a77910e8e20cf31600ef9b45d3447cd4c79fc2430f786951a38"
+      linux-gnu-x86_64: "3a296bcb61259ebcb4232515c7f56b9578b331dd94610a3985443069d42f365a"
+      linux-gnu-arm64: "601afb8922e8ca520e646bbb1b8ed124e5d32fe0b2604b202a2a8b62de7ddba0"
+      linux-musl-x86_64: "2494c2f042827f04cc10cc2671ff9553fd94c3cb816c228616c9b625387f14f9"
+      linux-musl-arm64: "9ce7c6119f47b99f8695ddc83d069771229d89f972e82a1d83e8718fdc94aa47"
+      windows-ucrt64: "cc2366eead0b3a27d40a55a73cea20e7753110c881565d9d1dd702431fcda094"
 java:
   # The pinned java runtime pair (tamatebako/tebako-runtime-openjdk
   # release v2.7.0 — the runtime feedstock's canonical home per the
