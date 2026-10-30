@@ -54,7 +54,17 @@ PRECOMPILED_NATIVES = {"nokogiri", "ffi", "libpng", "parsanol", "sqlite3",
                        # yeptris: the stack's YAML/JSON native (new in the
                        # 1.17.0 graph), full platform matrix incl.
                        # x64-mingw-ucrt
-                       "yeptris"}
+                       "yeptris",
+                       # emf 0.2.0 turned native (six platform variants; the
+                       # 0.1.x line was pure ruby, which is why it sat out
+                       # this list through 1.17.0); full matrix incl.
+                       # x64-mingw-ucrt
+                       "emf",
+                       # long-standing natives the 1.17.0 lock already
+                       # carried only as x86_64 variants, so the list
+                       # never met their other-platform spellings; the
+                       # 1.18.1 lock resolves the full matrix
+                       "expressir", "google-protobuf", "sass-embedded"}
 # Resolution overrides, each justified in docs/build-notes.md (Tebakofile pins):
 PINS = {
     "liquid": "5.6.0",  # >= 5.6.1 demands strscan >= 3.1.1 (source-only native
@@ -72,6 +82,10 @@ def platform_candidates(platform):
     cands = [platform]
     if platform.endswith("-linux-gnu"):
         cands.append(platform[: -len("-gnu")])
+    elif platform.endswith("-linux"):
+        cands.append(platform + "-gnu")
+    if platform == "x64-darwin":
+        cands.append("x86_64-darwin")
     return cands
 
 lock_path, platform = sys.argv[1], sys.argv[2]
@@ -92,6 +106,14 @@ for line in open(lock_path):
             else:
                 ver, plat = verplat, ""
             specs.setdefault(name, set()).add((ver, plat))
+
+info_cache = {}
+def info_body(gem):
+    if gem not in info_cache:
+        with urllib.request.urlopen(f"https://index.rubygems.org/info/{gem}") as r:
+            info_cache[gem] = r.read().decode()
+    return info_cache[gem]
+
 
 rows = []
 skipped = sorted(set(specs) & SKIP_DEFAULTS)
@@ -114,7 +136,14 @@ for name in sorted(specs):
         locked_plats = {plat for _, plat in specs[name]}
         plat = next((c for c in cands if c in locked_plats), None)
         if plat is None:
-            plat = cands[0]
+            # Pick the first candidate spelling rubygems actually publishes
+            # (bundler and rubygems disagree on darwin: x64-darwin vs
+            # x86_64-darwin); the row must name the real artifact.
+            plat = next(
+                (c for c in cands
+                 if re.search(rf"^{re.escape(name)}-{ver}-{re.escape(c)}(\s|\|)",
+                              info_body(name), re.M)),
+                cands[0])
             print(f"# native swap: {name}-{ver}-{plat} absent from the lock "
                   f"(resolved on another platform) — checksum from /info/{name}",
                   file=sys.stderr)
@@ -130,12 +159,9 @@ for name in sorted(specs):
             sys.exit(f"unexpected platform variant: {name}-{ver}-{plat}")
         rows.append((f"{name}-{ver}", name, ver))
 
-info_cache = {}
 def checksum(gem, verplat):
-    if gem not in info_cache:
-        with urllib.request.urlopen(f"https://index.rubygems.org/info/{gem}") as r:
-            info_cache[gem] = r.read().decode()
-    for entry in info_cache[gem].splitlines():
+    body = info_body(gem)
+    for entry in body.splitlines():
         entry = entry.strip()
         m = re.match(r"^(\S+)\s+.*checksum:([0-9a-f]{64})", entry)
         if m and m.group(1) == verplat:
