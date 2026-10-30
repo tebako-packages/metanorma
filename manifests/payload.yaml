@@ -18,7 +18,7 @@ identity:
   encryption: {state: none}
   annotations:
     gem: metanorma-cli
-    gem_version: "1.17.0"
+    gem_version: "1.18.1"
 provides:
   # spec 03 §2.2 completeness: the COMPLETE inventory of user-invocable
   # commands the image carries — 66 commands from the 52 executable-bearing
