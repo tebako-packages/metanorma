@@ -70,7 +70,10 @@ PINS = {
     "liquid": "5.6.0",  # >= 5.6.1 demands strscan >= 3.1.1 (source-only native
                         # on the 3.3 line; kept on 4.0 for closure parity —
                         # docs/build-notes.md §9)
-    "metanorma": "2.5.4",  # portfolio directive materialisation (metanorma#596)
+    # metanorma rode "2.5.4" through 1.17.0 (portfolio directive
+    # materialisation, metanorma#596); the stable wave shipped 2.5.6 with
+    # #596 aboard, and metanorma-cli >= 1.18 floors metanorma
+    # >= 2.5.6.pre.alpha.2 — pinning below that is an uninstallable set.
 }
 
 
