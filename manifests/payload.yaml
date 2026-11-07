@@ -110,7 +110,6 @@ provides:
     - {name: reverse_markdown, path: /bin/reverse_markdown, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
     - {name: rng, path: /bin/rng, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
     - {name: rougify, path: /bin/rougify, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: ruby-ll, path: /bin/ruby-ll, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
     - {name: ruby2gv, path: /bin/ruby2gv, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
     - {name: setup, path: /bin/setup, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
     - {name: socksify_ruby, path: /bin/socksify_ruby, args_default: [], active: false, runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
