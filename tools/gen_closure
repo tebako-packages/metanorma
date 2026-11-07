@@ -43,7 +43,10 @@ SKIP_DEFAULTS = {
     "singleton",     # versionian ~> 0.2 (both lines; 4.0.6 bundles 0.3.0 ∈ ~> 0.2)
     "ruby2_keywords",# faraday >= 0.0.4
     "readline",      # sparql ~> 0.0 → 0.0.4 (runtime default)
-    "net-protocol",  # net-ftp unconstrained
+    # net-protocol is NOT skipped: net-http 0.10.0 pins >= 0.3.0 and the
+    # runtime bundles 0.2.2 — the 1.18.4 graph breaks activation without it
+    # (Gem::MissingSpecError at binstub). The old premise ("net-ftp
+    # unconstrained") died when net-http joined the graph.
     "matrix",        # sxp ~> 0.4 (runtime-bundled)
     # NOT net-ftp: relaton-3gpp pins `~> 0.1.0` (three segments — < 0.2.0),
     # which the runtime-bundled 0.3.4 does NOT satisfy; net-ftp ships.
