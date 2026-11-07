@@ -582,7 +582,10 @@ cp -R "$WORK/stage/gems" "$G/gems"
 cp -R "$WORK/stage/specifications" "$G/specifications"
 cp -R "$WORK/stage/extensions" "$G/extensions"
 [ -d "$WORK/stage/build_info" ] && cp -R "$WORK/stage/build_info" "$G/build_info"
-cp "$FEEDSTOCK/templates/bin/metanorma" "$PAYLOAD/bin/metanorma"
+# The binstub activates the cli at exactly the payload's version — render the
+# @@PKG_VERSION@@ placeholder, never a pinned literal (a verbatim copy pinned
+# 1.18.1 into the 1.18.4 staging and died Gem::MissingSpecVersionError).
+sed -e "s|@@PKG_VERSION@@|$PKG_VERSION|g" "$FEEDSTOCK/templates/bin/metanorma" > "$PAYLOAD/bin/metanorma"
 chmod 755 "$PAYLOAD/bin/metanorma"
 # Every other declared command (manifests/payload.yaml provides.entrypoints
 # — the ONE inventory, spec 03 §2.2 completeness) stages the generic stub
