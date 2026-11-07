@@ -514,7 +514,7 @@ case "$TRIPLET" in
     step "source-only native builds (in-process extconf + host make)"
     for name in brotli ox oga ruby-ll websocket-driver psych; do
       full="$(awk -v n="$name" 'index($1, n"-") == 1 {print $1}' "$CLOSURE")"
-      [ -n "$full" ] || { echo "no $name entry in $CLOSURE"; exit 1; }
+      [ -n "$full" ] || { echo "$name not in the closure (dropped upstream) — skipping its native build"; continue; }
       extdir=""; target=""; args=""
       case "$name" in
         brotli)           extdir="ext/brotli";           target="brotli/brotli"; args="--enable-vendor" ;;
@@ -547,7 +547,12 @@ esac
 
 # every per-triplet extension must be placed in the extensions bookkeeping
 # tree (the api-version dir name is the runtime's own — glob, don't assume)
-for ext in brotli ox liboga libll psych websocket_mask; do
+# The verify loop checks only the natives the closure CARRIES — the
+# static list must not fail on a legitimate upstream drop (1.18.4 dropped
+# oga/ruby-ll/psych when the stack moved to moxml).
+for pair in brotli:brotli ox:ox oga:liboga ruby-ll:libll psych:psych websocket-driver:websocket_mask; do
+  gem_name="${pair%%:*}"; ext="${pair##*:}"
+  grep -qE "^${gem_name}-[0-9]" "$CLOSURE" || continue
   found=$(find "$WORK/stage/extensions" -name "$ext.$SOEXT" 2>/dev/null | head -1 || true)
   [ -n "$found" ] || { echo "native build missing: $ext.$SOEXT"; exit 1; }
   echo "native ext OK: $found"
