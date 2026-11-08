@@ -214,7 +214,14 @@ requires:
 checks:
   html-xml:
     entry: /bin/metanorma
-    argv: ["--type", "iso", "{scratch}/test-iso.adoc", "--agree-to-terms"]
+    # --continue-without-fonts (metanorma#595, the 1.18.4 stack): the font
+    # manifest read is now STRICT — a font the install skipped (licensing,
+    # no formula on this platform — Times New Roman's formulas are macOS
+    # catalog entries) raises MissingFontError instead of substituting.
+    # The check proves the toolchain renders xml+html, not that every
+    # platform's formula catalog covers the ISO set — the flag keeps the
+    # render going with a named warning per missing font.
+    argv: ["--type", "iso", "{scratch}/test-iso.adoc", "--agree-to-terms", "--continue-without-fonts"]
     fixtures: /__tpkg__/check/html-xml
     expect: { exit: 0, files: ["test-iso.xml", "test-iso.html"] }
     # Cold fontist is silent (metanorma passes no_progress) and slow: the
