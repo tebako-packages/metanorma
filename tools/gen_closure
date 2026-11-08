@@ -43,7 +43,10 @@ SKIP_DEFAULTS = {
     "singleton",     # versionian ~> 0.2 (both lines; 4.0.6 bundles 0.3.0 ∈ ~> 0.2)
     "ruby2_keywords",# faraday >= 0.0.4
     "readline",      # sparql ~> 0.0 → 0.0.4 (runtime default)
-    "net-protocol",  # net-ftp unconstrained
+    # NOT net-protocol: 1.18.4's net-http 0.10.0 floors it at >= 0.3.0 and
+    # the runtime default (0.2.2 on the 4.0 line) is BELOW the floor — it
+    # ships (the musl 4.0 leg died on exactly this: Gem::MissingSpecError
+    # 'net-protocol' (>= 0.3.0)).
     "matrix",        # sxp ~> 0.4 (runtime-bundled)
     # NOT net-ftp: relaton-3gpp pins `~> 0.1.0` (three segments — < 0.2.0),
     # which the runtime-bundled 0.3.4 does NOT satisfy; net-ftp ships.
