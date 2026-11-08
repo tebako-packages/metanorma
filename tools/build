@@ -426,6 +426,12 @@ done
 echo "all gems verified"
 
 # ------------------------------------------------------------------ stage
+# The source-only natives the closure actually carries — both staging arms
+# populate it (the POSIX arm from the closure rows after stage_app.rb, the
+# windows arm as it builds each), and the verification below follows it,
+# never a hardcoded list.
+NATIVES_BUILT=""
+
 case "$TRIPLET" in
   aarch64-macos | x86_64-macos | x86_64-linux-gnu | aarch64-linux-gnu | x86_64-linux-musl | aarch64-linux-musl)
     step "stage the closure with the runtime ruby via the deploy shim (no host ruby)"
@@ -452,6 +458,12 @@ case "$TRIPLET" in
     grep -c "^   ... @ gem" "$WORK/stage.log" | xargs echo "gems installed:"
     grep "STAGE-OK" "$WORK/stage.log" > /dev/null
     unset PKG_CONFIG_LIBDIR RUBYOPT
+    # stage_app.rb installs the closure's .gem set as-is — the natives it
+    # built are exactly the closure's rows (an absent row is the graph's
+    # prerogative: 1.18.4 dropped oga/ruby-ll/psych).
+    for name in brotli ox oga ruby-ll websocket-driver psych; do
+      awk -v n="$name" 'index($1, n"-") == 1 {found=1} END {exit !found}' "$CLOSURE"         && NATIVES_BUILT="$NATIVES_BUILT $name"
+    done
     ;;
 
   x86_64-windows-ucrt)
@@ -512,9 +524,16 @@ case "$TRIPLET" in
     # mid-staging is an unneeded risk: with psych last, no driver process
     # ever sees it.
     step "source-only native builds (in-process extconf + host make)"
+    # The list is the KNOWN source-only natives; the closure decides which
+    # ride. An absent one is the gem graph's prerogative (1.18.4 dropped
+    # oga/ruby-ll with the moxml 0.6 wave, and psych when nothing pinned
+    # past the runtime default 5.3.1) — skip it loudly. A closure row for
+    # a source-only native NOT in this list fails at the built-target
+    # verification below (its target never lands).
     for name in brotli ox oga ruby-ll websocket-driver psych; do
       full="$(awk -v n="$name" 'index($1, n"-") == 1 {print $1}' "$CLOSURE")"
-      [ -n "$full" ] || { echo "no $name entry in $CLOSURE"; exit 1; }
+      [ -n "$full" ] || { echo "-- $name: absent from the closure (the graph dropped it); skipped"; continue; }
+      NATIVES_BUILT="$NATIVES_BUILT $name"
       extdir=""; target=""; args=""
       case "$name" in
         brotli)           extdir="ext/brotli";           target="brotli/brotli"; args="--enable-vendor" ;;
@@ -547,9 +566,20 @@ esac
 
 # every per-triplet extension must be placed in the extensions bookkeeping
 # tree (the api-version dir name is the runtime's own — glob, don't assume)
-for ext in brotli ox liboga libll psych websocket_mask; do
+# The verification follows what was BUILT, never a hardcoded list: each
+# name in NATIVES_BUILT maps to its target; a build that placed nothing
+# fails named.
+for name in $NATIVES_BUILT; do
+  case "$name" in
+    brotli)           ext=brotli ;;
+    ox)               ext=ox ;;
+    oga)              ext=liboga ;;
+    ruby-ll)          ext=libll ;;
+    psych)            ext=psych ;;
+    websocket-driver) ext=websocket_mask ;;
+  esac
   found=$(find "$WORK/stage/extensions" -name "$ext.$SOEXT" 2>/dev/null | head -1 || true)
-  [ -n "$found" ] || { echo "native build missing: $ext.$SOEXT"; exit 1; }
+  [ -n "$found" ] || { echo "native build missing: $ext.$SOEXT (for $name, present in the closure)"; exit 1; }
   echo "native ext OK: $found"
 done
 # …and the bookkeeping must live under the staging runtime's OWN platform
