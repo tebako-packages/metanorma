@@ -139,9 +139,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .tools
-          curl -sL --fail --retry 5 --retry-all-errors -o .tools/tebako \
-            "https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE/$TEBAKO_ASSET"
-          echo "$TEBAKO_SHA256  .tools/tebako" | sha256sum -c -
+          tools/fetch_verified.sh \
+            "https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE/$TEBAKO_ASSET" \
+            .tools/tebako "$TEBAKO_SHA256"
           chmod +x .tools/tebako
       - name: Validate tpkg-registry.yaml
         if: steps.touch.outputs.touched == 'true'
@@ -206,8 +206,10 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
           base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
-          curl -sLO "$base/$TEBAKO_ASSET"
-          curl -sLO "$base/$TFS_ASSET"
+          # The digest is the acceptance (a corrupt 200-body re-fetches):
+          # tools/fetch_verified.sh, per asset, then the cross-check below.
+          "$GITHUB_WORKSPACE/tools/fetch_verified.sh" "$base/$TEBAKO_ASSET" "$TEBAKO_ASSET" "$TEBAKO_SHA256"
+          "$GITHUB_WORKSPACE/tools/fetch_verified.sh" "$base/$TFS_ASSET" "$TFS_ASSET" "$TFS_SHA256"
           curl -sLO "$base/SHA256SUMS"
           echo "$TEBAKO_SHA256  $TEBAKO_ASSET" > SHA256PINS
           echo "$TFS_SHA256  $TFS_ASSET" >> SHA256PINS
@@ -354,8 +356,10 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
           base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
-          curl -sLO "$base/$TEBAKO_ASSET"
-          curl -sLO "$base/$TFS_ASSET"
+          # The digest is the acceptance (a corrupt 200-body re-fetches):
+          # tools/fetch_verified.sh, per asset, then the cross-check below.
+          "$GITHUB_WORKSPACE/tools/fetch_verified.sh" "$base/$TEBAKO_ASSET" "$TEBAKO_ASSET" "$TEBAKO_SHA256"
+          "$GITHUB_WORKSPACE/tools/fetch_verified.sh" "$base/$TFS_ASSET" "$TFS_ASSET" "$TFS_SHA256"
           curl -sLO "$base/SHA256SUMS"
           echo "$TEBAKO_SHA256  $TEBAKO_ASSET" > SHA256PINS
           echo "$TFS_SHA256  $TFS_ASSET" >> SHA256PINS
@@ -504,8 +508,10 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
           base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
-          curl -sLO "$base/$TEBAKO_ASSET"
-          curl -sLO "$base/$TFS_ASSET"
+          # The digest is the acceptance (a corrupt 200-body re-fetches):
+          # tools/fetch_verified.sh, per asset, then the cross-check below.
+          "$GITHUB_WORKSPACE/tools/fetch_verified.sh" "$base/$TEBAKO_ASSET" "$TEBAKO_ASSET" "$TEBAKO_SHA256"
+          "$GITHUB_WORKSPACE/tools/fetch_verified.sh" "$base/$TFS_ASSET" "$TFS_ASSET" "$TFS_SHA256"
           curl -sLO "$base/SHA256SUMS"
           echo "$TEBAKO_SHA256  $TEBAKO_ASSET" > SHA256PINS
           echo "$TFS_SHA256  $TFS_ASSET" >> SHA256PINS
@@ -621,8 +627,10 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
           base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
-          curl -sLO "$base/$TEBAKO_ASSET"
-          curl -sLO "$base/$TFS_ASSET"
+          # The digest is the acceptance (a corrupt 200-body re-fetches):
+          # tools/fetch_verified.sh, per asset, then the cross-check below.
+          "$GITHUB_WORKSPACE/tools/fetch_verified.sh" "$base/$TEBAKO_ASSET" "$TEBAKO_ASSET" "$TEBAKO_SHA256"
+          "$GITHUB_WORKSPACE/tools/fetch_verified.sh" "$base/$TFS_ASSET" "$TFS_ASSET" "$TFS_SHA256"
           curl -sLO "$base/SHA256SUMS"
           echo "$TEBAKO_SHA256  $TEBAKO_ASSET" > SHA256PINS
           echo "$TFS_SHA256  $TFS_ASSET" >> SHA256PINS
@@ -730,8 +738,10 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
           base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
-          curl -sLO "$base/$TEBAKO_ASSET"
-          curl -sLO "$base/$TFS_ASSET"
+          # The digest is the acceptance (a corrupt 200-body re-fetches):
+          # tools/fetch_verified.sh, per asset, then the cross-check below.
+          "$GITHUB_WORKSPACE/tools/fetch_verified.sh" "$base/$TEBAKO_ASSET" "$TEBAKO_ASSET" "$TEBAKO_SHA256"
+          "$GITHUB_WORKSPACE/tools/fetch_verified.sh" "$base/$TFS_ASSET" "$TFS_ASSET" "$TFS_SHA256"
           curl -sLO "$base/SHA256SUMS"
           echo "$TEBAKO_SHA256  $TEBAKO_ASSET" > SHA256PINS
           echo "$TFS_SHA256  $TFS_ASSET" >> SHA256PINS
@@ -850,8 +860,10 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
           base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
-          curl -sLO "$base/$TEBAKO_ASSET"
-          curl -sLO "$base/$TFS_ASSET"
+          # The digest is the acceptance (a corrupt 200-body re-fetches):
+          # tools/fetch_verified.sh, per asset, then the cross-check below.
+          "$GITHUB_WORKSPACE/tools/fetch_verified.sh" "$base/$TEBAKO_ASSET" "$TEBAKO_ASSET" "$TEBAKO_SHA256"
+          "$GITHUB_WORKSPACE/tools/fetch_verified.sh" "$base/$TFS_ASSET" "$TFS_ASSET" "$TFS_SHA256"
           curl -sLO "$base/SHA256SUMS"
           echo "$TEBAKO_SHA256  $TEBAKO_ASSET" > SHA256PINS
           echo "$TFS_SHA256  $TFS_ASSET" >> SHA256PINS
@@ -1024,8 +1036,10 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
           base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
-          curl -sLO "$base/$TEBAKO_ASSET"
-          curl -sLO "$base/$TFS_ASSET"
+          # The digest is the acceptance (a corrupt 200-body re-fetches):
+          # tools/fetch_verified.sh, per asset, then the cross-check below.
+          "$GITHUB_WORKSPACE/tools/fetch_verified.sh" "$base/$TEBAKO_ASSET" "$TEBAKO_ASSET" "$TEBAKO_SHA256"
+          "$GITHUB_WORKSPACE/tools/fetch_verified.sh" "$base/$TFS_ASSET" "$TFS_ASSET" "$TFS_SHA256"
           curl -sLO "$base/SHA256SUMS"
           echo "$TEBAKO_SHA256  $TEBAKO_ASSET" > SHA256PINS
           echo "$TFS_SHA256  $TFS_ASSET" >> SHA256PINS
@@ -1230,14 +1244,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .packager
-          curl -sL --fail -o .packager/tebako \
-            "https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE/$TEBAKO_ASSET"
-          curl -sL --fail -o .packager/tebako-shim \
-            "https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE/$SHIM_ASSET"
-          echo "$TEBAKO_SHA256  .packager/tebako" \
-            | shasum -a 256 -c -
-          echo "$SHIM_SHA256  .packager/tebako-shim" \
-            | shasum -a 256 -c -
+          tools/fetch_verified.sh \
+            "https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE/$TEBAKO_ASSET" \
+            .packager/tebako "$TEBAKO_SHA256"
+          tools/fetch_verified.sh \
+            "https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE/$SHIM_ASSET" \
+            .packager/tebako-shim "$SHIM_SHA256"
           chmod +x .packager/tebako .packager/tebako-shim
           .packager/tebako --help > /dev/null
       - name: Stage the spawned-runtime mirror (java + python legs)
