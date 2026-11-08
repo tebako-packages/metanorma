@@ -607,7 +607,17 @@ cp -R "$WORK/stage/gems" "$G/gems"
 cp -R "$WORK/stage/specifications" "$G/specifications"
 cp -R "$WORK/stage/extensions" "$G/extensions"
 [ -d "$WORK/stage/build_info" ] && cp -R "$WORK/stage/build_info" "$G/build_info"
-cp "$FEEDSTOCK/templates/bin/metanorma" "$PAYLOAD/bin/metanorma"
+# The binstub's @@GEM_VERSION@@ is filled from the Tebakofile's upstream
+# version (the registry version's per-line suffix is NOT the gem's); the
+# fill is fail-closed — a surviving @@ placeholder dies here, never at a
+# user's exec.
+GEM_VERSION_FILL="$(recipe upstream version)"
+[ -n "$GEM_VERSION_FILL" ] || { echo "Tebakofile: upstream.version missing"; exit 64; }
+sed -e "s|@@GEM_VERSION@@|$GEM_VERSION_FILL|g" \
+    "$FEEDSTOCK/templates/bin/metanorma" > "$PAYLOAD/bin/metanorma"
+if grep -q '@@[A-Z_]*@@' "$PAYLOAD/bin/metanorma"; then
+  echo "unfilled placeholders in the binstub:"; grep '@@[A-Z_]*@@' "$PAYLOAD/bin/metanorma"; exit 1
+fi
 chmod 755 "$PAYLOAD/bin/metanorma"
 # Every other declared command (manifests/payload.yaml provides.entrypoints
 # — the ONE inventory, spec 03 §2.2 completeness) stages the generic stub
