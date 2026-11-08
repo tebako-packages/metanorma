@@ -79,6 +79,13 @@ PINS = {
     # materialisation, metanorma#596); the stable wave shipped 2.5.6 with
     # #596 aboard, and metanorma-cli >= 1.18 floors metanorma
     # >= 2.5.6.pre.alpha.2 — pinning below that is an uninstallable set.
+    "sass-embedded": "1.107.0",
+                        # 1.108.1's staged tree lacks the exe its own
+                        # dispatcher resolves (Errno::ENOENT
+                        # lib/sass/compiler on every leg's html render,
+                        # 1.18.4 runs 42485082489); 1.107.0 is the version
+                        # the green 1.18.1 legs ran, and sassc-embedded
+                        # 1.80.10's `~> 1.80` admits it.
 }
 
 
