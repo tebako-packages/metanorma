@@ -179,7 +179,7 @@ jobs:
     # 1.17.0-4 tag run, 36539514581, published nothing; tebako#686
     # follow-on). The publish job needs no such line: its implicit
     # success() is the correct gate — skipped legs must never publish.
-    runs-on: macos-14
+    runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
@@ -1198,7 +1198,7 @@ jobs:
       packages: write
       attestations: write
       id-token: write
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       TEBAKO_CLI: ${{ github.workspace }}/.packager/tebako
       TEBAKO_HOME: ${{ github.workspace }}/.tebako
@@ -1261,7 +1261,7 @@ jobs:
         # one base for ALL engines, so the bare JAVA_RELEASES_BASE env can
         # no longer serve both: stage a COMBINED local mirror carrying the
         # macos-arm64 leg of each pinned line (the verify host is this
-        # job's macos-14 runner), every byte cross-checked against the
+        # job's macos-15 runner), every byte cross-checked against the
         # release's own SHA256SUMS (the same trust-anchor role as the
         # toolchain fetch above).
         run: |
