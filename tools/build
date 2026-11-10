@@ -189,8 +189,10 @@ mkdir -p "$WORK" "$OUT" "$WORK/gempkgs"
 # ---------------------------------------------------------------- runtime
 step "resolve the tebako runtime $TEBAKO_VERSION ($RT_PLATFORM)"
 RT_DIR="$TEBAKO_HOME/runtimes/ruby-$RUBY_V-$TEBAKO_VERSION-$RT_PLATFORM"
-RT_EXE="$RT_DIR/tebako-runtime-$TEBAKO_VERSION-$RUBY_V-$RT_PLATFORM"
-RT_IMAGE="$RT_DIR/tebako-runtime-$TEBAKO_VERSION-$RUBY_V-$RT_PLATFORM.tfs"
+# The filename grammar carries the language segment on the 0.17.x line
+# (tebako#716): tebako-runtime-<ver>-ruby-<lv>-<triplet>[.exe].
+RT_EXE="$RT_DIR/tebako-runtime-$TEBAKO_VERSION-ruby-$RUBY_V-$RT_PLATFORM"
+RT_IMAGE="$RT_DIR/tebako-runtime-$TEBAKO_VERSION-ruby-$RUBY_V-$RT_PLATFORM.tfs"
 
 case "$TRIPLET" in
   aarch64-macos | x86_64-macos | x86_64-linux-gnu | aarch64-linux-gnu | x86_64-linux-musl | aarch64-linux-musl)
@@ -228,7 +230,7 @@ case "$TRIPLET" in
     # dll) ride one <stem>.tar.gz per spec 36; per-file assets are no
     # longer published.
     RT_RELEASE_URL="https://github.com/tamatebako/tebako-runtime-ruby/releases/download/v$TEBAKO_VERSION"
-    RT_ASSET="tebako-runtime-$TEBAKO_VERSION-$RUBY_V-$RT_PLATFORM"
+    RT_ASSET="tebako-runtime-$TEBAKO_VERSION-ruby-$RUBY_V-$RT_PLATFORM"
     mkdir -p "$RT_DIR"
     # The shard model: the per-stem <stem>.manifest.json is the SSOT for
     # the facet's install name AND the bundle's sha256 pin; the bundle's
