@@ -588,8 +588,8 @@ loops it in that order into one `--registry-out`.
 The SDK pins' provenance is tamatebako/ruby's `versions.yml` (the
 source factory SSOT): it owns each version's upstream tarball url +
 sha256, and the recipe carries the flowed copy per line
-(`build.runtime.lines.<line>.sdk` — 3.3.12 `b06d63be…`, 4.0.6
-`837d299e…`, both diff-verified against versions.yml).
+(`build.runtime.lines.<line>.sdk` — 3.3.13 `4cae72e9…`, 4.0.9
+`c3535068…`, both diff-verified against versions.yml).
 
 ### 9.1 The 4.0 closure: a fresh per-line resolution
 
