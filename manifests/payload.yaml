@@ -214,6 +214,14 @@ requires:
 checks:
   html-xml:
     entry: /bin/metanorma
+    # -x xml,html: generate ONLY the two asserted outputs. The bare
+    # compile's default extension set includes pdf, which spawns the jvm
+    # (mn2pdf) — a capability the press-time composition never provides
+    # (above). Through the 1.17.x stack the spawn failure was a non-fatal
+    # warning (the 2026-10-08 legs PASSed with the java-less error in the
+    # log, run 37859363569); the 1.18.4 stack (mn2pdf 2.73) raises it —
+    # every leg of #124 died exit 79 at this check (run 42605442968).
+    # Pinning the extension list keeps the check on its declared contract.
     # --continue-without-fonts (metanorma#595, the 1.18.4 stack): the font
     # manifest read is now STRICT — a font the install skipped (licensing,
     # no formula on this platform — Times New Roman's formulas are macOS
@@ -221,7 +229,7 @@ checks:
     # The check proves the toolchain renders xml+html, not that every
     # platform's formula catalog covers the ISO set — the flag keeps the
     # render going with a named warning per missing font.
-    argv: ["--type", "iso", "{scratch}/test-iso.adoc", "--agree-to-terms", "--continue-without-fonts"]
+    argv: ["--type", "iso", "-x", "xml,html", "{scratch}/test-iso.adoc", "--agree-to-terms", "--continue-without-fonts"]
     fixtures: /__tpkg__/check/html-xml
     expect: { exit: 0, files: ["test-iso.xml", "test-iso.html"] }
     # Cold fontist is silent (metanorma passes no_progress) and slow: the
