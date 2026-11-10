@@ -43,6 +43,8 @@ SKIP_DEFAULTS = {
     "singleton",     # versionian ~> 0.2 (both lines; 4.0.6 bundles 0.3.0 ∈ ~> 0.2)
     "ruby2_keywords",# faraday >= 0.0.4
     "readline",      # sparql ~> 0.0 → 0.0.4 (runtime default)
+    "tsort",         # mn-requirements 0.5.16 (the 1.18.5 stack),
+                     # unconstrained — runtime-bundled on both lines
     # NOT net-protocol: 1.18.4's net-http 0.10.0 floors it at >= 0.3.0 and
     # the runtime default (0.2.2 on the 4.0 line) is BELOW the floor — it
     # ships (the musl 4.0 leg died on exactly this: Gem::MissingSpecError

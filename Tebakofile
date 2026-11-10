@@ -9,7 +9,7 @@ upstream:
   # rubygems compact index and every .gem is sha256-verified against the
   # /info/<gem> checksum before use (tools/build).
   gem: "metanorma-cli"
-  version: "1.18.4"
+  version: "1.18.5"
   source: "https://rubygems.org"
 
 build:
@@ -22,7 +22,7 @@ build:
                            # translation (a spawned child handed an in-image
                            # chdir: starts in the materialized directory —
                            # sass-embedded 1.108's dart-exe spawn dies ENOENT
-                           # without it, the 1.18.4 acceptance's fatal) AND
+                           # without it, the 1.18.5 acceptance's fatal) AND
                            # the pinned macOS 14.0 floor (tebako-runtime-ruby
                            # #317: v0.17.5's macOS assets recorded minos 15.0
                            # off the floating macos-15 build host).
@@ -93,8 +93,8 @@ build:
     default_line: "4.0"      # 2026-09-27 flip: ruby 4.0 is measurably faster
                              # and the line is proven (dual-line publish since
                              # 1.16.9, both ABI lines dogfood-gated) — the bare
-                             # 1.18.4 entry rides 4.0.9; the 3.3 flavor
-                             # keeps publishing as 1.18.4-ruby3.3 for the
+                             # 1.18.5 entry rides 4.0.9; the 3.3 flavor
+                             # keeps publishing as 1.18.5-ruby3.3 for the
                              # conservative chain.
     # The CLI's SDK provisioning (tebako-cli sdk.rs) fetches the patched
     # source tarball per ruby version from THIS source-factory release —
