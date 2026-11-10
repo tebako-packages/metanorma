@@ -175,11 +175,11 @@ depends:
 # upstream.sha256; provenance in docs/build-notes.md).
 tools:
   repo: "tamatebako/tebako"
-release: "v2.8.75"        # the published Latest line: the press gate's
-                           # 3.3.13/4.0.9 support (the v0.17.6 runtime
-                           # line's rubies) + the macOS floor's symbol
-                           # gate + the PSGallery registration guard +
-                           # the hide/expose PATH axis (tebako#1004).
+  release: "v2.8.75"        # the published Latest line: the press gate's
+                             # 3.3.13/4.0.9 support (the v0.17.6 runtime
+                             # line's rubies) + the macOS floor's symbol
+                             # gate + the PSGallery registration guard +
+                             # the hide/expose PATH axis (tebako#1004).
   sha256:
     tebako:
       macos-arm64: "1bfb7b330b1014d5f286859b77e1aa17fd6a5ecd9c2faff18bf15671c00221b4"
