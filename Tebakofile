@@ -16,8 +16,16 @@ build:
   system: gemstage         # stage a GEM_HOME closure with a tebako runtime's own ruby
   runtime:
     engine: ruby
-    tebako: "0.16.31"      # runtime release line (image-era; the pinned CLI
+    tebako: "0.17.6"       # runtime release line (image-era; the pinned CLI
                            # refuses pre-era releases by contract, exit 75).
+                           # 0.17.6 carries tamatebako/ruby#152's spawn-chdir
+                           # translation (a spawned child handed an in-image
+                           # chdir: starts in the materialized directory —
+                           # sass-embedded 1.108's dart-exe spawn dies ENOENT
+                           # without it, the 1.18.4 acceptance's fatal) AND
+                           # the pinned macOS 14.0 floor (tebako-runtime-ruby
+                           # #317: v0.17.5's macOS assets recorded minos 15.0
+                           # off the floating macos-15 build host).
                            # 0.16.31 re-links on tebako v2.8.21 (the 64 MiB
                            # limnifs inline-metadata ceiling — this payload
                            # images ≈7.9 MiB of inline metadata, EINVAL to
