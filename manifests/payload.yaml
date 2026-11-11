@@ -52,35 +52,40 @@ provides:
         # runtime's Gem::Platform.local — filled by tools/build).
         constraint: "@@CONSTRAINT@@"
         abi: "@@ABI@@"
-    # --- the active set: the document toolchain's user-facing commands
-    - {name: metanorma-manifest, path: /bin/metanorma-manifest, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: asciidoctor, path: /bin/asciidoctor, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: canon, path: /bin/canon, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: coradoc, path: /bin/coradoc, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: expressir, path: /bin/expressir, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
+    # --- dispatchable-only (active: false): the document toolchain's
+    # companion commands. Declared, so `tebako run <name>` and
+    # `tebako shim enable <name>` reach them; NOT PATH-registered at
+    # install — a toolchain payload must not shadow a developer's own
+    # installs (tebako#1004). Only the primary `metanorma` command is
+    # default-active.
+    - {name: metanorma-manifest, path: /bin/metanorma-manifest, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: asciidoctor, path: /bin/asciidoctor, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: canon, path: /bin/canon, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: coradoc, path: /bin/coradoc, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: expressir, path: /bin/expressir, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
     # the font manager: repo setup/update, font install into the host
     # ~/.fontist — the chocolatey OIML leg's packaged answer
     # (chocolatey-metanorma#89).
-    - {name: fontist, path: /bin/fontist, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: fontisan, path: /bin/fontisan, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: glossarist, path: /bin/glossarist, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: lutaml, path: /bin/lutaml, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: lutaml-model, path: /bin/lutaml-model, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: lutaml-sysml, path: /bin/lutaml-sysml, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: lutaml-wsd2uml, path: /bin/lutaml-wsd2uml, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: lutaml-xsd, path: /bin/lutaml-xsd, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: lutaml-yaml2uml, path: /bin/lutaml-yaml2uml, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: omnizip, path: /bin/omnizip, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: plurimath, path: /bin/plurimath, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: png_conform, path: /bin/png_conform, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: relaton, path: /bin/relaton, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: reverse_adoc, path: /bin/reverse_adoc, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: suma, path: /bin/suma, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: svg_conform, path: /bin/svg_conform, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: unitsdb, path: /bin/unitsdb, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: vectory, path: /bin/vectory, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: w2a, path: /bin/w2a, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
-    - {name: w2m, path: /bin/w2m, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}}
+    - {name: fontist, path: /bin/fontist, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: fontisan, path: /bin/fontisan, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: glossarist, path: /bin/glossarist, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: lutaml, path: /bin/lutaml, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: lutaml-model, path: /bin/lutaml-model, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: lutaml-sysml, path: /bin/lutaml-sysml, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: lutaml-wsd2uml, path: /bin/lutaml-wsd2uml, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: lutaml-xsd, path: /bin/lutaml-xsd, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: lutaml-yaml2uml, path: /bin/lutaml-yaml2uml, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: omnizip, path: /bin/omnizip, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: plurimath, path: /bin/plurimath, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: png_conform, path: /bin/png_conform, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: relaton, path: /bin/relaton, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: reverse_adoc, path: /bin/reverse_adoc, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: suma, path: /bin/suma, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: svg_conform, path: /bin/svg_conform, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: unitsdb, path: /bin/unitsdb, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: vectory, path: /bin/vectory, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: w2a, path: /bin/w2a, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
+    - {name: w2m, path: /bin/w2m, args_default: [], runtime_requirement: {engine: ruby, implementation: mri, constraint: "@@CONSTRAINT@@", abi: "@@ABI@@"}, active: false}
     # --- declared-but-inactive (active: false): library-bundled helper
     # CLIs, format converters, gem dev tools. Dispatchable on demand,
     # never PATH-registered by default — generic names (console, setup,
