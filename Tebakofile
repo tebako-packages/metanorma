@@ -166,7 +166,7 @@ depends:
 # upstream.sha256; provenance in docs/build-notes.md).
 tools:
   repo: "tamatebako/tebako"
-  release: "v2.8.66"        # the published Latest line (v2.8.67 is
+  release: "v2.8.76"        # the published Latest line (v2.8.67 is
                              # draft-state): carries the contract-era
                              # resolver the packed-metanorma presses
                              # already run on; v2.8.27's release sums
@@ -174,29 +174,29 @@ tools:
                              # (2026-10-28 main breakage).
   sha256:
     tebako:
-      macos-arm64: "cb86001fc48c9c853d0f1f745b92ccf14f7b8ed01e59eed0114a5ebc960c0d7f"
-      macos-x86_64: "101a30d3cdc305462ff9ab8660c3547a2c9dc8e22b9eb5a50b0ecb4793bd09d3"
-      linux-gnu-x86_64: "cd37a9e7774f822b2d41f8a4a264dbcbbc16a32a9e23e4bc83f7e81b8e7ebddb"
-      linux-gnu-arm64: "9ecc6697d0321cd7253d8729f55103a93441c921ae30654a40d6f8c830e1f898"
-      linux-musl-x86_64: "92cc1a8a557a3a58a81d8719b4df5cdbb70ece65fea113090fabcd4151b37538"
-      linux-musl-arm64: "0184b70ec2e15f40cfe193c4211cdedb224f26a8e940d7fd94c7c62fff8a16bd"
-      windows-ucrt64: "3f028486c54db4a5a08fe36150afa8fca88bae04d608d026dec96e90ae52447b"
+      macos-arm64: "20740ef56c8725e7fc85f1cc45fd99f454760c4e2bd712f1dd4629640d046b50"
+      macos-x86_64: "d354609b9ccca905bd21f3891938d06efe6fb26bc3d07ef300b3590d983a48ba"
+      linux-gnu-x86_64: "c8ac50d3ac7a2103c8b0bb60ba7631cde0b2273a01c8db8c77bbe610eed2fd1e"
+      linux-gnu-arm64: "cd6a384572db3befae4349a06db7ff683de1b984c1bae990366bfdc6a1fb4a4d"
+      linux-musl-x86_64: "52b9cddfbfaa40fe14272147be8678415640c01bed46d5fa84498f214b2f6555"
+      linux-musl-arm64: "c737998a45c4b01ad2e4271db30b68ecddd252d69c1184b1d198c87fd71f1c33"
+      windows-ucrt64: "5f5dd3ccaeb3745f35928663c3051b109c98bc255a049caa06756e461f91e9fe"
     tebako-shim:
-      macos-arm64: "1a300785ec9688837ee9562e4b878ac224065e2989c04b82a207a93146e551d8"
-      macos-x86_64: "b4d5950b65e245ae193ece3fec4af91a3aae0aba6bf81de58467bf399e0ae4b7"
-      linux-gnu-x86_64: "97b0d8f448d129f62caf3aa6be2ecd64fa945cbc8560c4bc15a07d6bfcdf4983"
-      linux-gnu-arm64: "2b96e14ca11d9edba59c704a566cad95e8903b02932848f548f73647718e4861"
-      linux-musl-x86_64: "f292690d7c411562e3a484dbdc0581e3d00e3d88a1e702a1074ee0a0f10a6983"
-      linux-musl-arm64: "2819c59a83c380687afd53f48ee5a78cf5782a7decb8ecfea37591767ae23760"
-      windows-ucrt64: "1bcb853449af053ea831832fe863ea6012a68194164a2420e2635cd629d4a653"
+      macos-arm64: "3d0708dba0e0f606668f4103830ca23fd1dd4aa6300d836281475fb9e11d6593"
+      macos-x86_64: "527a517f7c6613d96ed0f4fcdb3f32fc172f0e41d5ba3b537853bcbd00c87d40"
+      linux-gnu-x86_64: "33bd5dfeaa5131b192bcf202afc2a84b1da5fcced90cb5627e464776c3697cec"
+      linux-gnu-arm64: "5ee14155d48655a742f31c519f00a101a030be2c8e37998333af88a01fda9728"
+      linux-musl-x86_64: "cfe725fdf4124713d7a0242780269c52868c7c1ec0e76ebd8ff9779cdb375b16"
+      linux-musl-arm64: "0a6cf83ce6ddf662d1ca8e4afe81944a2454486580d76c7ae27797887731d352"
+      windows-ucrt64: "236013a50d629e3450dde9de5ecfeb6a0fb1f0bf7d58154b9bd1b15cb5839427"
     tfs:
-      macos-arm64: "eef0a61bdc656f5ded7b3186a1660ca8798958cbb9e44d7132dd851f7e877aaf"
-      macos-x86_64: "6e411e0a9b541a77910e8e20cf31600ef9b45d3447cd4c79fc2430f786951a38"
-      linux-gnu-x86_64: "3a296bcb61259ebcb4232515c7f56b9578b331dd94610a3985443069d42f365a"
-      linux-gnu-arm64: "601afb8922e8ca520e646bbb1b8ed124e5d32fe0b2604b202a2a8b62de7ddba0"
-      linux-musl-x86_64: "2494c2f042827f04cc10cc2671ff9553fd94c3cb816c228616c9b625387f14f9"
-      linux-musl-arm64: "9ce7c6119f47b99f8695ddc83d069771229d89f972e82a1d83e8718fdc94aa47"
-      windows-ucrt64: "cc2366eead0b3a27d40a55a73cea20e7753110c881565d9d1dd702431fcda094"
+      macos-arm64: "ed0fbc63ae3b352be06bc92088b827c15ac701be23dad29b0d63588d0babc5a2"
+      macos-x86_64: "fadcd0aa96e04123245cbab672ca876440292f194030a1c8254b3b77de518a4f"
+      linux-gnu-x86_64: "6712f110f332236c49acfa0c21899860f5c1c8b8859fa7b8e4158e45a96479fb"
+      linux-gnu-arm64: "b56d417f12d82f346b8000307b46dc33a2ccc7036baf1d57b37d01b5905d2a25"
+      linux-musl-x86_64: "93a5a329e6e236f33ca4aa7bad6dba3920c21e4bd3ec06ee94ca25218cc45cc0"
+      linux-musl-arm64: "3309aec4389ed97ee0025b3f625471cb00697660ed70f5646fe6b14e88e1a574"
+      windows-ucrt64: "0f522a26e4df880ef4171ebbf42b70eff64b35f3d95fb33ca1d574b0654bdf3f"
 java:
   # The pinned java runtime pair (tamatebako/tebako-runtime-openjdk
   # release v2.7.0 — the runtime feedstock's canonical home per the
