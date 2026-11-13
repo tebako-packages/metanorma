@@ -16,7 +16,7 @@ build:
   system: gemstage         # stage a GEM_HOME closure with a tebako runtime's own ruby
   runtime:
     engine: ruby
-    tebako: "0.17.8"       # runtime release line (image-era; the pinned CLI
+    tebako: "0.17.9"       # runtime release line (image-era; the pinned CLI
                            # refuses pre-era releases by contract, exit 75).
                            # 0.17.6 carries tamatebako/ruby#152's spawn-chdir
                            # translation (a spawned child handed an in-image
