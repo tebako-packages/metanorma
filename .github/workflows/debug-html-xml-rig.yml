@@ -1,0 +1,119 @@
+# Dispatch-only debug rig for tebako#1057: the html-xml check hangs to its
+# 1200s deadline on the macOS legs (both archs, both ruby lines, runtime
+# 0.17.10 and 0.17.11 alike). Nobody has seen where the child parks because
+# the check's own deadline kills without a witness. This rig runs the check
+# under a SHORTER leash (240 s), and at 180 s samples every live process in
+# the run — the ruby driver and the sass helper alike — so the log carries
+# the parking point instead of a bare timeout.
+#
+# Never fires on push/PR/schedule: workflow_dispatch only. The rig rides the
+# branch it is dispatched on (the failing combination lives at the ref).
+name: debug-html-xml-rig
+
+on:
+  workflow_dispatch:
+    inputs:
+      ruby_line:
+        description: "the Tebakofile build.runtime.lines key (4.0 or 3.3)"
+        required: true
+        default: "4.0"
+      deadline:
+        description: "seconds before the check is called parked (the CI deadline is 1200)"
+        required: true
+        default: "240"
+
+permissions:
+  contents: read
+
+jobs:
+  rig:
+    name: rig (macos-arm64, ruby ${{ inputs.ruby_line }})
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba89b1 # v7.0.1
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Read the toolchain pins (Tebakofile is the SSOT)
+        run: ruby tools/pins.rb macos-arm64 --ruby-line "${{ inputs.ruby_line }}" --env >> "$GITHUB_ENV"
+
+      - name: Fetch tebako CLI tools (pinned by Tebakofile, sha256-verified)
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/tebako-tools" && cd "$RUNNER_TEMP/tebako-tools"
+          base="https://github.com/tamatebako/tebako/releases/download/$TEBAKO_RELEASE"
+          curl -sLO "$base/$TEBAKO_ASSET"
+          curl -sLO "$base/$TFS_ASSET"
+          curl -sLO "$base/SHA256SUMS"
+          echo "$TEBAKO_SHA256  $TEBAKO_ASSET" > SHA256PINS
+          echo "$TFS_SHA256  $TFS_ASSET" >> SHA256PINS
+          shasum -a 256 -c SHA256PINS
+          for pair in "$TEBAKO_ASSET:$TEBAKO_SHA256" "$TFS_ASSET:$TFS_SHA256"; do
+            asset="${pair%%:*}"; want="${pair##*:}"
+            got=$(awk -v a="$asset" '$2 == a {print $1}' SHA256SUMS)
+            [ "$got" = "$want" ] || { echo "::error::pin mismatch for $asset: Tebakofile=$want release=${got:-ABSENT}"; exit 1; }
+          done
+          chmod 755 "$TEBAKO_ASSET" "$TFS_ASSET"
+          mv "$TEBAKO_ASSET" tebako
+          mv "$TFS_ASSET" tfs
+          echo "$RUNNER_TEMP/tebako-tools" >> "$GITHUB_PATH"
+
+      - name: Build the payload
+        env:
+          TEBAKO_CLI: tebako
+          TFS_CLI: tfs
+        run: tools/build
+
+      - name: The instrumented check (watchdog + the parking-point sample)
+        env:
+          TEBAKO_DEBUG_TFS: "1"
+        run: |
+          set -uo pipefail
+          . out/aarch64-macos/runtime.env
+          LOG="$RUNNER_TEMP/check.log"
+          tebako check "$PAYLOAD_IMG" --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE" > "$LOG" 2>&1 &
+          CPID=$!
+          deadline=${{ inputs.deadline }}
+          parked=""
+          for i in $(seq 1 "$deadline"); do
+            kill -0 "$CPID" 2>/dev/null || break
+            if [ "$i" = "180" ]; then
+              parked=1
+              echo "=== 180s without an answer — the parking-point sample ===" | tee -a "$LOG"
+              {
+                echo "--- ps tree ---"
+                ps -Ao pid,ppid,stat,etime,command | grep -iE "ruby|sass|dart|tebako" | grep -v grep
+                echo "--- sample: the check's ruby driver ---"
+                sample "$CPID" 3 1 2>&1 | tail -40 || true
+                for p in $(pgrep -f "dart-sass|sass.*embedded" 2>/dev/null); do
+                  echo "--- sample: helper pid $p ---"
+                  sample "$p" 3 1 2>&1 | tail -40 || true
+                done
+                echo "--- the debug log's tail ---"
+                tail -30 "$LOG"
+              } 2>&1 | tee "$RUNNER_TEMP/park.txt"
+            fi
+            sleep 1
+          done
+          if kill -0 "$CPID" 2>/dev/null; then
+            echo "the check did not answer inside ${deadline}s — killing"
+            kill -9 "$CPID" 2>/dev/null
+            wait "$CPID" 2>/dev/null
+            tail -5 "$LOG"
+            echo "::error::html-xml parked past ${deadline}s (samples above)"
+            exit 79
+          fi
+          wait "$CPID"; rc=$?
+          tail -5 "$LOG"
+          echo "check exit: $rc"
+          exit "$rc"
+
+      - name: Upload the evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rig-evidence-${{ inputs.ruby_line }}
+          path: |
+            ${{ runner.temp }}/check.log
+            ${{ runner.temp }}/park.txt
