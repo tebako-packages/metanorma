@@ -175,28 +175,28 @@ depends:
 # upstream.sha256; provenance in docs/build-notes.md).
 tools:
   repo: "tamatebako/tebako"
-  release: "v2.8.75"        # the published Latest line: the press gate's
+  release: "v2.8.79"        # the published Latest line: the press gate's
                              # 3.3.13/4.0.9 support (the v0.17.6 runtime
                              # line's rubies) + the macOS floor's symbol
                              # gate + the PSGallery registration guard +
                              # the hide/expose PATH axis (tebako#1004).
   sha256:
     tebako:
-      macos-arm64: "1bfb7b330b1014d5f286859b77e1aa17fd6a5ecd9c2faff18bf15671c00221b4"
-      macos-x86_64: "1b3d9015b5b469857106261088d6b209be0760dca88cd63f71be8ed75d8b9d5d"
-      linux-gnu-x86_64: "a5f3111d063317db5ee38144907772790e5a869a320f7d417cd99ea0cb243887"
-      linux-gnu-arm64: "e1f0d5d5a71082176e79c95d68e8e2375e7313c5738907179ca7482d42e97aba"
-      linux-musl-x86_64: "cf58e9356087cab36e512c66250fbded9fb52d5041ddecfcc225b01d83bf87ea"
-      linux-musl-arm64: "a720d64dc1616f4530bbfef8035971c19b1120d95d991644fe25f742afa0b3b0"
-      windows-ucrt64: "4c469ba3a1ce1d5abdeacee5c15b54c743af0bbbe93aedaba58f9baac0b780d6"
+      macos-arm64: "e7c8eaabe2b1315def7c187ae1a597f87203e240f702d757b7ff1f51eb8de90c"
+      macos-x86_64: "22c8780419010a1e0c77a3503ad05e75d93e0d0acc3eb5156e3cd2a938fce3b1"
+      linux-gnu-x86_64: "38d2b7731b2ffa867995f5099a6afae261a79d33d516a55b8580e6c4d9521c22"
+      linux-gnu-arm64: "2db3bcf3cd33c5d6bacbd3df52270a51f8e9ba97df38b9f692cbb5c666acecd1"
+      linux-musl-x86_64: "58fc2570655a3d3b345c59e9746d9f1cf642be6a46211aaaaa5722f1ad94a80e"
+      linux-musl-arm64: "3f77a068a69c9df675d8ebc64d4813c35eff3f77b6403ba26ef6f7a41d68476a"
+      windows-ucrt64: "dbcf5eccdb537724b56bdb5f72b02cc23d28dbf2c137e8ddde5747dbb222d18b"
     tebako-shim:
-      macos-arm64: "0bac745663d3c3a7b8521bd1af2ad42ef0b7072f49757183e701f8fa06670b9f"
-      macos-x86_64: "fa81c9532ca08502ab962f4a355e2d34306bfe2c8b35a3535fb50c570d50f3c6"
-      linux-gnu-x86_64: "9b280a09f1075e86ff13ad0f8bab471021600043b42c643fa97cd414a3a18fb0"
-      linux-gnu-arm64: "e1b484aaea210e92068f3e0c6961123f2667051358064a8f903ebfa6dcf4678a"
-      linux-musl-x86_64: "0cba7a6d375713be617b503533692fab97678f33dfccfd288a3497ebd6e74339"
-      linux-musl-arm64: "3cbabf8b87752d159652c6a5e380d6a7abcee082b26154ffba4cde5fe1c5e6a4"
-      windows-ucrt64: "9d57e2697f593d67a613a36c8e8257b12755d185bb0ca308ea61f9a6248c8d79"
+      macos-arm64: "679095ead3c358e01f2285bfc44f35453b000b5d6c35f826352aa093320b4527"
+      macos-x86_64: "4991f4697666092096d071d69a6730115bc6394ac5dde25a2320b9cd3d4f590c"
+      linux-gnu-x86_64: "ec23d12e1f871b9a4c55f8a5844af17c253b90831d2a6d66e7d0272e509454ee"
+      linux-gnu-arm64: "59ffc5ab6df7249273851b00cc183317cfe4267e6768d7fa95e786f87ed02847"
+      linux-musl-x86_64: "99f8d6599c88ae6ab63ab54c3c143f3a17811e94db628ebc9d8d5367f7c32419"
+      linux-musl-arm64: "6ae075646c4e3da2b9d075ae535af9e1a0741469e9ae39dbe8d734ee995486dd"
+      windows-ucrt64: "2355e33c8819f93815a77dba6d5813d64d4d46969e76979db5ea8b70e28cd04d"
     tfs:
       macos-arm64: "56fb1366b724d951a4a6e909b1a109e1de58cffe9a67d254ed809a038d09cb05"
       macos-x86_64: "57891b0ff7559e82c2a5006619e92a84b94bec7afed0044e98237cc7abcffeeb"
