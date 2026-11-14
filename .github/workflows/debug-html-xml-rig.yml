@@ -86,8 +86,12 @@ jobs:
                 ps -Ao pid,ppid,stat,etime,command | grep -iE "ruby|sass|dart|tebako" | grep -v grep
                 echo "--- sample: the check's ruby driver ---"
                 sample "$CPID" 3 1 2>&1 | head -100 || true
-                for p in $(pgrep -f "dart-sass|sass.*embedded" 2>/dev/null); do
-                  echo "--- sample: helper pid $p ---"
+                # sample every DESCENDANT of the check — the hang sits in
+                # the runtime child, whose name carries no sass marker
+                # (the first rig's helper-only pattern missed it)
+                descend() { for c in $(pgrep -P "$1" 2>/dev/null); do echo "$c"; descend "$c"; done; }
+                for p in $(descend "$CPID"); do
+                  echo "--- sample: child pid $p ($(ps -p "$p" -o command= | cut -c1-80)) ---"
                   sample "$p" 3 1 2>&1 | head -100 || true
                 done
                 echo "--- the debug log's tail ---"
