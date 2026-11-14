@@ -85,10 +85,10 @@ jobs:
                 echo "--- ps tree ---"
                 ps -Ao pid,ppid,stat,etime,command | grep -iE "ruby|sass|dart|tebako" | grep -v grep
                 echo "--- sample: the check's ruby driver ---"
-                sample "$CPID" 3 1 2>&1 | tail -40 || true
+                sample "$CPID" 3 1 2>&1 | head -100 || true
                 for p in $(pgrep -f "dart-sass|sass.*embedded" 2>/dev/null); do
                   echo "--- sample: helper pid $p ---"
-                  sample "$p" 3 1 2>&1 | tail -40 || true
+                  sample "$p" 3 1 2>&1 | head -100 || true
                 done
                 echo "--- the debug log's tail ---"
                 tail -30 "$LOG"
