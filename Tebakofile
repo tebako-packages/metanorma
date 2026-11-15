@@ -16,8 +16,15 @@ build:
   system: gemstage         # stage a GEM_HOME closure with a tebako runtime's own ruby
   runtime:
     engine: ruby
-    tebako: "0.17.11"       # runtime release line (image-era; the pinned CLI
+    tebako: "0.17.13"       # runtime release line (image-era; the pinned CLI
                            # refuses pre-era releases by contract, exit 75).
+                           # 0.17.13 re-links on tebako v2.8.81's link unit —
+                           # the libtfs-preload initializer's fail-fast in a
+                           # foreign process (tebako#1065): without it a
+                           # preload-inherited host child (fontist's cold-start
+                           # git clone of the formulas repo) spins in the dylib
+                           # initializer and the macOS html-xml check parks to
+                           # its 1200s deadline (tebako#1057).
                            # 0.17.6 carries tamatebako/ruby#152's spawn-chdir
                            # translation (a spawned child handed an in-image
                            # chdir: starts in the materialized directory —
@@ -93,8 +100,8 @@ build:
     default_line: "4.0"      # 2026-09-27 flip: ruby 4.0 is measurably faster
                              # and the line is proven (dual-line publish since
                              # 1.16.9, both ABI lines dogfood-gated) — the bare
-                             # 1.18.5 entry rides 4.0.9; the 3.3 flavor
-                             # keeps publishing as 1.18.5-ruby3.3 for the
+                             # 1.18.6 entry rides 4.0.9; the 3.3 flavor
+                             # keeps publishing as 1.18.6-ruby3.3 for the
                              # conservative chain.
     # The CLI's SDK provisioning (tebako-cli sdk.rs) fetches the patched
     # source tarball per ruby version from THIS source-factory release —
@@ -175,35 +182,37 @@ depends:
 # upstream.sha256; provenance in docs/build-notes.md).
 tools:
   repo: "tamatebako/tebako"
-  release: "v2.8.79"        # the published Latest line: the press gate's
+  release: "v2.8.81"        # the published Latest line: the press gate's
                              # 3.3.13/4.0.9 support (the v0.17.6 runtime
                              # line's rubies) + the macOS floor's symbol
                              # gate + the PSGallery registration guard +
-                             # the hide/expose PATH axis (tebako#1004).
+                             # the hide/expose PATH axis (tebako#1004) +
+                             # the libtfs-preload fail-fast (tebako#1065 —
+                             # the press host's own preload-inherited spawns).
   sha256:
     tebako:
-      macos-arm64: "e7c8eaabe2b1315def7c187ae1a597f87203e240f702d757b7ff1f51eb8de90c"
-      macos-x86_64: "22c8780419010a1e0c77a3503ad05e75d93e0d0acc3eb5156e3cd2a938fce3b1"
-      linux-gnu-x86_64: "38d2b7731b2ffa867995f5099a6afae261a79d33d516a55b8580e6c4d9521c22"
-      linux-gnu-arm64: "2db3bcf3cd33c5d6bacbd3df52270a51f8e9ba97df38b9f692cbb5c666acecd1"
-      linux-musl-x86_64: "58fc2570655a3d3b345c59e9746d9f1cf642be6a46211aaaaa5722f1ad94a80e"
-      linux-musl-arm64: "3f77a068a69c9df675d8ebc64d4813c35eff3f77b6403ba26ef6f7a41d68476a"
+      macos-arm64: "634919897250ac07f21c099a691375058c638013dbb2978f243d82e571e41df0"
+      macos-x86_64: "a9a5dd0893c6e5de043a200be979153106efc7bcb54a33faec7b55cd0c5bdfb7"
+      linux-gnu-x86_64: "2f8db2f0439ec7c669fb4f2aa1cf1dca8fd435b71bd9bcade94d6ab67dc11889"
+      linux-gnu-arm64: "aa28c4f0ec8b87699561c5b68d31d68d39225270fea8431a523188e243ad2d61"
+      linux-musl-x86_64: "a36f1efebc268c3c8cf6319c6ac9dfc10636408dfd037d52c298d3dfc489b355"
+      linux-musl-arm64: "0011e1b28eab50dcade5a8899995bf3561de91252ade3fe78bb87da1eb5fe14a"
       windows-ucrt64: "dbcf5eccdb537724b56bdb5f72b02cc23d28dbf2c137e8ddde5747dbb222d18b"
     tebako-shim:
-      macos-arm64: "679095ead3c358e01f2285bfc44f35453b000b5d6c35f826352aa093320b4527"
-      macos-x86_64: "4991f4697666092096d071d69a6730115bc6394ac5dde25a2320b9cd3d4f590c"
-      linux-gnu-x86_64: "ec23d12e1f871b9a4c55f8a5844af17c253b90831d2a6d66e7d0272e509454ee"
-      linux-gnu-arm64: "59ffc5ab6df7249273851b00cc183317cfe4267e6768d7fa95e786f87ed02847"
-      linux-musl-x86_64: "99f8d6599c88ae6ab63ab54c3c143f3a17811e94db628ebc9d8d5367f7c32419"
-      linux-musl-arm64: "6ae075646c4e3da2b9d075ae535af9e1a0741469e9ae39dbe8d734ee995486dd"
+      macos-arm64: "d3351bd7af4883438245427b317339e6d7919cf2c4f8b6bf9f852efac872ed00"
+      macos-x86_64: "aa2223983446ca45e6309fafa318ce3b79f012d8c917e99facef522c74f4d91d"
+      linux-gnu-x86_64: "e3790b35418d45aede491bf2ef8ab36a5fd2c1b6cb502c50825de07b2b4eda3c"
+      linux-gnu-arm64: "959b70a0c95589f187b2b3720546afbf6c2e89d29da36e5c1d153385c9b44805"
+      linux-musl-x86_64: "9d342b8361f35279c3c5d1e97ab1657d2789ac2bb4c6a8f25d9ec63302e66ff8"
+      linux-musl-arm64: "9410f15b91cdef0e5669e853d7b085be3ccc6d8ca068b08840bfa637aebe206a"
       windows-ucrt64: "2355e33c8819f93815a77dba6d5813d64d4d46969e76979db5ea8b70e28cd04d"
     tfs:
-      macos-arm64: "1a92cff237c63b0fe9c99f08301cbd0dd645a44bd1384b5ed6e3302843d45668"
-      macos-x86_64: "eaf917f9228f5c102623ea11ff0efa31e3c01d135b8352888f953407892f9ab9"
-      linux-gnu-x86_64: "e7c0280b3582aabdc98dc7f5acaba1e6ecb919f17b661b6e1de037b058fc5041"
-      linux-gnu-arm64: "faeb13ce708244abd1e090734b83571d89a087984ecc30fae09758a55a172a0e"
-      linux-musl-x86_64: "3ae32b75e83fe839bb554dac7ffc3b96752972f8ae037e7b26203e1d410eda1b"
-      linux-musl-arm64: "d5b03c14b0caa1de0e6713023390c46aaacfda9996cbae93c7a8b98ee7d12a1f"
+      macos-arm64: "aefc898eaccdd0cbf353dc1cf6c1e99406a6e48be049ac1fea59c51ddd8f045e"
+      macos-x86_64: "14ab62b04b7f89870c4bf453c0109657b2403ae527bb2ecbbf9e3ed392783ade"
+      linux-gnu-x86_64: "b69d715a6523ebea4cfd05596096e7391eac770a98c15b8e79f2bb2ba19ec3fa"
+      linux-gnu-arm64: "b194726f781bbf20ca57f3eb4d8f87301c9fed2180bac86a57b79f4f366ca971"
+      linux-musl-x86_64: "8529701a984a1df34104e8616ca23bef795f97a20d504ecfb982da8d449ecbb3"
+      linux-musl-arm64: "7363fa373d0fa25a5c454b4fcb0bc25f3f315f492bd39181e3541f8557fd36a1"
       windows-ucrt64: "ee77efb4d90fa035247730a4d94df1522b56feae26a6753440edd8d54106381e"
 java:
   # The pinned java runtime pair (tamatebako/tebako-runtime-openjdk
