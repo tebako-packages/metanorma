@@ -197,7 +197,7 @@ tools:
       linux-gnu-arm64: "aa28c4f0ec8b87699561c5b68d31d68d39225270fea8431a523188e243ad2d61"
       linux-musl-x86_64: "a36f1efebc268c3c8cf6319c6ac9dfc10636408dfd037d52c298d3dfc489b355"
       linux-musl-arm64: "0011e1b28eab50dcade5a8899995bf3561de91252ade3fe78bb87da1eb5fe14a"
-      windows-ucrt64: "dbcf5eccdb537724b56bdb5f72b02cc23d28dbf2c137e8ddde5747dbb222d18b"
+      windows-ucrt64: "11d16f2b065893d61c9d6299455498b887d127febcc69186da249514baa79158"
     tebako-shim:
       macos-arm64: "d3351bd7af4883438245427b317339e6d7919cf2c4f8b6bf9f852efac872ed00"
       macos-x86_64: "aa2223983446ca45e6309fafa318ce3b79f012d8c917e99facef522c74f4d91d"
@@ -205,7 +205,7 @@ tools:
       linux-gnu-arm64: "959b70a0c95589f187b2b3720546afbf6c2e89d29da36e5c1d153385c9b44805"
       linux-musl-x86_64: "9d342b8361f35279c3c5d1e97ab1657d2789ac2bb4c6a8f25d9ec63302e66ff8"
       linux-musl-arm64: "9410f15b91cdef0e5669e853d7b085be3ccc6d8ca068b08840bfa637aebe206a"
-      windows-ucrt64: "2355e33c8819f93815a77dba6d5813d64d4d46969e76979db5ea8b70e28cd04d"
+      windows-ucrt64: "eeca179f5df2280cef1151c8a4bfeb449b35eca153eb8d213aad5c57fda58c6a"
     tfs:
       macos-arm64: "aefc898eaccdd0cbf353dc1cf6c1e99406a6e48be049ac1fea59c51ddd8f045e"
       macos-x86_64: "14ab62b04b7f89870c4bf453c0109657b2403ae527bb2ecbbf9e3ed392783ade"
@@ -213,7 +213,7 @@ tools:
       linux-gnu-arm64: "b194726f781bbf20ca57f3eb4d8f87301c9fed2180bac86a57b79f4f366ca971"
       linux-musl-x86_64: "8529701a984a1df34104e8616ca23bef795f97a20d504ecfb982da8d449ecbb3"
       linux-musl-arm64: "7363fa373d0fa25a5c454b4fcb0bc25f3f315f492bd39181e3541f8557fd36a1"
-      windows-ucrt64: "ee77efb4d90fa035247730a4d94df1522b56feae26a6753440edd8d54106381e"
+      windows-ucrt64: "18a94a52ecb0d0879e41ca160acb9ec7cd1daaa5f23a7c62ef2a8ca33f08258f"
 java:
   # The pinned java runtime pair (tamatebako/tebako-runtime-openjdk
   # release v2.7.0 — the runtime feedstock's canonical home per the
