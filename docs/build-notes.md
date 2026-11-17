@@ -583,7 +583,15 @@ exit 69, never a segfault).
 Publish order is load-bearing: the CLI's registry upsert sets
 `default:` only when absent, so the default line's entry must land
 first — `pins.rb` emits `RUBY_LINES` default-first and the publish job
-loops it in that order into one `--registry-out`.
+loops it in that order into one `--registry-out`. That ordering is the
+ruby-LINE axis only; it decides which line the CLI's first-publish pin
+lands on, and only while `default:` is absent (a new payload's first
+publish). The payload-VERSION axis — which version `default:` names as
+the product line advances — is a deliberate policy, not the CLI's floor:
+the publish step runs `tools/set_registry_default.rb` after the loop to
+move `default:` to the just-published default-line version (issue #144 —
+left to the floor, the default sat at 1.17.0 through the whole 1.18 line;
+the 1.18.6 move in PR #143 was the one-off hand edit this step replaces).
 
 The SDK pins' provenance is tamatebako/ruby's `versions.yml` (the
 source factory SSOT): it owns each version's upstream tarball url +
