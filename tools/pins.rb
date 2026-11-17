@@ -18,7 +18,11 @@
 # build.runtime.default_line) and drives the RUBY_* / SDK_* /
 # PAYLOAD_VERSION values. RUBY_LINES always lists every line, default
 # first — publish order matters: the CLI's registry upsert sets `default:`
-# only when absent, so the default line's entry must land first.
+# only when absent, so the default line's entry must land first. That is
+# the ruby-LINE axis (which line the CLI's first-publish pin lands on).
+# Which VERSION the default names as the product line advances is the
+# other axis, and not this ordering's job: the publish step moves it
+# deliberately per tag (tools/set_registry_default.rb, issue #144).
 # Unknown platform / missing pin / unknown line is a named error, never a
 # guess (spec 00 §9).
 #

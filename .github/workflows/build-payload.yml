@@ -37,7 +37,11 @@ name: build-payload
 # One upstream version, one registry entry per line: the default line
 # publishes 1.17.0, the 3.3 line publishes 1.17.0-ruby3.3 — both from one
 # tag, the publish job upserting the default line FIRST (tebako-cli sets
-# the registry `default:` only when absent).
+# the registry `default:` only when absent — the new-payload floor, a
+# ruby-LINE ordering concern). Which VERSION `default:` names as the
+# product line advances is the separate axis with a deliberate policy:
+# the publish step moves it to the just-published default-line version
+# (tools/set_registry_default.rb, issue #144).
 #
 # THE REGISTRY BOT PR (tebako#686): the tag run's publish job lands
 # tpkg-registry.yaml on main by bot PR + auto-merge under the CI PAT (a
@@ -1298,10 +1302,16 @@ jobs:
         # ONE invocation per ruby line into the SAME
         # --registry-out. ORDER IS LOAD-BEARING: RUBY_LINES lists the
         # default line first and tebako-cli's upsert sets the registry
-        # `default:` only when absent — the default line's entry must be
-        # the first to land. Each line's PAYLOAD_VERSION (1.17.0 /
-        # 1.17.0-ruby3.3) and its per-line artifact names flow from
-        # tools/pins.rb --ruby-line.
+        # `default:` only when absent (the CLI's new-payload floor — its
+        # upsert_registry never moves an existing default), so the default
+        # line's entry must be the first to land. That is the ruby-LINE
+        # axis. The payload-VERSION axis — which version `default:` names
+        # as the product line advances — is the deliberate move AFTER the
+        # loop: tools/set_registry_default.rb pins it to the just-published
+        # default-line version (issue #144 — left to the CLI's floor,
+        # `default:` sat at 1.17.0 through the whole 1.18 line). Each
+        # line's PAYLOAD_VERSION (1.17.0 / 1.17.0-ruby3.3) and its
+        # per-line artifact names flow from tools/pins.rb --ruby-line.
         #
         # Signing (Tebakofile's signing: block; spec 09 §9): SIGNING_KEYID
         # flows from the pins step's GITHUB_ENV export; the CI signing
@@ -1368,9 +1378,17 @@ jobs:
           # (the dir does not exist) and would be invisible to the verify.
           printf 'runtimes:\n  java:\n    version: "%s"\n    tebako: "%s"\n  python:\n    version: "%s"\n    tebako: "%s"\n' \
             "$JAVA_VERSION" "$JAVA_TEBAKO" "$PYTHON_VERSION" "$PYTHON_TEBAKO" >> "$TEBAKO_HOME/config.yaml"
+          default_line="${RUBY_LINES%% *}"   # pins.rb lists the default line first
           for ruby_line in $RUBY_LINES; do
             eval "$(ruby tools/pins.rb macos-arm64 --ruby-line "$ruby_line")"
             echo "== publish ruby line $ruby_line as version $PAYLOAD_VERSION"
+            # Capture the version the default LINE publishes under — the
+            # value the registry `default:` must name after this tag
+            # (today the bare upstream version; pins.rb owns the
+            # line→version mapping, so this capture never hardcodes it).
+            if [ "$ruby_line" = "$default_line" ]; then
+              DEFAULT_PAYLOAD_VERSION="$PAYLOAD_VERSION"
+            fi
             # SIGN_ARGS carries --sign=<keyid> when the recipe signs;
             # OCI_ARGS carries --oci <repo> when the variable activates the
             # dual-publish; the ${arr[@]+...} guards keep both empty
@@ -1386,6 +1404,15 @@ jobs:
               --payload x86_64-windows-ucrt="out/x86_64-windows-ucrt-$ruby_line/$PKG_NAME-$PAYLOAD_VERSION-windows-ucrt64.tfs" \
               --registry-out "$PWD/tpkg-registry.yaml"
           done
+          # THE DELIBERATE DEFAULT MOVE (issue #144): the CLI's upsert pins
+          # `default:` only when absent and never moves it again — the
+          # payload-VERSION axis is the feedstock's release policy, so the
+          # publish names it: `default:` tracks the just-published default
+          # line's version. Runs after the loop so the guard sees the row
+          # it names; writes the `default:` key ONLY (the `versions:`
+          # accumulation stays the CLI upsert's); idempotent on a tag
+          # re-run. #143's hand edit is the once, this step is the always.
+          ruby tools/set_registry_default.rb "$PKG_NAME" "$DEFAULT_PAYLOAD_VERSION"
           # The spawned-runtime registry entries (spec 04 §2's kind:
           # runtime, schema MINOR 1 — the resolver's channel 3): without
           # them a real-world `tebako install metanorma` (no mirror, no
