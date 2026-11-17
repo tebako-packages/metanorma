@@ -682,7 +682,7 @@ payloads:
     - w3c_api
     - xml2gv
     - xsdvi
-  default: 1.17.0
+  default: 1.18.6
 - name: tebako-runtime-java-temurin
   kind: runtime
   engine: java
