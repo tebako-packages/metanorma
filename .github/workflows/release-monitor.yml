@@ -60,15 +60,10 @@ jobs:
           V="$(jq -r .candidate monitor-result.json)"
           WORK="$(mktemp -d)"
           mkdir -p "$WORK/app"
-          # The resolution Gemfile mirrors tools/resolve_closure exactly —
-          # the manifest-contract roots ride it (lutaml-xsd, ukiryu) so a
-          # fresh resolution never silently drops a declared provider.
-          cat > "$WORK/app/Gemfile" <<GEM
-          source "https://rubygems.org"
-          gem "metanorma-cli", "$V"
-          gem "lutaml-xsd"
-          gem "ukiryu"
-          GEM
+          # The resolution Gemfile is the SHARED template
+          # (tools/closure.Gemfile) — the same file tools/resolve_closure
+          # renders from (SSOT).
+          sed "s|__VERSION__|$V|g" tools/closure.Gemfile > "$WORK/app/Gemfile"
           (cd "$WORK/app" && BUNDLE_APP_CONFIG="$WORK/bundle" bundle lock --print) > "$WORK/lock.txt"
           for spec in \
             "arm64-darwin:aarch64-macos" \
