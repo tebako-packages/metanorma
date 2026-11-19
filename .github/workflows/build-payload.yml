@@ -1321,6 +1321,9 @@ jobs:
         env:
           TEBAKO_RUNTIME_MIRROR: file://${{ github.workspace }}/out/publish-mirror
           TEBAKO_SIGNING_KEY: ${{ secrets.TEBAKO_CI_SIGNING_KEY }}
+          # gh CLI auth for the prerelease flag below (gh release edit on
+          # pre-shaped tags).
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # OCI dual-publish destination (spec 38; repo variable — unset
           # means dormant, the --oci flag is omitted byte-for-byte and the
           # publish is unchanged). Activation: set OCI_REPO to
@@ -1412,7 +1415,28 @@ jobs:
           # it names; writes the `default:` key ONLY (the `versions:`
           # accumulation stays the CLI upsert's); idempotent on a tag
           # re-run. #143's hand edit is the once, this step is the always.
-          ruby tools/set_registry_default.rb "$PKG_NAME" "$DEFAULT_PAYLOAD_VERSION"
+          #
+          # PRERELEASE POLICY (the mirror's semver shape, never a decision):
+          # a tag whose version carries a non-numeric segment after the
+          # numeric prefix (1.18.7.pre.20261118-1 → 1.18.7.pre.20261118)
+          # is a prerelease — its rows publish like any other, but
+          # `default:` STAYS on the latest stable publish (a prerelease
+          # never moves it; stable users never resolve onto a pre by
+          # default), and the release object is flagged prerelease so
+          # livecheck-style consumers skip it automatically.
+          tag_base="${{ github.ref_name }}"; tag_base="${tag_base%-*}"
+          if [[ "$tag_base" =~ [^0-9.] ]]; then
+            echo "::notice::prerelease tag $tag_base — registry default: untouched (tracks the latest stable publish)"
+          else
+            ruby tools/set_registry_default.rb "$PKG_NAME" "$DEFAULT_PAYLOAD_VERSION"
+          fi
+          # The release object carries the same classification: a
+          # prerelease-shaped tag is flagged --prerelease so github_latest
+          # consumers (Homebrew livecheck, the gh API's /releases/latest)
+          # skip it. Stable tags stay untouched.
+          if [[ "$tag_base" =~ [^0-9.] ]]; then
+            gh release edit "${{ github.ref_name }}" --prerelease
+          fi
           # The spawned-runtime registry entries (spec 04 §2's kind:
           # runtime, schema MINOR 1 — the resolver's channel 3): without
           # them a real-world `tebako install metanorma` (no mirror, no

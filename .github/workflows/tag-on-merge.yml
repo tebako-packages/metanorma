@@ -1,0 +1,57 @@
+# tag-on-merge: when the recipe's upstream version moves on main (a roll
+# PR merge — the release monitor's or a hand roll), mint
+# `<version>-<next serial>` on the merge commit. The tag push fires
+# build-payload's publish, so a roll lands published with no hand step:
+# monitor roll → merge → tag → publish → (packed-metanorma follows on
+# the existing repository_dispatch wiring).
+#
+# Serial: max existing serial for that version + 1 (rebuilds of the same
+# version stay deliberate, minted by hand as before). Idempotent: a push
+# that does not move the version is a loud no-op; a re-run recomputes.
+name: tag-on-merge
+
+on:
+  push:
+    branches: [main]
+    paths: [Tebakofile]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tag-on-merge
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: mint the release tag for the new pin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+      - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: "3.4"
+
+      - name: mint the tag
+        run: |
+          set -euo pipefail
+          read_version() {
+            ruby -e 'lines = STDIN.readlines
+              i = lines.index { |l| l =~ /^upstream:/ } or abort "Tebakofile: no upstream: block"
+              j = (i...lines.length).find { |k| lines[k] =~ /^\s+version:/ } or abort "Tebakofile: upstream: carries no version key"
+              puts lines[j][/\d[^"]*/]'
+          }
+          new_v="$(read_version < Tebakofile)"
+          old_v="$(git show 'HEAD~1:Tebakofile' | read_version)"
+          [ "$new_v" != "$old_v" ] || { echo "version unchanged ($new_v) — nothing to tag"; exit 0; }
+          git fetch --tags -q
+          serial="$(git tag -l "$new_v-*" | sed "s/^$new_v-//" | sort -n | tail -1)"
+          serial=$(( ${serial:-0} + 1 ))
+          tag="$new_v-$serial"
+          git config user.name tebako-ci
+          git config user.email tebako@ribose.com
+          git tag "$tag"
+          git push origin "$tag"
+          echo "tagged $tag on $(git rev-parse HEAD) — build-payload publishes from the tag"
