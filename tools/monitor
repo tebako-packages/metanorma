@@ -1,0 +1,120 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# tools/monitor — the upstream release monitor: poll RubyGems for new
+# metanorma-cli versions, compare against the versions this feedstock has
+# already packed (its git tags), and when one is missing roll the recipe
+# pin to it. The release-monitor workflow runs this daily and turns the
+# dirty tree into a pull request.
+#
+#   ruby tools/monitor            # writes verdict JSON to stdout
+#
+# ROLL RULES (the mirror contract):
+#   * the stable chain is always complete first: the candidate is the
+#     OLDEST unpacked stable (never the newest — skipping a stable would
+#     leave a hole in the payload's own release line);
+#   * a prerelease (RubyGems' prerelease flag) rolls only when no unpacked
+#     stable remains — the newest unpacked pre. Its rows publish like any
+#     other; the registry default: and the release object's prerelease
+#     flag are the publish flow's (see build-payload.yml), never this
+#     tool's;
+#   * one roll per run. A fresher candidate on a later run simply updates
+#     the same monitor branch.
+#
+# PACKED SET: the feedstock's own tags, shaped <version>-<serial>. The
+# serial strip (-<digits> at end) recovers the packed version; a version
+# is packed when ANY serial of it tags. Pre tags carry their dots
+# (1.18.7.pre.20261118-1 → 1.18.7.pre.20261118).
+#
+# Ordering uses Ruby's own Gem::Version (semver: a prerelease segment
+# sorts below its final, above the previous stable).
+
+require "json"
+require "net/http"
+require "uri"
+
+module ReleaseMonitor
+  class Error < StandardError; end
+
+  RUBYGEMS_VERSIONS = URI("https://rubygems.org/api/v1/versions/metanorma-cli.json").freeze
+
+  def self.upstream_versions
+    res = Net::HTTP.start(RUBYGEMS_VERSIONS.host, RUBYGEMS_VERSIONS.port, use_ssl: true) do |http|
+      http.get(RUBYGEMS_VERSIONS.request_uri)
+    end
+    res.is_a?(Net::HTTPSuccess) or
+      raise Error, "rubygems #{RUBYGEMS_VERSIONS} answered #{res.code} — never a guess"
+    JSON.parse(res.body).map do |row|
+      { version: row.fetch("number"), prerelease: row.fetch("prerelease") }
+    end
+  end
+
+  def self.packed_versions
+    tags = `git tag -l`.lines.map(&:strip).reject(&:empty?)
+    tags.map { |t| t.sub(/-\d+\z/, "") }.uniq
+  end
+
+  def self.current_pin
+    lines = File.readlines("Tebakofile")
+    idx = lines.index { |l| l =~ /^upstream:/ } or
+      raise Error, "Tebakofile: no upstream: block"
+    v_idx = (idx...lines.length).find { |i| lines[i] =~ /^\s+version:/ } or
+      raise Error, "Tebakofile: upstream: carries no version key"
+    lines[v_idx][/\d[^"]*/]
+  end
+
+  def self.roll!(candidate)
+    lines = File.readlines("Tebakofile")
+    idx = lines.index { |l| l =~ /^upstream:/ } or
+      raise Error, "Tebakofile: no upstream: block"
+    v_idx = (idx...lines.length).find { |i| lines[i] =~ /^\s+version:/ } or
+      raise Error, "Tebakofile: upstream: carries no version key"
+    lines[v_idx] = lines[v_idx].sub(/"[^"]*"/, "\"#{candidate}\"")
+    File.write("Tebakofile", lines.join)
+  end
+
+  def self.verdict
+    upstream = upstream_versions
+    packed = packed_versions
+    current = current_pin
+    floor = Gem::Version.new(current)
+
+    # Forward-only: versions at or below the current pin are history
+    # (deliberately never packed), never roll candidates.
+    unpacked_stable = upstream.reject { |v| v[:prerelease] }
+                              .reject { |v| packed.include?(v[:version]) }
+                              .select { |v| Gem::Version.new(v[:version]) > floor }
+                              .sort_by { |v| Gem::Version.new(v[:version]) }
+    unless unpacked_stable.empty?
+      candidate = unpacked_stable.first
+      return {
+        action: "bump", track: "stable", candidate: candidate[:version],
+        current: current, behind: unpacked_stable.length - 1
+      }
+    end
+
+    unpacked_pre = upstream.select { |v| v[:prerelease] }
+                           .reject { |v| packed.include?(v[:version]) }
+                           .select { |v| Gem::Version.new(v[:version]) > floor }
+                           .sort_by { |v| Gem::Version.new(v[:version]) }
+    unless unpacked_pre.empty?
+      candidate = unpacked_pre.last
+      return {
+        action: "bump", track: "prerelease", candidate: candidate[:version],
+        current: current, behind: unpacked_pre.length - 1
+      }
+    end
+
+    { action: "current", current: current }
+  end
+end
+
+if __FILE__ == $PROGRAM_NAME
+  begin
+    v = ReleaseMonitor.verdict
+    ReleaseMonitor.roll!(v[:candidate]) if v[:action] == "bump"
+    puts JSON.pretty_generate(v)
+  rescue ReleaseMonitor::Error => e
+    abort "NAMED FAILURE: #{e.message}"
+  end
+end

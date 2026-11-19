@@ -1,0 +1,108 @@
+# The metanorma-cli release monitor (propose-bump shape, the node
+# factory's idiom): daily, tools/monitor checks RubyGems for a version
+# this feedstock has not packed and rolls the recipe pin to it; this
+# workflow regenerates the closure files for the candidate and turns the
+# dirty tree into a pull request. Never merges (the bump PR rides the
+# build gate and merges like every other PR); on merge the tag-on-merge
+# workflow mints <version>-<next serial>, which fires build-payload's
+# publish — the same chain a hand-rolled bump rides.
+#
+# Tracks (tools/monitor owns the pick): the oldest unpacked stable rolls
+# first (the stable chain stays complete); a prerelease rolls only when
+# no unpacked stable remains, and its publish is flagged prerelease with
+# the registry `default:` untouched (build-payload.yml's policy step).
+name: release-monitor
+
+on:
+  schedule:
+    # Off the :00/:30 herd; distinct from the runtime factories' slots.
+    - cron: "53 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-monitor
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    name: propose the next metanorma-cli pin
+    runs-on: ubuntu-latest
+    outputs:
+      verdict: ${{ steps.monitor.outputs.verdict }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+
+      - name: check upstream + rewrite the pin
+        id: monitor
+        run: |
+          set -euo pipefail
+          git fetch --unshallow --tags 2>/dev/null || git fetch --tags
+          ruby tools/monitor | tee monitor-result.json
+          {
+            echo "verdict<<VERDICT_JSON_EOF"
+            cat monitor-result.json
+            echo "VERDICT_JSON_EOF"
+          } >> "$GITHUB_OUTPUT"
+          cat monitor-result.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: regenerate the closure files for the candidate
+        if: fromJSON(steps.monitor.outputs.verdict).action == 'bump'
+        run: |
+          set -euo pipefail
+          V="$(jq -r .candidate monitor-result.json)"
+          WORK="$(mktemp -d)"
+          mkdir -p "$WORK/app"
+          # The resolution Gemfile is the SHARED template
+          # (tools/closure.Gemfile) — the same file tools/resolve_closure
+          # renders from (SSOT).
+          sed "s|__VERSION__|$V|g" tools/closure.Gemfile > "$WORK/app/Gemfile"
+          (cd "$WORK/app" && BUNDLE_APP_CONFIG="$WORK/bundle" bundle lock --print) > "$WORK/lock.txt"
+          for spec in \
+            "arm64-darwin:aarch64-macos" \
+            "x86_64-darwin:x86_64-macos" \
+            "aarch64-linux-gnu:aarch64-linux-gnu" \
+            "aarch64-linux-musl:aarch64-linux-musl" \
+            "x86_64-linux-gnu:x86_64-linux-gnu" \
+            "x86_64-linux-musl:x86_64-linux-musl" \
+            "x64-mingw-ucrt:x86_64-windows-ucrt"; do
+            plat="${spec%%:*}"; suffix="${spec##*:}"
+            python3 tools/gen_closure "$WORK/lock.txt" "$plat" > "closure/$V-$suffix.txt"
+            # The ruby-LINE axis: the -ruby3.3 closure content is byte-
+            # identical to the default line's (verified against the 1.18.6
+            # set) — same gems, same variants; only the filename differs.
+            cp "closure/$V-$suffix.txt" "closure/$V-ruby3.3-$suffix.txt"
+          done
+
+      # create-pull-request is a no-op on a clean tree — the "current"
+      # verdict commits nothing and this step simply succeeds. The
+      # add-paths guard keeps the commit to the recipe alone: never the
+      # runner's bundle config, never the run's monitor-result.json.
+      - name: open the bump pull request
+        if: fromJSON(steps.monitor.outputs.verdict).action == 'bump'
+        uses: peter-evans/create-pull-request@v7
+        # Authored with the org PAT so the PR's CI runs like on any human
+        # PR (a GITHUB_TOKEN-authored PR never triggers pull_request
+        # workflows — GitHub's anti-recursion rule).
+        with:
+          token: ${{ secrets.TEBAKO_CI_PAT_TOKEN }}
+          branch: monitor/metanorma-cli-pin
+          add-paths: |
+            Tebakofile
+            closure/
+          title: "metanorma-cli ${{ fromJSON(steps.monitor.outputs.verdict).candidate }} (release monitor)"
+          commit-message: "metanorma-cli ${{ fromJSON(steps.monitor.outputs.verdict).candidate }} (release monitor)"
+          body: |
+            Automated pin bump by the release monitor: metanorma-cli **${{ fromJSON(steps.monitor.outputs.verdict).candidate }}** (track: ${{ fromJSON(steps.monitor.outputs.verdict).track }}; was ${{ fromJSON(steps.monitor.outputs.verdict).current }}).
+
+            - `Tebakofile`'s upstream `version:` moved
+            - closure files regenerated for every triplet, both ruby lines (byte-identical content across lines, per the 1.18.6 set)
+
+            Merging mints `<version>-<next serial>` (tag-on-merge), which fires build-payload's publish. A prerelease-track bump publishes flagged prerelease with the registry `default:` untouched; a stable-track bump moves the default with it.
