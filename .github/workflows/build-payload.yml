@@ -1567,3 +1567,32 @@ jobs:
     needs: [release]
     uses: tebako-packages/registry/.github/workflows/ping-aggregate.yml@main
     secrets: inherit
+
+  # The packed-metanorma follow (the mirror's downstream half): once the
+  # registry rows are on main (ping-registry's wait gives the ordering for
+  # free), poke packed-metanorma's prepare with the just-published
+  # default-line version. Its prepare fetches THIS registry, rewrites
+  # versions.yaml, and tags v<version> — whose build then flags
+  # prerelease-shaped releases by the same semver rule. Fatal: a poke
+  # that fails silently would strand the mirror (named errors, spec 00
+  # §9) — though packed's prepare can always be re-dispatched by hand
+  # with the same version.
+  ping-packed:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [release, ping-registry]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: poke packed-metanorma's prepare
+        env:
+          GH_TOKEN: ${{ secrets.TEBAKO_CI_PAT_TOKEN }}
+        run: |
+          set -euo pipefail
+          # The tag is <default-line version>-<serial>; the payload is the
+          # bare version (the prepare's sync names the tag itself, and its
+          # release job classifies the shape for the prerelease flag).
+          version="${{ github.ref_name }}"
+          version="${version%-*}"
+          gh api repos/metanorma/packed-metanorma/dispatches \
+            -f event_type=tebako-packages/metanorma \
+            -f "client_payload[version]=$version"
+          echo "poked packed-metanorma prepare with version=$version"
