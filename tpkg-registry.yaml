@@ -932,6 +932,246 @@ payloads:
     - w3c_api
     - xml2gv
     - xsdvi
+  - version: 1.18.7.pre.20261121
+    platforms:
+      aarch64-macos:
+        artifact: metanorma-1.18.7.pre.20261121-macos-arm64.tfs
+        sha256: 38abcb2d53b641cac7d702b51784dab7b5dd82cd9e8cc14038e6719075940e0c
+        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-aarch64-macos
+        blksum:
+          filename: metanorma-1.18.7.pre.20261121-macos-arm64.tfs.blksum.json
+          sha256: c20a3d9b179c182315b5f8a855c7897d33dbf41c19621278f1ca72ca5652fd62
+      x86_64-macos:
+        artifact: metanorma-1.18.7.pre.20261121-macos-x86_64.tfs
+        sha256: fd11e22c61647ccd4dc510380b1e7eb257fff19cdb60053d3d22c644af65a23d
+        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-x86_64-macos
+        blksum:
+          filename: metanorma-1.18.7.pre.20261121-macos-x86_64.tfs.blksum.json
+          sha256: d5f5593cb3d59184eb43d5bb2c18c69a7456b7e18e154936b080b693e2b44bc6
+      x86_64-linux-gnu:
+        artifact: metanorma-1.18.7.pre.20261121-linux-gnu-x86_64.tfs
+        sha256: 01577bea2ad695e2689b7bc29b0c664612347139b88ffd3cb44b50742d969a48
+        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-x86_64-linux-gnu
+        blksum:
+          filename: metanorma-1.18.7.pre.20261121-linux-gnu-x86_64.tfs.blksum.json
+          sha256: 30af84d0ba6d1b41ed209c41c4a5de8e5444e93914aad8e092cb6d8161c6d58f
+      aarch64-linux-gnu:
+        artifact: metanorma-1.18.7.pre.20261121-linux-gnu-arm64.tfs
+        sha256: 396e12afab44970c83cb3c7d41f2ed6064aea5bf4dbccb29796b72cbce7c1558
+        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-aarch64-linux-gnu
+        blksum:
+          filename: metanorma-1.18.7.pre.20261121-linux-gnu-arm64.tfs.blksum.json
+          sha256: fcfacc9a814ba79bbd0f16cba5ad6381e87f5a02ad8596e01273114bdeed4a51
+      x86_64-linux-musl:
+        artifact: metanorma-1.18.7.pre.20261121-linux-musl-x86_64.tfs
+        sha256: 4f62860c1e7f996ca13aab8dd0719dbab1a49203ebd17d0f5dea4c5c84b2814c
+        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-x86_64-linux-musl
+        blksum:
+          filename: metanorma-1.18.7.pre.20261121-linux-musl-x86_64.tfs.blksum.json
+          sha256: 3435767288cea73464390c9bbc8c202c8590777a663174e78c946bb807cdac74
+      aarch64-linux-musl:
+        artifact: metanorma-1.18.7.pre.20261121-linux-musl-arm64.tfs
+        sha256: 0b6db5f656b6a6b06674c9dac614821f11b9899f0952abe57ae8c969e00fa306
+        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-aarch64-linux-musl
+        blksum:
+          filename: metanorma-1.18.7.pre.20261121-linux-musl-arm64.tfs.blksum.json
+          sha256: 611afd6d72d746bf6fdb8924ec61b2d69f33dad4345e72046346dbf5a5ac614f
+      x86_64-windows-ucrt:
+        artifact: metanorma-1.18.7.pre.20261121-windows-ucrt64.tfs
+        sha256: f4e0c29c79aab010de49351b57c4ab7fa6d9852dfdebeefdc07a8316fd992eca
+        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-x86_64-windows-ucrt
+        blksum:
+          filename: metanorma-1.18.7.pre.20261121-windows-ucrt64.tfs.blksum.json
+          sha256: 6f3ecaae465094e3a7ad80b66a3e9e9eebfd30a112e819cb5b44a4d5c0a00614
+    release:
+      ref: tfs:github:tebako-packages/metanorma:1.18.7.pre.20261121-1
+    signature:
+      keyid: efc3c250f7862a48
+      asc: metanorma-1.18.7.pre.20261121-macos-arm64.tfs.asc
+    runtime_requirement:
+      engine: ruby
+      constraint: "~> 4.0.0"
+      implementation: mri
+    entrypoints:
+    - metanorma
+    - metanorma-manifest
+    - asciidoctor
+    - canon
+    - coradoc
+    - expressir
+    - fontist
+    - fontisan
+    - glossarist
+    - lutaml
+    - lutaml-model
+    - lutaml-sysml
+    - lutaml-wsd2uml
+    - lutaml-xsd
+    - lutaml-yaml2uml
+    - omnizip
+    - plurimath
+    - png_conform
+    - relaton
+    - reverse_adoc
+    - suma
+    - svg_conform
+    - unitsdb
+    - vectory
+    - w2a
+    - w2m
+    - cabriolet
+    - console
+    - convert2oscalyaml.rb
+    - ea
+    - ebnf
+    - emf
+    - emfsvg
+    - excavate
+    - fractor
+    - fuzzy_match
+    - japanese_calendar
+    - jsonld
+    - ldiff
+    - loc-mods
+    - nokogiri
+    - premailer
+    - rdf
+    - reverse_markdown
+    - rng
+    - rougify
+    - setup
+    - socksify_ruby
+    - sparql
+    - sxp2json
+    - sxp2rdf
+    - sxp2xml
+    - sxp2yaml
+    - thor
+    - tokenize
+    - ukiryu
+    - unibuf
+    - w3c_api
+    - xsdvi
+  - version: 1.18.7.pre.20261121-ruby3.3
+    platforms:
+      aarch64-macos:
+        artifact: metanorma-1.18.7.pre.20261121-ruby3.3-macos-arm64.tfs
+        sha256: f9604292de4c2fcb167fdde3ab99630a9b65f07564566ca1cadaedb59004b350
+        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-ruby3.3-aarch64-macos
+        blksum:
+          filename: metanorma-1.18.7.pre.20261121-ruby3.3-macos-arm64.tfs.blksum.json
+          sha256: f8ddc438ae9cb27ee3a3231c5ed5ebae0a405e98ffb415bce63444d43e750f2e
+      x86_64-macos:
+        artifact: metanorma-1.18.7.pre.20261121-ruby3.3-macos-x86_64.tfs
+        sha256: e8dc36c0ac2081a3457a343ab970f0a87935e11cc5a2dd556536b531f343345f
+        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-ruby3.3-x86_64-macos
+        blksum:
+          filename: metanorma-1.18.7.pre.20261121-ruby3.3-macos-x86_64.tfs.blksum.json
+          sha256: 1502768e5ed10d4a2edada8d8d1e8a21f3825644f8861c7a421ca12842ded665
+      x86_64-linux-gnu:
+        artifact: metanorma-1.18.7.pre.20261121-ruby3.3-linux-gnu-x86_64.tfs
+        sha256: 5873dfb5abaafde00c0dac59718e6a8a0f9813ec2f9707be527117238dd395da
+        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-ruby3.3-x86_64-linux-gnu
+        blksum:
+          filename: metanorma-1.18.7.pre.20261121-ruby3.3-linux-gnu-x86_64.tfs.blksum.json
+          sha256: d607c97a26abe627cbbd7322e4412f4f0c5e36a0cc516d71cf44f07d74079b83
+      aarch64-linux-gnu:
+        artifact: metanorma-1.18.7.pre.20261121-ruby3.3-linux-gnu-arm64.tfs
+        sha256: 5c17901880fd5f60f71a40a789afd40390d28e3519337fba8db9e85c71937be3
+        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-ruby3.3-aarch64-linux-gnu
+        blksum:
+          filename: metanorma-1.18.7.pre.20261121-ruby3.3-linux-gnu-arm64.tfs.blksum.json
+          sha256: 867d77e307b9aa75a2a0d205e10427e2921d1d2516bf8aeccb87bf4369268095
+      x86_64-linux-musl:
+        artifact: metanorma-1.18.7.pre.20261121-ruby3.3-linux-musl-x86_64.tfs
+        sha256: 32a385d187fbf0380010aa8c542b3d89912a1a6a3e92406675232bf29518dbbb
+        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-ruby3.3-x86_64-linux-musl
+        blksum:
+          filename: metanorma-1.18.7.pre.20261121-ruby3.3-linux-musl-x86_64.tfs.blksum.json
+          sha256: 8bb9d245eaf384eedfb6e7320b9de7bbce742dbaa886dd7dd992d048fb8683db
+      aarch64-linux-musl:
+        artifact: metanorma-1.18.7.pre.20261121-ruby3.3-linux-musl-arm64.tfs
+        sha256: e635d02a7572df15ebad504f80332f98805a24317caf42bb1de9416628fc8578
+        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-ruby3.3-aarch64-linux-musl
+        blksum:
+          filename: metanorma-1.18.7.pre.20261121-ruby3.3-linux-musl-arm64.tfs.blksum.json
+          sha256: d3d0acefdaf437a1374e738cbc65f1351c891a2bd34207d849b7f382da4b2854
+      x86_64-windows-ucrt:
+        artifact: metanorma-1.18.7.pre.20261121-ruby3.3-windows-ucrt64.tfs
+        sha256: b2943ea73be6a9813ab50b84bf912c8f63aebb6ef56398c2d3baefd044177971
+        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-ruby3.3-x86_64-windows-ucrt
+        blksum:
+          filename: metanorma-1.18.7.pre.20261121-ruby3.3-windows-ucrt64.tfs.blksum.json
+          sha256: 2c62b2a9ff481800c784a491cd8ceef6a8c31683524bc3ee9cadd4cfa382bc6a
+    release:
+      ref: tfs:github:tebako-packages/metanorma:1.18.7.pre.20261121-1
+    signature:
+      keyid: efc3c250f7862a48
+      asc: metanorma-1.18.7.pre.20261121-ruby3.3-macos-arm64.tfs.asc
+    runtime_requirement:
+      engine: ruby
+      constraint: "~> 3.3.0"
+      implementation: mri
+    entrypoints:
+    - metanorma
+    - metanorma-manifest
+    - asciidoctor
+    - canon
+    - coradoc
+    - expressir
+    - fontist
+    - fontisan
+    - glossarist
+    - lutaml
+    - lutaml-model
+    - lutaml-sysml
+    - lutaml-wsd2uml
+    - lutaml-xsd
+    - lutaml-yaml2uml
+    - omnizip
+    - plurimath
+    - png_conform
+    - relaton
+    - reverse_adoc
+    - suma
+    - svg_conform
+    - unitsdb
+    - vectory
+    - w2a
+    - w2m
+    - cabriolet
+    - console
+    - convert2oscalyaml.rb
+    - ea
+    - ebnf
+    - emf
+    - emfsvg
+    - excavate
+    - fractor
+    - fuzzy_match
+    - japanese_calendar
+    - jsonld
+    - ldiff
+    - loc-mods
+    - nokogiri
+    - premailer
+    - rdf
+    - reverse_markdown
+    - rng
+    - rougify
+    - setup
+    - socksify_ruby
+    - sparql
+    - sxp2json
+    - sxp2rdf
+    - sxp2xml
+    - sxp2yaml
+    - thor
+    - tokenize
+    - ukiryu
+    - unibuf
+    - w3c_api
+    - xsdvi
   default: 1.18.6
 - name: tebako-runtime-java-temurin
   kind: runtime
