@@ -67,6 +67,15 @@ PRECOMPILED_NATIVES = {"nokogiri", "ffi", "libpng", "parsanol", "sqlite3",
                        # this list through 1.17.0); full matrix incl.
                        # x64-mingw-ucrt
                        "emf",
+                       # fontisan 0.4.50 turned native — the prebuilt
+                       # platform gems upstream promised in fontist/
+                       # fontisan#173 (and the ucrt no-cargo fix of #175):
+                       # aarch64-linux[-musl], aarch64-mingw-ucrt, arm-
+                       # linux[-musl], arm64-darwin, x64-mingw-ucrt[-32],
+                       # x86_64-darwin, x86_64-linux[-musl], java, ruby.
+                       # Retires the < 0.4.48 pin's reason to exist (0.4.48's
+                       # Rust-tier source build needed cargo on the consumer).
+                       "fontisan",
                        # long-standing natives the 1.17.0 lock already
                        # carried only as x86_64 variants, so the list
                        # never met their other-platform spellings; the
