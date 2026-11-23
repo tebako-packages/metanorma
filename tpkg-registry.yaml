@@ -936,55 +936,48 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: metanorma-1.18.7.pre.20261121-macos-arm64.tfs
-        sha256: 38abcb2d53b641cac7d702b51784dab7b5dd82cd9e8cc14038e6719075940e0c
-        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-aarch64-macos
+        sha256: ceab18babbc367bb91de205dd5c37fb1214ce5b541904cd8cee7f141f48c52a1
         blksum:
           filename: metanorma-1.18.7.pre.20261121-macos-arm64.tfs.blksum.json
-          sha256: c20a3d9b179c182315b5f8a855c7897d33dbf41c19621278f1ca72ca5652fd62
+          sha256: 563071651002c6b3569418689f004182d55a1046794ae52a19bee4cb9508a4ce
       x86_64-macos:
         artifact: metanorma-1.18.7.pre.20261121-macos-x86_64.tfs
-        sha256: fd11e22c61647ccd4dc510380b1e7eb257fff19cdb60053d3d22c644af65a23d
-        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-x86_64-macos
+        sha256: 874fbbb7a0f69e36fe7300f32f198401805f0f624d62982db7e215a53b2a9461
         blksum:
           filename: metanorma-1.18.7.pre.20261121-macos-x86_64.tfs.blksum.json
-          sha256: d5f5593cb3d59184eb43d5bb2c18c69a7456b7e18e154936b080b693e2b44bc6
+          sha256: b0f7e93cea0b02bc6692dd40afbb76874a261c8f5acfc700bb34d060a9d81452
       x86_64-linux-gnu:
         artifact: metanorma-1.18.7.pre.20261121-linux-gnu-x86_64.tfs
-        sha256: 01577bea2ad695e2689b7bc29b0c664612347139b88ffd3cb44b50742d969a48
-        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-x86_64-linux-gnu
+        sha256: 6bd341d35479fe8a2f7a6fbfd052ab24f9e45736cd9178b105e5511fc5ec8695
         blksum:
           filename: metanorma-1.18.7.pre.20261121-linux-gnu-x86_64.tfs.blksum.json
-          sha256: 30af84d0ba6d1b41ed209c41c4a5de8e5444e93914aad8e092cb6d8161c6d58f
+          sha256: 399a31bb2622d97124a2fa4f81b1c9db44702248d798fc78e4ea7e43b16f41e1
       aarch64-linux-gnu:
         artifact: metanorma-1.18.7.pre.20261121-linux-gnu-arm64.tfs
-        sha256: 396e12afab44970c83cb3c7d41f2ed6064aea5bf4dbccb29796b72cbce7c1558
-        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-aarch64-linux-gnu
+        sha256: c0b7b5f05a2ae4491476e046aab9d65d2705a7d89d94c593289593516a828ddb
         blksum:
           filename: metanorma-1.18.7.pre.20261121-linux-gnu-arm64.tfs.blksum.json
-          sha256: fcfacc9a814ba79bbd0f16cba5ad6381e87f5a02ad8596e01273114bdeed4a51
+          sha256: a9105b0b31da7c0c936886fe126005cee2a46b5cd754c48e983d2bc752b11ed7
       x86_64-linux-musl:
         artifact: metanorma-1.18.7.pre.20261121-linux-musl-x86_64.tfs
-        sha256: 4f62860c1e7f996ca13aab8dd0719dbab1a49203ebd17d0f5dea4c5c84b2814c
-        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-x86_64-linux-musl
+        sha256: 75271e888aa44d48eb4873eab44385cc962c139768c4d2874760f0ac50d8372d
         blksum:
           filename: metanorma-1.18.7.pre.20261121-linux-musl-x86_64.tfs.blksum.json
-          sha256: 3435767288cea73464390c9bbc8c202c8590777a663174e78c946bb807cdac74
+          sha256: c7c84a9b698ee99f346a9bde826d9eafe7654274159737c8fae8cd6a5ca5a1ae
       aarch64-linux-musl:
         artifact: metanorma-1.18.7.pre.20261121-linux-musl-arm64.tfs
-        sha256: 0b6db5f656b6a6b06674c9dac614821f11b9899f0952abe57ae8c969e00fa306
-        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-aarch64-linux-musl
+        sha256: 909639d07a9f98c4e8982108e6b4cc630097f6a145dc9e4d4516404ba9bf0c8d
         blksum:
           filename: metanorma-1.18.7.pre.20261121-linux-musl-arm64.tfs.blksum.json
-          sha256: 611afd6d72d746bf6fdb8924ec61b2d69f33dad4345e72046346dbf5a5ac614f
+          sha256: f31a68d1944a0ed9a070356068bd3e5d003f369b816483ce8a6f4cc9c80cacc2
       x86_64-windows-ucrt:
         artifact: metanorma-1.18.7.pre.20261121-windows-ucrt64.tfs
-        sha256: f4e0c29c79aab010de49351b57c4ab7fa6d9852dfdebeefdc07a8316fd992eca
-        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-x86_64-windows-ucrt
+        sha256: 5049f333cf97e60871337fc372230bc90301d69e7f05aabb00b807958686bdfa
         blksum:
           filename: metanorma-1.18.7.pre.20261121-windows-ucrt64.tfs.blksum.json
-          sha256: 6f3ecaae465094e3a7ad80b66a3e9e9eebfd30a112e819cb5b44a4d5c0a00614
+          sha256: 419aa3b83d01735602c922612265edc26580547e1a64b78e4af35797d4a089fc
     release:
-      ref: tfs:github:tebako-packages/metanorma:1.18.7.pre.20261121-1
+      ref: tfs:github:tebako-packages/metanorma:1.18.7.pre.20261121-3
     signature:
       keyid: efc3c250f7862a48
       asc: metanorma-1.18.7.pre.20261121-macos-arm64.tfs.asc
@@ -1056,55 +1049,48 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: metanorma-1.18.7.pre.20261121-ruby3.3-macos-arm64.tfs
-        sha256: f9604292de4c2fcb167fdde3ab99630a9b65f07564566ca1cadaedb59004b350
-        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-ruby3.3-aarch64-macos
+        sha256: d556cd930a67b408033957f073492d38fa915968eacdb78ff8f2824056957989
         blksum:
           filename: metanorma-1.18.7.pre.20261121-ruby3.3-macos-arm64.tfs.blksum.json
-          sha256: f8ddc438ae9cb27ee3a3231c5ed5ebae0a405e98ffb415bce63444d43e750f2e
+          sha256: c6de7b4a2001c261fa12478330395c167676754c25b86467ba590cbda48dfc4d
       x86_64-macos:
         artifact: metanorma-1.18.7.pre.20261121-ruby3.3-macos-x86_64.tfs
-        sha256: e8dc36c0ac2081a3457a343ab970f0a87935e11cc5a2dd556536b531f343345f
-        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-ruby3.3-x86_64-macos
+        sha256: 708f6b2d9bcc9475bb9e75889dac8ca82df39551b1c09410ed8c411326bd7b98
         blksum:
           filename: metanorma-1.18.7.pre.20261121-ruby3.3-macos-x86_64.tfs.blksum.json
-          sha256: 1502768e5ed10d4a2edada8d8d1e8a21f3825644f8861c7a421ca12842ded665
+          sha256: 466c021f8cb7d609f92018d6437dfb596842b7148f7ae2d20d0a22dc96986e19
       x86_64-linux-gnu:
         artifact: metanorma-1.18.7.pre.20261121-ruby3.3-linux-gnu-x86_64.tfs
-        sha256: 5873dfb5abaafde00c0dac59718e6a8a0f9813ec2f9707be527117238dd395da
-        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-ruby3.3-x86_64-linux-gnu
+        sha256: 3d7edae1dd678091d1b5ddd4866f4e56f0c374befaf86718f4d745f0905bd832
         blksum:
           filename: metanorma-1.18.7.pre.20261121-ruby3.3-linux-gnu-x86_64.tfs.blksum.json
-          sha256: d607c97a26abe627cbbd7322e4412f4f0c5e36a0cc516d71cf44f07d74079b83
+          sha256: dd80eed23d68df349f63ea9c9e9d3c5cbd6ecb98c3494e4388ca67d2d33fc4cd
       aarch64-linux-gnu:
         artifact: metanorma-1.18.7.pre.20261121-ruby3.3-linux-gnu-arm64.tfs
-        sha256: 5c17901880fd5f60f71a40a789afd40390d28e3519337fba8db9e85c71937be3
-        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-ruby3.3-aarch64-linux-gnu
+        sha256: 56dc46afe5501c14b69c2dbbbcdba22794cf156a0b5f316923918443b8f12cb8
         blksum:
           filename: metanorma-1.18.7.pre.20261121-ruby3.3-linux-gnu-arm64.tfs.blksum.json
-          sha256: 867d77e307b9aa75a2a0d205e10427e2921d1d2516bf8aeccb87bf4369268095
+          sha256: d7723b49b694e32680115222c90f2bab562368e7524b5d30c113ee4097116a84
       x86_64-linux-musl:
         artifact: metanorma-1.18.7.pre.20261121-ruby3.3-linux-musl-x86_64.tfs
-        sha256: 32a385d187fbf0380010aa8c542b3d89912a1a6a3e92406675232bf29518dbbb
-        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-ruby3.3-x86_64-linux-musl
+        sha256: cdf84f357d4d6d559e18305559a6046cf3b6032c4b8f40a4e99dfb9431e29d26
         blksum:
           filename: metanorma-1.18.7.pre.20261121-ruby3.3-linux-musl-x86_64.tfs.blksum.json
-          sha256: 8bb9d245eaf384eedfb6e7320b9de7bbce742dbaa886dd7dd992d048fb8683db
+          sha256: 27aa06e6666b595fb75f241d67f47b6e902c807a06798e8c5f592338d8f9ef55
       aarch64-linux-musl:
         artifact: metanorma-1.18.7.pre.20261121-ruby3.3-linux-musl-arm64.tfs
-        sha256: e635d02a7572df15ebad504f80332f98805a24317caf42bb1de9416628fc8578
-        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-ruby3.3-aarch64-linux-musl
+        sha256: 98e3816b3e78610643296ef3ffb3cd712be5a1137b08ecd1ae4bee6f92f47f80
         blksum:
           filename: metanorma-1.18.7.pre.20261121-ruby3.3-linux-musl-arm64.tfs.blksum.json
-          sha256: d3d0acefdaf437a1374e738cbc65f1351c891a2bd34207d849b7f382da4b2854
+          sha256: edf81526a15b17acf4c96b24cd12acdcce8ad87bb3e2ac89c47b6780bcd97635
       x86_64-windows-ucrt:
         artifact: metanorma-1.18.7.pre.20261121-ruby3.3-windows-ucrt64.tfs
-        sha256: b2943ea73be6a9813ab50b84bf912c8f63aebb6ef56398c2d3baefd044177971
-        oci: tfs+oci://ghcr.io/tebako-packages/metanorma:1.18.7.pre.20261121-ruby3.3-x86_64-windows-ucrt
+        sha256: a861b3acee69d5e3e97bbebb9d87b4cc4d030fcbfd2cb17843a6da16bc636ef6
         blksum:
           filename: metanorma-1.18.7.pre.20261121-ruby3.3-windows-ucrt64.tfs.blksum.json
-          sha256: 2c62b2a9ff481800c784a491cd8ceef6a8c31683524bc3ee9cadd4cfa382bc6a
+          sha256: 7275c90ca1e3fde2d5ea763518b39365e0d5fdd85cac4c0c83a244b80258967d
     release:
-      ref: tfs:github:tebako-packages/metanorma:1.18.7.pre.20261121-1
+      ref: tfs:github:tebako-packages/metanorma:1.18.7.pre.20261121-3
     signature:
       keyid: efc3c250f7862a48
       asc: metanorma-1.18.7.pre.20261121-ruby3.3-macos-arm64.tfs.asc
