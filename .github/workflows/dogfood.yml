@@ -272,10 +272,24 @@ jobs:
         # --agree-to-terms: the fontist license acceptance (a clean
         # machine's compile downloads fonts; the terms gate errors
         # otherwise — Fontist::Errors::LicensingError).
+        # --continue-without-fonts (metanorma#595, the payload's own
+        # acceptance contract — manifests/payload.yaml): the 1.18.4+
+        # font-manifest read is STRICT, so a font the install skipped
+        # fails the render. Font installs ride external services the
+        # dogfood does not control: Times New Roman's Linux formulas
+        # fetch decade-old archive mirrors (web.archive.org snapshots,
+        # pclinuxos mirror chains — every x86_64-linux-gnu leg of the
+        # 1.18.7 publish died MissingFontError on it), and even the
+        # GitHub-hosted Source Han Sans asset failed a week of
+        # aarch64-macos legs on runner egress (runs 45405552078,
+        # 45314375511, 45231780093). Installs are still ATTEMPTED — the
+        # download path stays exercised and its misses print as named
+        # warnings; the render (and the PDF magic assertion below)
+        # proves the toolchain, not a third-party mirror's availability.
         run: |
           set -euo pipefail
           cd site
-          TEBAKO_METANORMA_VERSION="$PKG_VERSION" metanorma compile site.adoc --agree-to-terms
+          TEBAKO_METANORMA_VERSION="$PKG_VERSION" metanorma compile site.adoc --agree-to-terms --continue-without-fonts
           ls -la
 
       - name: Assert PDF magic bytes
