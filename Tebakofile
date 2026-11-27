@@ -16,8 +16,32 @@ build:
   system: gemstage         # stage a GEM_HOME closure with a tebako runtime's own ruby
   runtime:
     engine: ruby
-    tebako: "0.17.14"       # runtime release line (image-era; the pinned CLI
+    tebako: "0.17.16"       # runtime release line (image-era; the pinned CLI
                            # refuses pre-era releases by contract, exit 75).
+                           # 0.17.16 is the abi-convergence line: the factory's
+                           # reproducible-build arc (tebako-runtime-ruby
+                           # e21ac536) pins ruby's configure --build/--host
+                           # triplet to the contract floor's kernel major
+                           # (contract.yml macos_deployment_target 14.0 ↔
+                           # darwin 23), so the shipped archdir spells
+                           # *-darwin-23 again — the pre-fleet-move spelling
+                           # and the floor #317 pinned for the exe's minos.
+                           # The 0.17.14/0.17.15 lines recorded darwin-24:
+                           # config.guess baked the macos-15 build fleet's
+                           # kernel (the fleet moved 2026-10-31, factory
+                           # 1cca8848) — never a declared contract. Staging
+                           # on 0.17.16 keys this payload's native-extension
+                           # bookkeeping (brotli/ox/psych/websocket-driver)
+                           # and its manifest abi to arm64-darwin-23, so the
+                           # pressed composition rides the 0.17.16 runtime
+                           # (packed-metanorma#313) and every darwin-23
+                           # payload pressed before the drift window
+                           # resolves again. 0.17.16 also rides tebako
+                           # v2.8.85's link unit: the atomic exec-cache
+                           # install (tebako#1112), the macOS in-process
+                           # file-IO arm (tebako#1126), the jail device
+                           # exemption (tebako#1128), the registry chase
+                           # (tebako#1100), the spawn probe (tebako#1127).
                            # 0.17.13 re-links on tebako v2.8.81's link unit —
                            # the libtfs-preload initializer's fail-fast in a
                            # foreign process (tebako#1065): without it a
