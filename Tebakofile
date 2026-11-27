@@ -206,7 +206,7 @@ depends:
 # upstream.sha256; provenance in docs/build-notes.md).
 tools:
   repo: "tamatebako/tebako"
-  release: "v2.8.85"        # the published Latest line: the press gate's
+  release: "v2.8.86"        # the published Latest line: the press gate's
                              # 3.3.13/4.0.9 support (the v0.17.6 runtime
                              # line's rubies) + the macOS floor's symbol
                              # gate + the PSGallery registration guard +
@@ -215,29 +215,29 @@ tools:
                              # the press host's own preload-inherited spawns).
   sha256:
     tebako:
-      macos-arm64: "4fd7406b2007db6f116ea98d33781ec5a065fc4453475c17e1e5700a901ddefa"
-      macos-x86_64: "cb71155ed7071d836424b3ac7a0de7bec3a17c64c685502954c1ad15ed963f49"
-      linux-gnu-x86_64: "7eea193bb367be4d4a05325cf82393ce1a3a7b498bc330c8f7e534f4fefbcd4e"
-      linux-gnu-arm64: "8fad7c86d9454fc38b2a698ef3775f08c1ea46a61d04b30fd5e8e48f9c892370"
-      linux-musl-x86_64: "b69b3e78322dd7287aa273db511c432cb40c84c8e51aea1454a382404af33f7d"
-      linux-musl-arm64: "efea04f953b8dd6d234c1c8dc7701e2976bce3d78c521c8d0c80100b09114011"
-      windows-ucrt64: "7128ebc72342c08e6c39e4d89822a191c02987a046419c5a3a6321b083f1eb4c"
+      macos-arm64: "3474774c25b09edc7006f92c28c4898f0d9e08a9880062921264d0e74a260715"
+      macos-x86_64: "e70f24d93fb192a68e079a4653f2de46b15bcd724ad573deb3c076a230f22f6a"
+      linux-gnu-x86_64: "8624e3b5645378e48bff804461596e16448a5c55fc1feb7aeb784b9d0823624d"
+      linux-gnu-arm64: "eda3e733fed03a049f3906c36f2095cd561f369da99f79bf429fbccb2dd010b8"
+      linux-musl-x86_64: "b3e455b8f035ea0b5495cb09e7aefbd2bcddd7e77f733c11b8ab5ed704c1084f"
+      linux-musl-arm64: "6cdcdd540064e1d392be9915c231f18a352c55c22799909661028008f697c433"
+      windows-ucrt64: "0706e400b2aa0b6a5f89f50a8ad9ef548cec4027fd823e00cbfb1de9691e3d2f"
     tebako-shim:
-      macos-arm64: "fd49a8fa05729b88e996982e5ec8c93c600b03e7293c0b31e8f41f142a7019bf"
-      macos-x86_64: "647b8cb29b1aadeb7985315b248d0c098a63cd7f461e26c7e81f7c94142eb06f"
-      linux-gnu-x86_64: "a2678d4c0a5cd194ad4b386f2eb01c43824563e7a2a705b557bcaf7fb1ade7bc"
-      linux-gnu-arm64: "9793fb5b737ab7d40e26c20d7e836dbeeddbe3f963106a9125b93f3fb91bb14a"
-      linux-musl-x86_64: "701fa0e905fc9db36e5a4c1a4ad986ae8c2d3e0d8daa56a07ece06d92f57ea1e"
-      linux-musl-arm64: "dace7098b2843c112b768265e2f4354d4a4ada5dc1b75abf45090d8299ef07e5"
-      windows-ucrt64: "a8b2c3abe4e381eb70c4dd5e7209c9aaecd28ffc6411563ff514de5868f55e4b"
+      macos-arm64: "193ec9b82e990e927dcb7a0e18d2ac4a47efdca045693c4faeb979a19279b9ee"
+      macos-x86_64: "4d408142b431c730532d40c9305e2bb4882e4cd4799efb686a51b6999099b0e0"
+      linux-gnu-x86_64: "9ea8d83fcb07a7a2a6fa22d7d10db5fec8706925287b256586a9d07c1f3063e5"
+      linux-gnu-arm64: "a4334b827b70283587ac3a8f55848668fc0d27b96dfd39c227c50d5e5aa2c24f"
+      linux-musl-x86_64: "176849ee150eb772a3c594ed12280687328d6cf3813718c999909023719a995d"
+      linux-musl-arm64: "6f287677440337ac507ef75502eafa84b4a2625c9ff77d8a23da227be7d75e9d"
+      windows-ucrt64: "26569441cc332e0018c7341b89d166e1c8040227e7846a6f7cdd4cd4cd9f4c03"
     tfs:
-      macos-arm64: "8ff118c5e5b96d196e46b6d18e6d8e2181530acc0034c29ad790e501692d78bf"
-      macos-x86_64: "ed17bf82e378a470bae048438ca69cc366735376952364644ca5dfad129ceaf3"
-      linux-gnu-x86_64: "1134998fdb535479ad15c46dbfea8e7f34809337ccf56fda79e87f7db06cfc4f"
-      linux-gnu-arm64: "e1be4d6ebbb4f77278b5c042a9ad55f28c472f0db55360ec61f69a38c575ae27"
-      linux-musl-x86_64: "96c7925cef663534a65e536b178f5109479f8b13ce938db124ef4007dfa212ad"
-      linux-musl-arm64: "a9c1ffc828a9ad1d514b78d1cca7249f04d79a6584bc5e6c6b6f9b6fca17113d"
-      windows-ucrt64: "99344590207a37b3fc698f7940ad687ee729047e8f422dd34bbaffd39790f06c"
+      macos-arm64: "5c4dfc1d0a04112c7a51cefac68e6f1e50d4096e53c8f4aba2ff33cd9cdd0218"
+      macos-x86_64: "3fff01d97565b4d5047e10e5635932101889c9e3156edfa791bd7f28f81fe6ba"
+      linux-gnu-x86_64: "2274ced6bf8361ee4e21946298897a2c46c0d51635b35a17ff237a0fb7b6036e"
+      linux-gnu-arm64: "d785b49511b0fb8c4733897d3e58694d3bc9fec0e87b7538dab3751feebfb74c"
+      linux-musl-x86_64: "cad93da18a131f8509995abb6fce700f6dc0cafca6f5cf5e4204e482ee644db1"
+      linux-musl-arm64: "65999a83927cfb295165c2b473df4a9e217f204ec10a5c9ca5a69ed81d3ca13d"
+      windows-ucrt64: "7181670bd3e4d7549f033cedad13727bac1697928e66c055a984200c8a5f0109"
 
 # The SBOM lane (metanorma#168; tebako#1124's standing rules). The legs
 # generate the CycloneDX 1.6 SBOM with the pinned tebako CLI's sbom verb
