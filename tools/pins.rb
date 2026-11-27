@@ -123,6 +123,25 @@ unless ARGV.include?("--release-only")
     pairs["#{key}_ASSET"] = "#{tool}-#{version}-#{platform}#{exe}"
     pairs["#{key}_SHA256"] = sha
   end
+  # The SBOM smoke tool (recipe sbom.osv_scanner — the publish job's
+  # report-only osv-scanner parse proof, metanorma#168). The upstream
+  # release names assets by GOOS_GOARCH; the map covers the POSIX tool
+  # platforms (the publish job runs macos-arm64). Other platforms
+  # (windows) never consume the smoke — the keys stay unemitted there,
+  # never a failure. Absent block = the smoke skips loudly, never a guess.
+  if (osv = recipe.dig("sbom", "osv_scanner"))
+    goos_arch = {
+      "macos-arm64" => "darwin_arm64", "macos-x86_64" => "darwin_amd64",
+      "linux-gnu-x86_64" => "linux_amd64", "linux-gnu-arm64" => "linux_arm64",
+    }[platform]
+    if goos_arch
+      pairs["OSV_SCANNER_REPO"] = osv.fetch("repo")
+      pairs["OSV_SCANNER_VERSION"] = osv.fetch("version")
+      pairs["OSV_SCANNER_ASSET"] = "osv-scanner_#{goos_arch}"
+      pairs["OSV_SCANNER_SHA256"] = osv.dig("sha256", platform) or
+        die "Tebakofile: no sbom.osv_scanner.sha256.#{platform} pin"
+    end
+  end
 end
 
 if ARGV.include?("--env") || ARGV.include?("--release-only")

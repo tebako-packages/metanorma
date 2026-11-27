@@ -214,6 +214,24 @@ tools:
       linux-musl-x86_64: "96c7925cef663534a65e536b178f5109479f8b13ce938db124ef4007dfa212ad"
       linux-musl-arm64: "a9c1ffc828a9ad1d514b78d1cca7249f04d79a6584bc5e6c6b6f9b6fca17113d"
       windows-ucrt64: "99344590207a37b3fc698f7940ad687ee729047e8f422dd34bbaffd39790f06c"
+
+# The SBOM lane (metanorma#168; tebako#1124's standing rules). The legs
+# generate the CycloneDX 1.6 SBOM with the pinned tebako CLI's sbom verb
+# (tebako#1120 — activates when the tools pin reaches the release
+# carrying it); the publish job attaches + signs the .cdx.json and runs
+# the osv-scanner parse smoke (report-only). The smoke's tool pin lives
+# HERE with the same discipline as the tools block (digest pinned, and
+# cross-checked against the release's own osv-scanner_SHA256SUMS at
+# fetch time).
+sbom:
+  osv_scanner:
+    repo: "google/osv-scanner"
+    version: "2.7.1"
+    sha256:
+      macos-arm64: "b22c02877a811c8f78956e8643efa554932b7378f590d13f8e97d4e9448a29f3"
+      macos-x86_64: "b8420d5485ba792626315f1bf9a5a2046e971d38eea75bf9090c38852dbc3b1b"
+      linux-gnu-x86_64: "fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8"
+      linux-gnu-arm64: "983d22fbad9724514e3fcc6acc83b5fa64c5ffa6b0d9f510028f22c1b223ff81"
 java:
   # The pinned java runtime pair (tamatebako/tebako-runtime-openjdk
   # release v2.7.0 — the runtime feedstock's canonical home per the
