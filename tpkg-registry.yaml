@@ -1162,48 +1162,48 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: metanorma-1.18.7-macos-arm64.tfs
-        sha256: 9396d0b4d7e5e8f3e6e2a0740f10fdc29fb28845e99a77b241016a4cdec8965b
+        sha256: ea35a0c292d3221b9d38a21c469d9248200ff562b1f4cf4c597f5c479f8fa147
         blksum:
           filename: metanorma-1.18.7-macos-arm64.tfs.blksum.json
-          sha256: 4622d525a9c85bcccc37304a99e3e02d5f5cfaaddaaaac2ffb9c3a3f5ce1556b
+          sha256: b3326233ef4eef684ae3b14c1c95665a10ea948196d1b7aff60e8b244f574d57
       x86_64-macos:
         artifact: metanorma-1.18.7-macos-x86_64.tfs
-        sha256: e9a8bf755dd4fb0891e157cf03c99db9c540b1b628ada95c04472c2d22ffc3c5
+        sha256: 301ecc03b18d89c4eda9eee737ea492070cc25cb0de78732f371582a1d4986b6
         blksum:
           filename: metanorma-1.18.7-macos-x86_64.tfs.blksum.json
-          sha256: 06772dbe8d2db17d53e42f00064d9991ab26a352e886fec7966266f325074049
+          sha256: 65669916dcaf92dd01e94f067d1a5a804d5095b36a7ca66c21a73640dc59b2b9
       x86_64-linux-gnu:
         artifact: metanorma-1.18.7-linux-gnu-x86_64.tfs
-        sha256: 96ef030902678ea665738451f36e41b5633cb5907ca6aa1d36fc190a1f2af641
+        sha256: 2ccc4f56a0cc268fab107acbc5cbb3b41921c691dc24323042cab4830c418b67
         blksum:
           filename: metanorma-1.18.7-linux-gnu-x86_64.tfs.blksum.json
-          sha256: 55124092f20c21a5a322124f6e061f3fd2144b07de7f477727acc3102e1390fa
+          sha256: e9ea21145b0f65b0b642fec8cfc875b3eecb4ea286c8073fb6cc731d9857dea4
       aarch64-linux-gnu:
         artifact: metanorma-1.18.7-linux-gnu-arm64.tfs
-        sha256: 4d13286ca2364f8592271ed85efd95686c4f043fc1a10558de2746756c16dbf7
+        sha256: 71ec12cfd227d029749a3aaa0390451dc07515b6e46b428bf0ee607e414a8c59
         blksum:
           filename: metanorma-1.18.7-linux-gnu-arm64.tfs.blksum.json
-          sha256: a670911b7d92699b9ede849c49b67ae6ed6e998da5b7099af6e4493ec2c15fa9
+          sha256: b771d01103588ed123ac18e638706118f21dc4ea89db21d14b61f98bea4f0b03
       x86_64-linux-musl:
         artifact: metanorma-1.18.7-linux-musl-x86_64.tfs
-        sha256: 4bcadde92fecd07f6a4d9d9bd090b4e7a0a6cb019e0f6e7c7071bf780a4d1061
+        sha256: e887ad970de0d18ab8a653df9d735302129727151d9e4e5946a743fab721901f
         blksum:
           filename: metanorma-1.18.7-linux-musl-x86_64.tfs.blksum.json
-          sha256: 175d67664e99823ad0f14bb2d8d72af10b7e53e3fd11d181e5b5ea6a2e4302dd
+          sha256: 54d24d5bebfe47b456239f2c9afe651a8c5141ce7786c32f1ac772745ca10795
       aarch64-linux-musl:
         artifact: metanorma-1.18.7-linux-musl-arm64.tfs
-        sha256: 94e0d52d11c6ad1e8414a708d8d1dd1eb9674543ceb4c49599e2e4c7850756d3
+        sha256: 5cd3d27881feeba9937c66dc8189b0a761e04aba5fd9234ae9bb2273dfe4253b
         blksum:
           filename: metanorma-1.18.7-linux-musl-arm64.tfs.blksum.json
-          sha256: 9a09ae46682778e493efb5ae0f5c58e8ba92f66fe674672dfadec2817a43b2a2
+          sha256: 579cb4042cb5a759efab3e7c6be4be32c882c5c1e57ab08def1c6c3b13b421b9
       x86_64-windows-ucrt:
         artifact: metanorma-1.18.7-windows-ucrt64.tfs
-        sha256: d6b1d23ed2cf96dfbb4997a70f20a91c0abe381f5128572db16f777c11e50dbd
+        sha256: 9171b2ffa3946f83ad6d55e333aa3310f87b137c3cd59ce7f498fb322d264815
         blksum:
           filename: metanorma-1.18.7-windows-ucrt64.tfs.blksum.json
-          sha256: '0418c293bbf032c751624b99eb7f955a1dff1c28bbb83eac4ed16fe30c67a321'
+          sha256: b8dd9039250a87758eff190d9b50b430fd5c4de9da5d4e91586d5d64f0ef8f1f
     release:
-      ref: tfs:github:tebako-packages/metanorma:1.18.7-1
+      ref: tfs:github:tebako-packages/metanorma:1.18.7-2
     signature:
       keyid: efc3c250f7862a48
       asc: metanorma-1.18.7-macos-arm64.tfs.asc
@@ -1275,48 +1275,48 @@ payloads:
     platforms:
       aarch64-macos:
         artifact: metanorma-1.18.7-ruby3.3-macos-arm64.tfs
-        sha256: 1b96ea73bf9b6257048eb023653d0d91b75584afc9432df8c0c4c2c886a89fda
+        sha256: 86bf42645b0d43c3802413c204ea7832b55d1e7e1196d04fb12315fdfbee29ff
         blksum:
           filename: metanorma-1.18.7-ruby3.3-macos-arm64.tfs.blksum.json
-          sha256: fed66ad577b81c5a0952ea795ab7964ab72321f784ab5225b5dc96355c7e6e84
+          sha256: 2918fe98e1383dd0e28c9d7215ae3e29015ebcd9de97cb5bf7f00a2fc35858f8
       x86_64-macos:
         artifact: metanorma-1.18.7-ruby3.3-macos-x86_64.tfs
-        sha256: b39b710fd9c56bda0567492020e8f58b512f74e0cc99aeb375d553e98f369ed2
+        sha256: 1ce31ee90f0d25fbf359c26ea2c4e3f54b3e51c45fb73d6458cbeefff29e51ca
         blksum:
           filename: metanorma-1.18.7-ruby3.3-macos-x86_64.tfs.blksum.json
-          sha256: aad6f6ec7a78a4321e6a9c0d9a4b8f065ca1a59aac0109fe64a3a5398f22b0c0
+          sha256: edd976b21fd88b89a9c6bb7428cb633fea63e27aa07cf8c1754b7a80699eef7f
       x86_64-linux-gnu:
         artifact: metanorma-1.18.7-ruby3.3-linux-gnu-x86_64.tfs
-        sha256: 0e63cc983d47950dbdf6e982cd6cb67bdb89060ca3636bcf4e315bd996281397
+        sha256: 6d7f53d7d4558b9ac44575caa4b4c9b4018306097fdc262ede43848fdadf14a1
         blksum:
           filename: metanorma-1.18.7-ruby3.3-linux-gnu-x86_64.tfs.blksum.json
-          sha256: 968b5a37b5fbd3c401f7ecc755317e1c0ffa7f460b3798951c490798ec7322b3
+          sha256: a00a846311ea6c2be139ae19ab09aa7e4626ed65f67f5b1ba41379d7dd6bb0ba
       aarch64-linux-gnu:
         artifact: metanorma-1.18.7-ruby3.3-linux-gnu-arm64.tfs
-        sha256: 80e6176c9a5b8d8c58fd1ed00df04b3e3e8420f7b832174ec4f009374fd31314
+        sha256: 64b696ae81ea294651b0358fdb120aff70eaccbb63a9a4dedca3785364a01adf
         blksum:
           filename: metanorma-1.18.7-ruby3.3-linux-gnu-arm64.tfs.blksum.json
-          sha256: a1319227598f94be2b7fa007ef4d1b27d9bffb6fff4afe196012e1d3e6e1cb64
+          sha256: b1c0bba71b340ee6d0f59c23cbc91fdccf159a605ba3268c5bc3d711d7bfffa3
       x86_64-linux-musl:
         artifact: metanorma-1.18.7-ruby3.3-linux-musl-x86_64.tfs
-        sha256: 1040f6a21d1977cfceb3995cdaec8a3fd2569bbc36f4e509edd60be4bb7374d8
+        sha256: ed94035aae7798613e354b4235801548f9005b6ee77604594aee669d32336d47
         blksum:
           filename: metanorma-1.18.7-ruby3.3-linux-musl-x86_64.tfs.blksum.json
-          sha256: 791b3245aa3c6bc32fc5b788de79aca673d3630206d6efae70a98ef65b3638ee
+          sha256: 007f8cf151b1e2dfac00a36b191310a9d1d6949642648084ad9f4702c6b29107
       aarch64-linux-musl:
         artifact: metanorma-1.18.7-ruby3.3-linux-musl-arm64.tfs
-        sha256: aeb9ea1ffe5f2e4df844994f26ee0fa5d8a6f8abeda33d9b73b12d4264833ed4
+        sha256: 672a124b96e07978574a6eca0c97e20d9db68a09ff95a7c19332621efb627c01
         blksum:
           filename: metanorma-1.18.7-ruby3.3-linux-musl-arm64.tfs.blksum.json
-          sha256: b149bccad78102c46e67e34fa9b0dc2226c824e2e43a3c4c680094f35993acb4
+          sha256: e62dfbbb29b83eed96afea815866da9b8227ebb05351dc027fd7d2bc89e08294
       x86_64-windows-ucrt:
         artifact: metanorma-1.18.7-ruby3.3-windows-ucrt64.tfs
-        sha256: a218d7e576fc00d8ea46dc139f0cdac04bc4acee97949b46a75807c055cf77ed
+        sha256: 8801c808fdd137fb5439de3e6c6e9796334b4079dfdce1e1c394e6ccb9547562
         blksum:
           filename: metanorma-1.18.7-ruby3.3-windows-ucrt64.tfs.blksum.json
-          sha256: d87cc8dcacc10097779efa7c328fc63993be862a52b211bf481f7d2c3a70fffe
+          sha256: c9a6b9eb1feb1867c3326db151656e843d961052999ba41e858728b8d0bdc20c
     release:
-      ref: tfs:github:tebako-packages/metanorma:1.18.7-1
+      ref: tfs:github:tebako-packages/metanorma:1.18.7-2
     signature:
       keyid: efc3c250f7862a48
       asc: metanorma-1.18.7-ruby3.3-macos-arm64.tfs.asc
