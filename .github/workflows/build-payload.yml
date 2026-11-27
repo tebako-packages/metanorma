@@ -30,6 +30,13 @@ name: build-payload
 #   the pinned runtime — the payload's in-image acceptance (the Homebrew
 #   formula's test translated; manifests/payload.yaml `checks:`). FAIL is
 #   the engine's named exit 79.
+#   ALL legs — the SBOM lane (metanorma#168; docs/build-notes.md §11):
+#   tools/build's tail generates the leg's CycloneDX 1.6 SBOM from the
+#   closure via the pinned CLI's sbom verb (tebako#1120), and the publish
+#   job attaches it + signs it (.asc, the CI signing subkey) + pins the
+#   registry sidecar + runs the report-only osv-scanner smoke. A tools
+#   pin predating the verb skips LOUDLY — activation is the pin roll,
+#   never a workflow edit.
 #
 # THE RUBY AXIS: every build job is a matrix over the recipe's
 # ruby lines (build.runtime.lines — the keys are mirrored by the matrix;
@@ -1502,6 +1509,112 @@ jobs:
             fi
           done
 
+      # The SBOM publish (metanorma#168 — the TODO.sota3/03 feedstock
+      # template; tebako#1124's standing rules): each leg generated its
+      # CycloneDX 1.6 SBOM from the closure via the pinned CLI's sbom
+      # verb (tools/build — complete mode: every component carries purl +
+      # sha256) into its dist artifact. The publish ships it beside the
+      # payload with the SAME treatment as every other signed name: a
+      # detached .asc from the CI signing subkey (the offline GPG lane —
+      # the same TEBAKO_CI_SIGNING_KEY material `tebako publish --sign`
+      # consumes; gpg is the detached-sign instrument for files the CLI
+      # does not itself sign) and the attestation step's subject set
+      # below (the sigstore lane). Skip-if-current like the closure
+      # attach — never a blanket --clobber. A tools pin predating the
+      # verb stages no SBOMs and the step skips LOUDLY (the pin roll is
+      # the activation, never a workflow edit).
+      - name: Attach + sign the payload SBOMs (metanorma#168)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TEBAKO_SIGNING_KEY: ${{ secrets.TEBAKO_CI_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          sboms=(out/*/*.cdx.json)
+          if [ ${#sboms[@]} -eq 0 ]; then
+            echo "::notice::no .cdx.json in the staged dist artifacts — the legs' pinned tools predated the sbom verb (tebako#1120); the SBOM publish activates with the tools pin roll (metanorma#168)"
+            exit 0
+          fi
+          # Signing is DECLARED by the recipe (Tebakofile's signing:
+          # block, flowed by pins.rb): a signing feedstock never ships an
+          # unsigned SBOM silently — fail closed before any upload, the
+          # publish step's own rule.
+          [ -n "${SIGNING_KEYID:-}" ] || { echo "::error::sbom attach: the recipe declares no signing keyid — sign or drop the SBOMs, never publish them unsigned"; exit 1; }
+          : "${TEBAKO_SIGNING_KEY:?sbom attach: SIGNING_KEYID declared but TEBAKO_SIGNING_KEY is empty — a signing feedstock never publishes unsigned}"
+          command -v gpg >/dev/null 2>&1 || { echo "::error::sbom attach: gpg not on PATH — the .asc lane needs it"; exit 1; }
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"
+          mkdir -p "$GNUPGHOME" && chmod 700 "$GNUPGHOME"
+          printf '%s\n' "$TEBAKO_SIGNING_KEY" | gpg --batch --import
+          for f in "${sboms[@]}"; do
+            gpg --batch --yes --pinentry-mode loopback \
+              --local-user "$SIGNING_KEYID" \
+              --detach-sign --armor --output "$f.asc" "$f"
+            for side in "$f" "$f.asc"; do
+              name="$(basename "$side")"
+              want="$(shasum -a 256 "$side" | cut -d' ' -f1)"
+              have="$(gh api "repos/tebako-packages/metanorma/releases/tags/${{ github.ref_name }}" \
+                --jq ".assets[] | select(.name == \"$name\") | .digest" | sed 's/^sha256://')"
+              if [ "$have" = "$want" ]; then
+                echo "$name is already current on the release — skipping"
+              else
+                gh release upload "${{ github.ref_name }}" "$side" --clobber
+              fi
+            done
+          done
+
+      # The registry rows' SBOM sidecar (metanorma#168): the additive
+      # `sbom: {artifact, sha256}` pin per platform entry, re-rendered
+      # from the release's own served digests AFTER the publish step's
+      # CLI upsert — the upsert round-trips its serde model and drops
+      # unknown keys, so the pins re-derive at every publish exactly like
+      # the mirror rows (the L3 mirror-by-value rule). Pre-SBOM readers
+      # ignore the key (the registry evolution law — verified with the
+      # sbom-carrying CLI's `registry validate`).
+      - name: Pin the SBOM sidecars in the registry rows (metanorma#168)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ruby tools/render_sbom_sidecars.rb "${{ github.repository }}"
+
+      # The acceptance proof, continuous (metanorma#168; tebako#1124's
+      # universal acceptance): osv-scanner PARSES every published SBOM.
+      # Report-only by the issue's own contract — the findings workflow
+      # (metanorma#169) owns the scheduled CVE gating. A parse failure
+      # warns loudly, never fails the publish. The tool is pinned by
+      # Tebakofile's sbom: block (the pins step above) and sha256-verified
+      # at fetch, cross-checked against the release's own
+      # osv-scanner_SHA256SUMS — the tebako tools fetch's discipline.
+      - name: SBOM smoke — osv-scanner parses (report-only)
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          sboms=(out/*/*.cdx.json)
+          if [ ${#sboms[@]} -eq 0 ]; then
+            echo "::notice::no SBOMs staged — the smoke no-ops (the tools pin predates the sbom verb; metanorma#168)"
+            exit 0
+          fi
+          [ -n "${OSV_SCANNER_ASSET:-}" ] || { echo "::error::sbom smoke: pins.rb emitted no OSV_SCANNER_* keys — Tebakofile's sbom: block drifted"; exit 1; }
+          mkdir -p .tools
+          base="https://github.com/$OSV_SCANNER_REPO/releases/download/v$OSV_SCANNER_VERSION"
+          tools/fetch_verified.sh "$base/$OSV_SCANNER_ASSET" .tools/osv-scanner "$OSV_SCANNER_SHA256"
+          chmod +x .tools/osv-scanner
+          curl -fsSLO "$base/osv-scanner_SHA256SUMS"
+          got="$(awk -v a="$OSV_SCANNER_ASSET" '$2 == a {print $1}' osv-scanner_SHA256SUMS)"
+          [ "$got" = "$OSV_SCANNER_SHA256" ] || { echo "::error::osv-scanner pin mismatch: Tebakofile=$OSV_SCANNER_SHA256 release=${got:-ABSENT}"; exit 1; }
+          .tools/osv-scanner --version
+          for f in "${sboms[@]}"; do
+            echo "== osv-scanner: $(basename "$f")"
+            rc=0
+            # -L (scan lockfile): v2's spelling — SBOMs ride the lockfile
+            # path; the deprecated --sbom warns. rc 0 = parsed, clean;
+            # rc 1 = parsed, findings reported; anything else = the parse
+            # itself failed (warned loudly below, never fatal).
+            .tools/osv-scanner scan source -L "$f" --format=table 2>&1 | tee "$RUNNER_TEMP/osv-smoke.log" || rc=$?
+            case "$rc" in
+              0|1) echo "parse OK (rc=$rc: 0 = no findings, 1 = findings reported — report-only)" ;;
+              *) echo "::warning::osv-scanner could not parse $(basename "$f") (rc=$rc) — report-only, the publish continues" ;;
+            esac
+          done
+
       # SLSA L3 provenance over the exact bytes this tag ships — the
       # seven per-line payload images (the tebako publish uploads above)
       # plus the closure inventories. The per-triplet-line dir globs
@@ -1523,6 +1636,7 @@ jobs:
             out/aarch64-linux-musl-*/*.tfs
             out/x86_64-windows-ucrt-*/*.tfs
             out/*/closure-*.json
+            out/*/*.cdx.json
       # main is branch-protected (and the GitHub-Actions bypass is not
       # available on this plan): the registry lands by bot PR + auto-merge,
       # never by direct push. Idempotent across re-runs of the same tag.

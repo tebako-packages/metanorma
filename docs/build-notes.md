@@ -852,3 +852,60 @@ Also in this roll: stale comment cleanup — the windows leg has
 published since the 1.16.9 line (registry-proven), so the
 "publication gated" framing in the Tebakofile/windows comments is
 retired (the §7 historical narrative stays as-written).
+
+## 11. The SBOM lane (metanorma#168 — the TODO.sota3/03 feedstock template)
+
+Every leg emits `metanorma-<version>-<asset-platform>.cdx.json`
+(CycloneDX 1.6) into its dist artifact, and the publish job ships it
+beside the payload with the same trust treatment as every other served
+name. tebako#1124's standing rules bind: components carry **purl +
+sha256**, and BOTH verification lanes ship (sigstore attestation + the
+offline GPG `.asc`).
+
+- **Generation (per leg, tools/build).** The pinned CLI's `sbom` verb
+  (tebako#1120) in COMPLETE mode: `tebako sbom <image.tfs> --closure
+  closure/<version>-<triplet>.txt --ecosystem gem --triplet <triplet>`.
+  Deterministic — the serial derives from the document's identity
+  content and the timestamp reads `SOURCE_DATE_EPOCH` pinned at the
+  feedstock commit (the product release's own `sbom_epoch` convention,
+  spec 13 §5a); two runs on unchanged inputs are byte-identical.
+  **Activation is the pin, never a workflow edit** (the
+  registry-validate pattern): the verb exists from the tebako release
+  carrying tebako#1120 (merged 2026-11-27; v2.8.85 predates it), so an
+  older tools pin probes out and the step skips LOUDLY until the
+  automated pin roll brings a release carrying the verb.
+- **The input of record is the hashed closure TEXT
+  (`closure/<version>-<triplet>.txt`), not the published
+  `closure-*.json` asset.** Verified 2026-11-27 against the 1.18.7-1
+  release: the JSON asset carries name+version per gem and NO hashes
+  (its consumer is the flavor feedstocks' dedup subtraction, spec 03
+  §2.8); the `.txt` is what the build actually stages from and the only
+  artifact carrying the per-gem sha256 — the standing rules' "purl +
+  sha256 from the closure" is only satisfiable from it. (The verb
+  refuses the JSON by name: its grammar is `<artifact> <sha256>` rows.)
+- **Signing (the offline GPG lane).** The publish job produces a
+  detached `.cdx.json.asc` with the SAME CI signing subkey material
+  `tebako publish --sign` consumes (`TEBAKO_CI_SIGNING_KEY`, the
+  recipe's `signing.keyid`) — gpg is the detached-sign instrument for
+  files the CLI does not itself sign. Declared-signing + absent secret
+  fails closed before any upload, the publish step's own rule. The
+  sigstore lane is the existing attest-build-provenance step; its
+  subject set gained `out/*/*.cdx.json`.
+- **The registry sidecar.** Each platform entry gains the additive
+  `sbom: {artifact, sha256}` pin (the sha256-manifest-asc family's
+  grammar), re-rendered from the release's OWN served digests by
+  `tools/render_sbom_sidecars.rb` at every publish — the L3
+  mirror-by-value rule, because the CLI's registry upsert round-trips
+  its serde model and drops unknown keys. Pre-SBOM readers ignore the
+  key (the registry evolution law; verified with the sbom-carrying
+  CLI's `registry validate`). A first-class `sbom:` sidecar class is a
+  registry-schema candidate for the product (tracked in the
+  implementation PR's body) — until it lands, the key is an additive
+  unknown key by design.
+- **The smoke (report-only, never fails).** The publish job runs
+  osv-scanner over every staged SBOM — tebako#1124's universal
+  acceptance proof (parse OK / findings reported). osv-scanner is
+  pinned in Tebakofile's `sbom:` block, sha256-verified at fetch and
+  cross-checked against the release's own `osv-scanner_SHA256SUMS` (the
+  tebako tools fetch's discipline). The scheduled findings workflow is
+  metanorma#169's, not this lane's.
